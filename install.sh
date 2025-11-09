@@ -56,6 +56,7 @@ print_banner() {
 ║           - UFW 防火墙 (Firewall)                        ║
 ║           - Docker 容器引擎                               ║
 ║           - Nginx + Certbot 证书工具                     ║
+║           - YABS 性能测试 (Performance Test)             ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -107,7 +108,7 @@ download_scripts() {
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
         # 下载所有脚本文件
-        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
+        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh")
 
         for script in "${scripts[@]}"; do
             log_info "下载 ${script}..."
@@ -245,6 +246,15 @@ install_all() {
     log_success "所有组件安装完成！"
 }
 
+# YABS性能测试菜单
+yabs_test_menu() {
+    if [ -f "${SCRIPTS_PATH}/yabs_test.sh" ]; then
+        bash "${SCRIPTS_PATH}/yabs_test.sh" menu
+    else
+        log_error "找不到YABS测试脚本"
+    fi
+}
+
 # 主菜单
 main_menu() {
     while true; do
@@ -257,10 +267,11 @@ main_menu() {
         echo -e "${GREEN}3.${NC} UFW 防火墙管理"
         echo -e "${GREEN}4.${NC} Docker 管理"
         echo -e "${GREEN}5.${NC} Nginx 管理"
+        echo -e "${PURPLE}6.${NC} YABS 性能测试"
         echo -e "${RED}0.${NC} 退出"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "请选择操作 [0-5]: " choice
+        read -p "请选择操作 [0-6]: " choice
 
         case $choice in
             1)
@@ -277,6 +288,9 @@ main_menu() {
                 ;;
             5)
                 nginx_menu
+                ;;
+            6)
+                yabs_test_menu
                 ;;
             0)
                 log_info "感谢使用！"
