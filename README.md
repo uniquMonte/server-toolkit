@@ -28,40 +28,19 @@ bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/vps-setup/main/inst
 ═══════════════════════════════════════
 ```
 
-## Standalone Usage
-
-```bash
-# System Update
-sudo ./scripts/system_update.sh
-
-# UFW Firewall
-sudo ./scripts/ufw_manager.sh install-common
-
-# Docker
-sudo ./scripts/docker_manager.sh install-compose
-
-# Nginx + Certbot
-sudo ./scripts/nginx_manager.sh install-certbot
-
-# Fail2ban
-sudo ./scripts/fail2ban_manager.sh install
-
-# SSH Security
-sudo ./scripts/ssh_security.sh full
-
-# YABS Test
-./scripts/yabs_test.sh menu
-
-# IP Quality Check
-./scripts/ip_quality_test.sh menu
-
-# Network Quality Test
-./scripts/network_quality_test.sh menu
-```
-
 ## Supported Systems
 
 Ubuntu • Debian • CentOS • Rocky Linux • AlmaLinux • Fedora
+
+## Acknowledgments
+
+This script integrates the following excellent open-source testing tools:
+
+- **[YABS](https://github.com/masonr/yet-another-bench-script)** - Yet Another Bench Script for VPS performance testing
+- **[IPQuality](https://github.com/xykt/IPQuality)** - IP quality and reputation detection tool
+- **[NetQuality](https://github.com/xykt/NetQuality)** - Network quality check script
+
+Special thanks to the authors and contributors of these projects!
 
 ---
 
