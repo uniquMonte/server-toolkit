@@ -48,8 +48,8 @@ check_ufw_installed() {
     fi
 }
 
-# 安装UFW
-install_ufw() {
+# 仅安装UFW（不配置）
+install_ufw_base() {
     log_info "开始安装 UFW 防火墙..."
 
     detect_os
@@ -57,46 +57,111 @@ install_ufw() {
     if check_ufw_installed; then
         log_warning "UFW 已经安装"
         ufw --version
-    else
-        case $OS in
-            ubuntu|debian)
-                log_info "使用 APT 安装 UFW..."
-                apt-get update
-                apt-get install -y ufw
-                ;;
-
-            centos|rhel|rocky|almalinux|fedora)
-                log_info "使用 YUM/DNF 安装 UFW..."
-                if command -v dnf &> /dev/null; then
-                    dnf install -y ufw
-                else
-                    # EPEL仓库可能需要先安装
-                    yum install -y epel-release
-                    yum install -y ufw
-                fi
-                ;;
-
-            *)
-                log_error "不支持的操作系统: $OS"
-                exit 1
-                ;;
-        esac
-
-        if check_ufw_installed; then
-            log_success "UFW 安装成功"
-        else
-            log_error "UFW 安装失败"
-            exit 1
-        fi
+        return 0
     fi
 
-    # 配置UFW
-    configure_ufw
+    case $OS in
+        ubuntu|debian)
+            log_info "使用 APT 安装 UFW..."
+            apt-get update
+            apt-get install -y ufw
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            log_info "使用 YUM/DNF 安装 UFW..."
+            if command -v dnf &> /dev/null; then
+                dnf install -y ufw
+            else
+                # EPEL仓库可能需要先安装
+                yum install -y epel-release
+                yum install -y ufw
+            fi
+            ;;
+
+        *)
+            log_error "不支持的操作系统: $OS"
+            exit 1
+            ;;
+    esac
+
+    if check_ufw_installed; then
+        log_success "UFW 安装成功"
+        ufw --version
+        return 0
+    else
+        log_error "UFW 安装失败"
+        exit 1
+    fi
 }
 
-# 配置UFW
-configure_ufw() {
-    log_info "配置 UFW 防火墙规则..."
+# 仅安装UFW，不配置规则
+install_only() {
+    install_ufw_base
+    log_success "UFW 已安装，但未配置规则"
+    log_info "提示: UFW 未启用，你可以稍后手动配置规则"
+}
+
+# 安装UFW并配置常用端口（22, 80, 443）
+install_common() {
+    install_ufw_base
+
+    log_info "配置常用端口..."
+    configure_ufw_common
+}
+
+# 安装UFW并自定义配置
+install_custom() {
+    install_ufw_base
+
+    log_info "开始自定义配置..."
+    configure_ufw_custom
+}
+
+# 配置常用端口（22, 80, 443）
+configure_ufw_common() {
+    log_info "配置 UFW 防火墙规则 (常用端口)..."
+
+    # 重置UFW规则
+    log_info "重置现有规则..."
+    ufw --force reset
+
+    # 设置默认策略
+    log_info "设置默认策略..."
+    ufw default deny incoming
+    ufw default allow outgoing
+
+    # 询问SSH端口
+    read -p "请输入SSH端口 (默认: 22): " ssh_port
+    ssh_port=${ssh_port:-22}
+
+    log_info "允许 SSH 端口 ${ssh_port}..."
+    ufw allow ${ssh_port}/tcp comment 'SSH'
+
+    # 自动开放 HTTP 和 HTTPS
+    log_info "允许 HTTP 端口 80..."
+    ufw allow 80/tcp comment 'HTTP'
+
+    log_info "允许 HTTPS 端口 443..."
+    ufw allow 443/tcp comment 'HTTPS'
+
+    # 启用UFW
+    log_info "启用 UFW 防火墙..."
+    ufw --force enable
+
+    # 显示状态
+    log_success "UFW 配置完成！当前状态："
+    ufw status verbose
+
+    # 设置开机自启
+    log_info "设置开机自启..."
+    systemctl enable ufw
+
+    log_success "UFW 防火墙配置完成！已开放端口: ${ssh_port}(SSH), 80(HTTP), 443(HTTPS)"
+}
+
+# 自定义配置UFW
+configure_ufw_custom() {
+    log_info "配置 UFW 防火墙规则 (自定义模式)..."
 
     # 重置UFW规则
     log_info "重置现有规则..."
@@ -222,11 +287,13 @@ uninstall_ufw() {
 
 # 显示帮助
 show_help() {
-    echo "用法: $0 {install|uninstall}"
+    echo "用法: $0 {install-only|install-common|install-custom|uninstall}"
     echo ""
     echo "命令:"
-    echo "  install     - 安装并配置 UFW"
-    echo "  uninstall   - 卸载 UFW"
+    echo "  install-only    - 仅安装 UFW，不配置规则"
+    echo "  install-common  - 安装 UFW 并开启常用端口 (22, 80, 443)"
+    echo "  install-custom  - 安装 UFW 并自定义配置"
+    echo "  uninstall       - 卸载 UFW"
     echo ""
 }
 
@@ -238,8 +305,14 @@ main() {
     fi
 
     case "$1" in
-        install)
-            install_ufw
+        install-only)
+            install_only
+            ;;
+        install-common)
+            install_common
+            ;;
+        install-custom)
+            install_custom
             ;;
         uninstall)
             uninstall_ufw

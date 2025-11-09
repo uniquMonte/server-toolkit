@@ -136,20 +136,28 @@ system_update() {
 ufw_menu() {
     echo ""
     log_step "UFW 防火墙管理"
-    echo -e "${CYAN}1.${NC} 安装并配置 UFW"
-    echo -e "${CYAN}2.${NC} 卸载 UFW"
-    echo -e "${CYAN}3.${NC} 返回主菜单"
+    echo -e "${CYAN}1.${NC} 仅安装 UFW (不配置规则)"
+    echo -e "${CYAN}2.${NC} 安装 UFW 并开启常用端口 (22, 80, 443)"
+    echo -e "${CYAN}3.${NC} 安装 UFW 并自定义配置"
+    echo -e "${CYAN}4.${NC} 卸载 UFW"
+    echo -e "${CYAN}5.${NC} 返回主菜单"
     echo ""
-    read -p "请选择操作 [1-3]: " ufw_choice
+    read -p "请选择操作 [1-5]: " ufw_choice
 
     case $ufw_choice in
         1)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" install
+            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-only
             ;;
         2)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" uninstall
+            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
             ;;
         3)
+            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-custom
+            ;;
+        4)
+            bash "${SCRIPTS_PATH}/ufw_manager.sh" uninstall
+            ;;
+        5)
             return
             ;;
         *)
@@ -225,8 +233,8 @@ install_all() {
     # 系统更新
     system_update
 
-    # 安装UFW
-    bash "${SCRIPTS_PATH}/ufw_manager.sh" install
+    # 安装UFW并配置常用端口
+    bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
 
     # 安装Docker和Docker Compose
     bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose

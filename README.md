@@ -67,10 +67,10 @@ sudo ./install.sh
 
 ### 2. UFW 防火墙
 
-安装和配置 UFW 防火墙，支持：
-- 自定义 SSH 端口
-- HTTP/HTTPS 端口配置
-- 自定义端口规则
+安装和配置 UFW 防火墙，提供三种安装模式：
+- **仅安装模式**: 只安装 UFW，不配置任何规则
+- **常用端口模式**: 自动配置 SSH(22)、HTTP(80)、HTTPS(443) 端口
+- **自定义模式**: 完全自定义配置防火墙规则
 - 完整的卸载功能
 
 ### 3. Docker
@@ -127,8 +127,14 @@ sudo ./scripts/system_update.sh
 
 #### UFW 防火墙
 ```bash
-# 安装
-sudo ./scripts/ufw_manager.sh install
+# 仅安装 UFW，不配置规则
+sudo ./scripts/ufw_manager.sh install-only
+
+# 安装 UFW 并开启常用端口 (22, 80, 443)
+sudo ./scripts/ufw_manager.sh install-common
+
+# 安装 UFW 并自定义配置
+sudo ./scripts/ufw_manager.sh install-custom
 
 # 卸载
 sudo ./scripts/ufw_manager.sh uninstall
