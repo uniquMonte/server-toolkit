@@ -138,6 +138,18 @@ sudo ./install.sh
 - **黑名单检测**: 各大黑名单数据库查询
 - **流媒体解锁**: Netflix/YouTube 等流媒体检测
 
+### 10. 网络质量检测
+
+全面的网络质量体检工具（基于 NetQuality 项目）：
+- **双栈检测**: 同时检测 IPv4 和 IPv6 网络（推荐）
+- **单独检测**: 仅检测 IPv4 或 IPv6 网络
+- **网络连通性**: 全球多地区网络连接测试
+- **网络延迟**: Ping 延迟测试
+- **带宽速度**: 上传/下载速度测试
+- **路由追踪**: 网络路径分析
+- **DNS 解析**: DNS 响应时间测试
+- **地理位置**: 网络节点位置信息
+
 ## 🔧 使用方法
 
 ### 交互式菜单
@@ -157,6 +169,7 @@ sudo ./install.sh
 7. Fail2ban 防暴力破解
 8. SSH 安全配置
 9. IP 质量检测
+10. 网络质量检测
 0. 退出
 ═══════════════════════════════════════
 ```
@@ -293,6 +306,24 @@ sudo ./scripts/ssh_security.sh show
 ./scripts/ip_quality_test.sh check
 ```
 
+#### 网络质量检测
+```bash
+# 交互式菜单（推荐）
+./scripts/network_quality_test.sh menu
+
+# 双栈检测 (IPv4 + IPv6)
+./scripts/network_quality_test.sh dual
+
+# 仅 IPv4 检测
+./scripts/network_quality_test.sh ipv4
+
+# 仅 IPv6 检测
+./scripts/network_quality_test.sh ipv6
+
+# 查看网络连接状态
+./scripts/network_quality_test.sh check
+```
+
 ## 📝 使用示例
 
 ### 场景 1: 新 VPS 完整部署
@@ -411,6 +442,33 @@ sudo ./install.sh
 
 # 快速查看当前 IP 地址
 ./scripts/ip_quality_test.sh check
+```
+
+### 场景 8: 网络质量检测（推荐新购 VPS 必做）
+
+```bash
+# 运行主脚本
+sudo ./install.sh
+
+# 选择菜单选项 10 - 网络质量检测
+# 选择选项 1 - 双栈检测（推荐）
+
+# 测试项目包括：
+# - 网络连通性测试（全球多地区）
+# - 网络延迟测试（Ping 延迟）
+# - 带宽速度测试（上传/下载）
+# - 路由追踪（网络路径分析）
+# - DNS 解析测试（DNS 响应时间）
+# - 地理位置信息（网络节点位置）
+
+# 如果只关心 IPv4 网络
+./scripts/network_quality_test.sh ipv4
+
+# 如果服务器同时有 IPv4 和 IPv6，建议做双栈检测
+./scripts/network_quality_test.sh dual
+
+# 快速查看网络连接状态
+./scripts/network_quality_test.sh check
 ```
 
 ## 🛡️ 安全建议

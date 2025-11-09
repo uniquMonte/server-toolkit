@@ -60,6 +60,7 @@ print_banner() {
 ║           - Fail2ban 防暴力破解                          ║
 ║           - SSH 安全配置 (SSH Security)                  ║
 ║           - IP 质量检测 (IP Quality Test)                ║
+║           - 网络质量检测 (Network Quality Test)          ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -111,7 +112,7 @@ download_scripts() {
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
         # 下载所有脚本文件
-        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh" "ip_quality_test.sh")
+        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh" "ip_quality_test.sh" "network_quality_test.sh")
 
         for script in "${scripts[@]}"; do
             log_info "下载 ${script}..."
@@ -347,6 +348,15 @@ ip_quality_menu() {
     fi
 }
 
+# 网络质量测试菜单
+network_quality_menu() {
+    if [ -f "${SCRIPTS_PATH}/network_quality_test.sh" ]; then
+        bash "${SCRIPTS_PATH}/network_quality_test.sh" menu
+    else
+        log_error "找不到网络质量测试脚本"
+    fi
+}
+
 # 主菜单
 main_menu() {
     while true; do
@@ -363,10 +373,11 @@ main_menu() {
         echo -e "${YELLOW}7.${NC} Fail2ban 防暴力破解"
         echo -e "${YELLOW}8.${NC} SSH 安全配置"
         echo -e "${PURPLE}9.${NC} IP 质量检测"
+        echo -e "${PURPLE}10.${NC} 网络质量检测"
         echo -e "${RED}0.${NC} 退出"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "请选择操作 [0-9]: " choice
+        read -p "请选择操作 [0-10]: " choice
 
         case $choice in
             1)
@@ -395,6 +406,9 @@ main_menu() {
                 ;;
             9)
                 ip_quality_menu
+                ;;
+            10)
+                network_quality_menu
                 ;;
             0)
                 log_info "感谢使用！"
