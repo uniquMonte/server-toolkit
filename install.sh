@@ -57,6 +57,8 @@ print_banner() {
 ║           - Docker 容器引擎                               ║
 ║           - Nginx + Certbot 证书工具                     ║
 ║           - YABS 性能测试 (Performance Test)             ║
+║           - Fail2ban 防暴力破解                          ║
+║           - SSH 安全配置 (SSH Security)                  ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -108,7 +110,7 @@ download_scripts() {
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
         # 下载所有脚本文件
-        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh")
+        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh")
 
         for script in "${scripts[@]}"; do
             log_info "下载 ${script}..."
@@ -255,6 +257,86 @@ yabs_test_menu() {
     fi
 }
 
+# Fail2ban管理菜单
+fail2ban_menu() {
+    echo ""
+    log_step "Fail2ban 入侵防御管理"
+    echo -e "${CYAN}1.${NC} 安装并配置 Fail2ban"
+    echo -e "${CYAN}2.${NC} 查看 Fail2ban 状态"
+    echo -e "${CYAN}3.${NC} 查看被封禁的IP"
+    echo -e "${CYAN}4.${NC} 解封指定IP"
+    echo -e "${CYAN}5.${NC} 卸载 Fail2ban"
+    echo -e "${CYAN}6.${NC} 返回主菜单"
+    echo ""
+    read -p "请选择操作 [1-6]: " fail2ban_choice
+
+    case $fail2ban_choice in
+        1)
+            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" install
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" status
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
+            ;;
+        4)
+            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
+            ;;
+        5)
+            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
+            ;;
+        6)
+            return
+            ;;
+        *)
+            log_error "无效选择"
+            ;;
+    esac
+}
+
+# SSH安全配置菜单
+ssh_security_menu() {
+    echo ""
+    log_step "SSH 安全配置"
+    echo -e "${CYAN}1.${NC} 配置 SSH 密钥登录"
+    echo -e "${CYAN}2.${NC} 禁用 root 密码登录"
+    echo -e "${CYAN}3.${NC} 修改 SSH 端口"
+    echo -e "${CYAN}4.${NC} 配置连接超时"
+    echo -e "${CYAN}5.${NC} 完整安全配置（推荐）"
+    echo -e "${CYAN}6.${NC} 查看当前配置"
+    echo -e "${CYAN}7.${NC} 返回主菜单"
+    echo ""
+    read -p "请选择操作 [1-7]: " ssh_choice
+
+    case $ssh_choice in
+        1)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" setup-key
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" disable-password
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" change-port
+            ;;
+        4)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" timeout
+            ;;
+        5)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" full
+            ;;
+        6)
+            bash "${SCRIPTS_PATH}/ssh_security.sh" show
+            ;;
+        7)
+            return
+            ;;
+        *)
+            log_error "无效选择"
+            ;;
+    esac
+}
+
 # 主菜单
 main_menu() {
     while true; do
@@ -268,10 +350,12 @@ main_menu() {
         echo -e "${GREEN}4.${NC} Docker 管理"
         echo -e "${GREEN}5.${NC} Nginx 管理"
         echo -e "${PURPLE}6.${NC} YABS 性能测试"
+        echo -e "${YELLOW}7.${NC} Fail2ban 防暴力破解"
+        echo -e "${YELLOW}8.${NC} SSH 安全配置"
         echo -e "${RED}0.${NC} 退出"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "请选择操作 [0-6]: " choice
+        read -p "请选择操作 [0-8]: " choice
 
         case $choice in
             1)
@@ -291,6 +375,12 @@ main_menu() {
                 ;;
             6)
                 yabs_test_menu
+                ;;
+            7)
+                fail2ban_menu
+                ;;
+            8)
+                ssh_security_menu
                 ;;
             0)
                 log_info "感谢使用！"
