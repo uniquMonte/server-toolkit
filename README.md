@@ -126,6 +126,18 @@ sudo ./install.sh
 - **完整配置**: 一键完成所有安全设置
 - **配置备份**: 自动备份原有配置
 
+### 9. IP 质量检测
+
+全面的 IP 质量和信誉检测工具（基于 IPQuality 项目）：
+- **双栈检测**: 同时检测 IPv4 和 IPv6（推荐）
+- **单独检测**: 仅检测 IPv4 或 IPv6
+- **地理位置**: 显示 IP 的国家、城市、ISP 信息
+- **IP 类型**: 识别家庭宽带/数据中心/云服务商
+- **滥用检测**: 垃圾邮件/代理/VPN 检测
+- **风险评分**: IP 信誉评分
+- **黑名单检测**: 各大黑名单数据库查询
+- **流媒体解锁**: Netflix/YouTube 等流媒体检测
+
 ## 🔧 使用方法
 
 ### 交互式菜单
@@ -144,6 +156,7 @@ sudo ./install.sh
 6. YABS 性能测试
 7. Fail2ban 防暴力破解
 8. SSH 安全配置
+9. IP 质量检测
 0. 退出
 ═══════════════════════════════════════
 ```
@@ -262,6 +275,24 @@ sudo ./scripts/ssh_security.sh full
 sudo ./scripts/ssh_security.sh show
 ```
 
+#### IP 质量检测
+```bash
+# 交互式菜单（推荐）
+./scripts/ip_quality_test.sh menu
+
+# 双栈检测 (IPv4 + IPv6)
+./scripts/ip_quality_test.sh dual
+
+# 仅 IPv4 检测
+./scripts/ip_quality_test.sh ipv4
+
+# 仅 IPv6 检测
+./scripts/ip_quality_test.sh ipv6
+
+# 查看当前 IP 配置
+./scripts/ip_quality_test.sh check
+```
+
 ## 📝 使用示例
 
 ### 场景 1: 新 VPS 完整部署
@@ -353,6 +384,33 @@ sudo ./scripts/fail2ban_manager.sh show-banned
 
 # 如果误封自己的IP，可以解封
 sudo ./scripts/fail2ban_manager.sh unban
+```
+
+### 场景 7: IP 质量检测（推荐新购 VPS 必做）
+
+```bash
+# 运行主脚本
+sudo ./install.sh
+
+# 选择菜单选项 9 - IP 质量检测
+# 选择选项 1 - 双栈检测（推荐）
+
+# 测试项目包括：
+# - IP 类型识别（家庭宽带/数据中心/云服务商）
+# - 地理位置信息（国家/城市/ISP）
+# - 滥用检测（垃圾邮件/代理/VPN）
+# - IP 信誉评分
+# - 黑名单数据库查询
+# - 流媒体解锁检测（Netflix/YouTube等）
+
+# 如果只关心 IPv4
+./scripts/ip_quality_test.sh ipv4
+
+# 如果服务器同时有 IPv4 和 IPv6，建议做双栈检测
+./scripts/ip_quality_test.sh dual
+
+# 快速查看当前 IP 地址
+./scripts/ip_quality_test.sh check
 ```
 
 ## 🛡️ 安全建议
