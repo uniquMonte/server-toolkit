@@ -1,40 +1,40 @@
-# VPS 一键部署脚本
+# VPS Quick Setup Script
 
-快速在新购买的 VPS 上安装和配置常用工具。
+Quickly install and configure common tools on newly purchased VPS servers.
 
-## 快速开始
+## Quick Start
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/vps-setup/main/install.sh)
 ```
 
-## 功能菜单
+## Menu Options
 
 ```
 ═══════════════════════════════════════
-           主菜单 Main Menu
+           Main Menu
 ═══════════════════════════════════════
-1. 一键安装所有组件
-2. 系统更新
-3. UFW 防火墙管理
-4. Docker 管理
-5. Nginx 管理
-6. Fail2ban 防暴力破解
-7. SSH 安全配置
-8. YABS 性能测试
-9. IP 质量检测
-10. 网络质量检测
-0. 退出
+1. Install All Components
+2. System Update
+3. UFW Firewall Management
+4. Docker Management
+5. Nginx Management
+6. Fail2ban Anti-Brute Force
+7. SSH Security Configuration
+8. YABS Performance Test
+9. IP Quality Check
+10. Network Quality Test
+0. Exit
 ═══════════════════════════════════════
 ```
 
-## 独立运行
+## Standalone Usage
 
 ```bash
-# 系统更新
+# System Update
 sudo ./scripts/system_update.sh
 
-# UFW 防火墙
+# UFW Firewall
 sudo ./scripts/ufw_manager.sh install-common
 
 # Docker
@@ -46,20 +46,20 @@ sudo ./scripts/nginx_manager.sh install-certbot
 # Fail2ban
 sudo ./scripts/fail2ban_manager.sh install
 
-# SSH 安全
+# SSH Security
 sudo ./scripts/ssh_security.sh full
 
-# YABS 测试
+# YABS Test
 ./scripts/yabs_test.sh menu
 
-# IP 质量检测
+# IP Quality Check
 ./scripts/ip_quality_test.sh menu
 
-# 网络质量检测
+# Network Quality Test
 ./scripts/network_quality_test.sh menu
 ```
 
-## 支持系统
+## Supported Systems
 
 Ubuntu • Debian • CentOS • Rocky Linux • AlmaLinux • Fedora
 
