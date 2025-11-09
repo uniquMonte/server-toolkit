@@ -68,7 +68,12 @@ update_system() {
                 gnupg \
                 lsb-release \
                 software-properties-common \
-                apt-transport-https
+                apt-transport-https \
+                unzip \
+                zip \
+                tar \
+                gzip \
+                bzip2
 
             log_info "清理无用的软件包..."
             apt-get autoremove -y
@@ -101,7 +106,12 @@ update_system() {
                 net-tools \
                 ca-certificates \
                 gnupg \
-                yum-utils
+                yum-utils \
+                unzip \
+                zip \
+                tar \
+                gzip \
+                bzip2
 
             log_info "清理缓存..."
             $PKG_MANAGER clean all
@@ -116,13 +126,41 @@ update_system() {
     esac
 
     log_success "系统更新完成！"
-    log_info "建议重启系统以应用所有更新"
+}
 
-    read -p "是否现在重启系统? (y/N): " restart_choice
-    if [[ $restart_choice =~ ^[Yy]$ ]]; then
-        log_info "系统将在5秒后重启..."
-        sleep 5
-        reboot
+# 安装 rclone
+install_rclone() {
+    log_info "检查 rclone 安装状态..."
+
+    if command -v rclone &> /dev/null; then
+        log_success "rclone 已安装"
+        rclone version | head -n 1
+        return
+    fi
+
+    log_info "开始安装 rclone..."
+
+    # 使用官方安装脚本
+    if curl -fsSL https://rclone.org/install.sh | bash; then
+        log_success "rclone 安装成功"
+        rclone version | head -n 1
+    else
+        log_error "rclone 安装失败，尝试手动安装..."
+
+        # 手动安装方式
+        detect_os
+        case $OS in
+            ubuntu|debian)
+                apt-get install -y rclone 2>/dev/null || log_warning "从仓库安装失败，请访问 https://rclone.org 手动安装"
+                ;;
+            centos|rhel|rocky|almalinux|fedora)
+                if command -v dnf &> /dev/null; then
+                    dnf install -y rclone 2>/dev/null || log_warning "从仓库安装失败，请访问 https://rclone.org 手动安装"
+                else
+                    yum install -y rclone 2>/dev/null || log_warning "从仓库安装失败，请访问 https://rclone.org 手动安装"
+                fi
+                ;;
+        esac
     fi
 }
 
@@ -134,6 +172,25 @@ main() {
     fi
 
     update_system
+
+    # 安装 rclone
+    echo ""
+    read -p "是否安装 rclone (云存储同步工具)? (Y/n): " install_rclone_choice
+    if [[ ! $install_rclone_choice =~ ^[Nn]$ ]]; then
+        install_rclone
+    fi
+
+    # 询问是否重启
+    echo ""
+    log_info "所有更新已完成！"
+    log_info "建议重启系统以应用所有更新"
+
+    read -p "是否现在重启系统? (y/N): " restart_choice
+    if [[ $restart_choice =~ ^[Yy]$ ]]; then
+        log_info "系统将在5秒后重启..."
+        sleep 5
+        reboot
+    fi
 }
 
 main "$@"

@@ -57,10 +57,13 @@ sudo ./install.sh
 ### 1. 系统更新
 
 自动更新系统软件包并安装以下常用工具：
-- curl, wget, git
-- vim, nano
-- htop, net-tools
-- 其他系统必需工具
+- **网络工具**: curl, wget
+- **版本控制**: git
+- **文本编辑**: vim, nano
+- **系统监控**: htop, net-tools
+- **压缩工具**: unzip, zip, tar, gzip, bzip2
+- **云存储同步**: rclone (可选)
+- **其他系统必需工具**: ca-certificates, gnupg 等
 
 ### 2. UFW 防火墙
 
