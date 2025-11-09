@@ -369,9 +369,9 @@ main_menu() {
         echo -e "${GREEN}3.${NC} UFW 防火墙管理"
         echo -e "${GREEN}4.${NC} Docker 管理"
         echo -e "${GREEN}5.${NC} Nginx 管理"
-        echo -e "${PURPLE}6.${NC} YABS 性能测试"
-        echo -e "${YELLOW}7.${NC} Fail2ban 防暴力破解"
-        echo -e "${YELLOW}8.${NC} SSH 安全配置"
+        echo -e "${YELLOW}6.${NC} Fail2ban 防暴力破解"
+        echo -e "${YELLOW}7.${NC} SSH 安全配置"
+        echo -e "${PURPLE}8.${NC} YABS 性能测试"
         echo -e "${PURPLE}9.${NC} IP 质量检测"
         echo -e "${PURPLE}10.${NC} 网络质量检测"
         echo -e "${RED}0.${NC} 退出"
@@ -396,13 +396,13 @@ main_menu() {
                 nginx_menu
                 ;;
             6)
-                yabs_test_menu
-                ;;
-            7)
                 fail2ban_menu
                 ;;
-            8)
+            7)
                 ssh_security_menu
+                ;;
+            8)
+                yabs_test_menu
                 ;;
             9)
                 ip_quality_menu
