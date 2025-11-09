@@ -55,7 +55,23 @@ update_system() {
             log_info "执行完整升级..."
             apt-get full-upgrade -y
 
-            log_info "安装常用工具..."
+            log_info "准备安装常用工具..."
+            echo ""
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${BLUE}将安装以下工具:${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "  📥 ${GREEN}网络工具${NC}      : curl, wget"
+            echo -e "  📝 ${GREEN}版本控制${NC}      : git"
+            echo -e "  ✏️  ${GREEN}文本编辑${NC}      : vim, nano"
+            echo -e "  📊 ${GREEN}系统监控${NC}      : htop, net-tools"
+            echo -e "  📦 ${GREEN}压缩工具${NC}      : unzip, zip, tar, gzip, bzip2"
+            echo -e "  🔒 ${GREEN}安全证书${NC}      : ca-certificates, gnupg"
+            echo -e "  ⚙️  ${GREEN}系统工具${NC}      : lsb-release, software-properties-common"
+            echo -e "  🌐 ${GREEN}传输支持${NC}      : apt-transport-https"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+
+            log_info "开始安装工具包..."
             apt-get install -y \
                 curl \
                 wget \
@@ -79,7 +95,9 @@ update_system() {
             apt-get autoremove -y
             apt-get autoclean -y
 
+            echo ""
             log_success "Ubuntu/Debian 系统更新完成"
+            log_success "常用工具已安装完成！"
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
@@ -95,7 +113,22 @@ update_system() {
             log_info "更新系统软件包..."
             $PKG_MANAGER update -y
 
-            log_info "安装常用工具..."
+            log_info "准备安装常用工具..."
+            echo ""
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${BLUE}将安装以下工具:${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "  📥 ${GREEN}网络工具${NC}      : curl, wget"
+            echo -e "  📝 ${GREEN}版本控制${NC}      : git"
+            echo -e "  ✏️  ${GREEN}文本编辑${NC}      : vim, nano"
+            echo -e "  📊 ${GREEN}系统监控${NC}      : htop, net-tools"
+            echo -e "  📦 ${GREEN}压缩工具${NC}      : unzip, zip, tar, gzip, bzip2"
+            echo -e "  🔒 ${GREEN}安全证书${NC}      : ca-certificates, gnupg"
+            echo -e "  ⚙️  ${GREEN}包管理工具${NC}    : yum-utils"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+
+            log_info "开始安装工具包..."
             $PKG_MANAGER install -y \
                 curl \
                 wget \
@@ -116,7 +149,9 @@ update_system() {
             log_info "清理缓存..."
             $PKG_MANAGER clean all
 
+            echo ""
             log_success "CentOS/RHEL/Rocky/AlmaLinux/Fedora 系统更新完成"
+            log_success "常用工具已安装完成！"
             ;;
 
         *)
@@ -130,6 +165,16 @@ update_system() {
 
 # 安装 rclone
 install_rclone() {
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}rclone - 云存储同步工具${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ☁️  支持 40+ 云存储服务"
+    echo -e "  📦 Google Drive, Dropbox, OneDrive, S3 等"
+    echo -e "  🔄 文件同步、备份、挂载功能"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
     log_info "检查 rclone 安装状态..."
 
     if command -v rclone &> /dev/null; then
@@ -138,14 +183,20 @@ install_rclone() {
         return
     fi
 
-    log_info "开始安装 rclone..."
+    log_info "开始安装 rclone (使用官方安装脚本)..."
 
     # 使用官方安装脚本
     if curl -fsSL https://rclone.org/install.sh | bash; then
-        log_success "rclone 安装成功"
+        echo ""
+        log_success "rclone 安装成功！"
         rclone version | head -n 1
+        echo ""
+        log_info "使用提示:"
+        echo -e "  ${GREEN}配置 rclone${NC}: rclone config"
+        echo -e "  ${GREEN}查看帮助${NC}  : rclone --help"
+        echo -e "  ${GREEN}官方文档${NC}  : https://rclone.org/docs/"
     else
-        log_error "rclone 安装失败，尝试手动安装..."
+        log_error "官方脚本安装失败，尝试从系统仓库安装..."
 
         # 手动安装方式
         detect_os
@@ -161,6 +212,11 @@ install_rclone() {
                 fi
                 ;;
         esac
+
+        if command -v rclone &> /dev/null; then
+            log_success "rclone 从系统仓库安装成功"
+            rclone version | head -n 1
+        fi
     fi
 }
 
