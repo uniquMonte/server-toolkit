@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #######################################
-# UFW 防火墙管理脚本
-# 支持安装、配置和卸载
+# UFW Firewall Management Script
+# Supports installation, configuration, and uninstallation
 #######################################
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -28,18 +28,18 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检测操作系统
+# Detect operating system
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
     else
-        log_error "无法检测操作系统"
+        log_error "Unable to detect operating system"
         exit 1
     fi
 }
 
-# 检查UFW是否已安装
+# Check if UFW is installed
 check_ufw_installed() {
     if command -v ufw &> /dev/null; then
         return 0
@@ -48,156 +48,156 @@ check_ufw_installed() {
     fi
 }
 
-# 仅安装UFW（不配置）
+# Install UFW only (no configuration)
 install_ufw_base() {
-    log_info "开始安装 UFW 防火墙..."
+    log_info "Starting UFW firewall installation..."
 
     detect_os
 
     if check_ufw_installed; then
-        log_warning "UFW 已经安装"
+        log_warning "UFW is already installed"
         ufw --version
         return 0
     fi
 
     case $OS in
         ubuntu|debian)
-            log_info "使用 APT 安装 UFW..."
+            log_info "Installing UFW using APT..."
             apt-get update
             apt-get install -y ufw
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
-            log_info "使用 YUM/DNF 安装 UFW..."
+            log_info "Installing UFW using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf install -y ufw
             else
-                # EPEL仓库可能需要先安装
+                # EPEL repository may need to be installed first
                 yum install -y epel-release
                 yum install -y ufw
             fi
             ;;
 
         *)
-            log_error "不支持的操作系统: $OS"
+            log_error "Unsupported operating system: $OS"
             exit 1
             ;;
     esac
 
     if check_ufw_installed; then
-        log_success "UFW 安装成功"
+        log_success "UFW installed successfully"
         ufw --version
         return 0
     else
-        log_error "UFW 安装失败"
+        log_error "UFW installation failed"
         exit 1
     fi
 }
 
-# 仅安装UFW，不配置规则
+# Install UFW only, without configuring rules
 install_only() {
     install_ufw_base
-    log_success "UFW 已安装，但未配置规则"
-    log_info "提示: UFW 未启用，你可以稍后手动配置规则"
+    log_success "UFW has been installed, but no rules configured"
+    log_info "Note: UFW is not enabled, you can configure rules manually later"
 }
 
-# 安装UFW并配置常用端口（22, 80, 443）
+# Install UFW and configure common ports (22, 80, 443)
 install_common() {
     install_ufw_base
 
-    log_info "配置常用端口..."
+    log_info "Configuring common ports..."
     configure_ufw_common
 }
 
-# 安装UFW并自定义配置
+# Install UFW with custom configuration
 install_custom() {
     install_ufw_base
 
-    log_info "开始自定义配置..."
+    log_info "Starting custom configuration..."
     configure_ufw_custom
 }
 
-# 配置常用端口（22, 80, 443）
+# Configure common ports (22, 80, 443)
 configure_ufw_common() {
-    log_info "配置 UFW 防火墙规则 (常用端口)..."
+    log_info "Configuring UFW firewall rules (common ports)..."
 
-    # 重置UFW规则
-    log_info "重置现有规则..."
+    # Reset UFW rules
+    log_info "Resetting existing rules..."
     ufw --force reset
 
-    # 设置默认策略
-    log_info "设置默认策略..."
+    # Set default policies
+    log_info "Setting default policies..."
     ufw default deny incoming
     ufw default allow outgoing
 
-    # 询问SSH端口
-    read -p "请输入SSH端口 (默认: 22): " ssh_port
+    # Ask for SSH port
+    read -p "Enter SSH port (default: 22): " ssh_port
     ssh_port=${ssh_port:-22}
 
-    log_info "允许 SSH 端口 ${ssh_port}..."
+    log_info "Allowing SSH port ${ssh_port}..."
     ufw allow ${ssh_port}/tcp comment 'SSH'
 
-    # 自动开放 HTTP 和 HTTPS
-    log_info "允许 HTTP 端口 80..."
+    # Automatically open HTTP and HTTPS
+    log_info "Allowing HTTP port 80..."
     ufw allow 80/tcp comment 'HTTP'
 
-    log_info "允许 HTTPS 端口 443..."
+    log_info "Allowing HTTPS port 443..."
     ufw allow 443/tcp comment 'HTTPS'
 
-    # 启用UFW
-    log_info "启用 UFW 防火墙..."
+    # Enable UFW
+    log_info "Enabling UFW firewall..."
     ufw --force enable
 
-    # 显示状态
-    log_success "UFW 配置完成！当前状态："
+    # Display status
+    log_success "UFW configuration complete! Current status:"
     ufw status verbose
 
-    # 设置开机自启
-    log_info "设置开机自启..."
+    # Set to start on boot
+    log_info "Setting UFW to start on boot..."
     systemctl enable ufw
 
-    log_success "UFW 防火墙配置完成！已开放端口: ${ssh_port}(SSH), 80(HTTP), 443(HTTPS)"
+    log_success "UFW firewall configuration complete! Opened ports: ${ssh_port}(SSH), 80(HTTP), 443(HTTPS)"
 }
 
-# 自定义配置UFW
+# Custom UFW configuration
 configure_ufw_custom() {
-    log_info "配置 UFW 防火墙规则 (自定义模式)..."
+    log_info "Configuring UFW firewall rules (custom mode)..."
 
-    # 重置UFW规则
-    log_info "重置现有规则..."
+    # Reset UFW rules
+    log_info "Resetting existing rules..."
     ufw --force reset
 
-    # 设置默认策略
-    log_info "设置默认策略..."
+    # Set default policies
+    log_info "Setting default policies..."
     ufw default deny incoming
     ufw default allow outgoing
 
-    # 询问SSH端口
-    read -p "请输入SSH端口 (默认: 22): " ssh_port
+    # Ask for SSH port
+    read -p "Enter SSH port (default: 22): " ssh_port
     ssh_port=${ssh_port:-22}
 
-    log_info "允许 SSH 端口 ${ssh_port}..."
+    log_info "Allowing SSH port ${ssh_port}..."
     ufw allow ${ssh_port}/tcp comment 'SSH'
 
-    # 询问是否开放HTTP/HTTPS
-    read -p "是否开放 HTTP (80) 端口? (Y/n): " http_choice
+    # Ask about HTTP/HTTPS
+    read -p "Open HTTP (80) port? (Y/n): " http_choice
     if [[ ! $http_choice =~ ^[Nn]$ ]]; then
-        log_info "允许 HTTP 端口 80..."
+        log_info "Allowing HTTP port 80..."
         ufw allow 80/tcp comment 'HTTP'
     fi
 
-    read -p "是否开放 HTTPS (443) 端口? (Y/n): " https_choice
+    read -p "Open HTTPS (443) port? (Y/n): " https_choice
     if [[ ! $https_choice =~ ^[Nn]$ ]]; then
-        log_info "允许 HTTPS 端口 443..."
+        log_info "Allowing HTTPS port 443..."
         ufw allow 443/tcp comment 'HTTPS'
     fi
 
-    # 询问是否添加自定义端口
+    # Ask about custom ports
     while true; do
-        read -p "是否需要开放其他端口? (y/N): " custom_choice
+        read -p "Do you need to open additional ports? (y/N): " custom_choice
         if [[ $custom_choice =~ ^[Yy]$ ]]; then
-            read -p "请输入端口号: " custom_port
-            read -p "协议 (tcp/udp/both, 默认tcp): " protocol
+            read -p "Enter port number: " custom_port
+            read -p "Protocol (tcp/udp/both, default tcp): " protocol
             protocol=${protocol:-tcp}
 
             if [ "$protocol" == "both" ]; then
@@ -205,60 +205,60 @@ configure_ufw_custom() {
             else
                 ufw allow ${custom_port}/${protocol} comment 'Custom'
             fi
-            log_success "端口 ${custom_port} (${protocol}) 已开放"
+            log_success "Port ${custom_port} (${protocol}) has been opened"
         else
             break
         fi
     done
 
-    # 启用UFW
-    log_info "启用 UFW 防火墙..."
+    # Enable UFW
+    log_info "Enabling UFW firewall..."
     ufw --force enable
 
-    # 显示状态
-    log_success "UFW 配置完成！当前状态："
+    # Display status
+    log_success "UFW configuration complete! Current status:"
     ufw status verbose
 
-    # 设置开机自启
-    log_info "设置开机自启..."
+    # Set to start on boot
+    log_info "Setting UFW to start on boot..."
     systemctl enable ufw
 
-    log_success "UFW 防火墙安装并配置完成！"
+    log_success "UFW firewall installation and configuration complete!"
 }
 
-# 卸载UFW
+# Uninstall UFW
 uninstall_ufw() {
-    log_warning "开始卸载 UFW 防火墙..."
+    log_warning "Starting UFW firewall uninstallation..."
 
     if ! check_ufw_installed; then
-        log_warning "UFW 未安装，无需卸载"
+        log_warning "UFW is not installed, no need to uninstall"
         return
     fi
 
-    read -p "确定要卸载 UFW 吗? 这将移除所有防火墙规则 (y/N): " confirm
+    read -p "Are you sure you want to uninstall UFW? This will remove all firewall rules (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        log_info "取消卸载"
+        log_info "Uninstallation cancelled"
         return
     fi
 
     detect_os
 
-    # 停止并禁用UFW
-    log_info "停止 UFW 服务..."
+    # Stop and disable UFW
+    log_info "Stopping UFW service..."
     ufw --force disable
     systemctl stop ufw
     systemctl disable ufw
 
-    # 卸载UFW
+    # Uninstall UFW
     case $OS in
         ubuntu|debian)
-            log_info "使用 APT 卸载 UFW..."
+            log_info "Uninstalling UFW using APT..."
             apt-get purge -y ufw
             apt-get autoremove -y
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
-            log_info "使用 YUM/DNF 卸载 UFW..."
+            log_info "Uninstalling UFW using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf remove -y ufw
             else
@@ -267,40 +267,40 @@ uninstall_ufw() {
             ;;
 
         *)
-            log_error "不支持的操作系统: $OS"
+            log_error "Unsupported operating system: $OS"
             exit 1
             ;;
     esac
 
-    # 删除配置文件
-    log_info "删除配置文件..."
+    # Delete configuration files
+    log_info "Deleting configuration files..."
     rm -rf /etc/ufw
     rm -f /etc/default/ufw
 
     if check_ufw_installed; then
-        log_error "UFW 卸载失败"
+        log_error "UFW uninstallation failed"
         exit 1
     else
-        log_success "UFW 卸载完成！"
+        log_success "UFW uninstallation complete!"
     fi
 }
 
-# 显示帮助
+# Display help
 show_help() {
-    echo "用法: $0 {install-only|install-common|install-custom|uninstall}"
+    echo "Usage: $0 {install-only|install-common|install-custom|uninstall}"
     echo ""
-    echo "命令:"
-    echo "  install-only    - 仅安装 UFW，不配置规则"
-    echo "  install-common  - 安装 UFW 并开启常用端口 (22, 80, 443)"
-    echo "  install-custom  - 安装 UFW 并自定义配置"
-    echo "  uninstall       - 卸载 UFW"
+    echo "Commands:"
+    echo "  install-only    - Install UFW only, without configuring rules"
+    echo "  install-common  - Install UFW and open common ports (22, 80, 443)"
+    echo "  install-custom  - Install UFW with custom configuration"
+    echo "  uninstall       - Uninstall UFW"
     echo ""
 }
 
-# 主函数
+# Main function
 main() {
     if [ "$EUID" -ne 0 ]; then
-        log_error "请使用root权限运行此脚本"
+        log_error "Please run this script with root privileges"
         exit 1
     fi
 

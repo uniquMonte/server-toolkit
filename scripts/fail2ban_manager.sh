@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #######################################
-# Fail2ban 管理脚本
-# 防止SSH暴力破解和其他攻击
+# Fail2ban Management Script
+# Prevents SSH brute force attacks and other attacks
 #######################################
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -29,18 +29,18 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检测操作系统
+# Detect operating system
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
     else
-        log_error "无法检测操作系统"
+        log_error "Unable to detect operating system"
         exit 1
     fi
 }
 
-# 检查Fail2ban是否已安装
+# Check if Fail2ban is installed
 check_fail2ban_installed() {
     if command -v fail2ban-client &> /dev/null; then
         return 0
@@ -49,42 +49,42 @@ check_fail2ban_installed() {
     fi
 }
 
-# 显示Fail2ban介绍
+# Display Fail2ban introduction
 show_fail2ban_info() {
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}Fail2ban - 入侵防御系统${NC}"
+    echo -e "${PURPLE}Fail2ban - Intrusion Prevention System${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  🛡️  防止SSH暴力破解攻击"
-    echo -e "  🚫 自动封禁恶意IP地址"
-    echo -e "  📊 支持多种服务保护 (SSH, Nginx, Apache等)"
-    echo -e "  ⏱️  可配置封禁时间和尝试次数"
+    echo -e "  🛡️  Prevents SSH brute force attacks"
+    echo -e "  🚫 Automatically bans malicious IP addresses"
+    echo -e "  📊 Supports protection for multiple services (SSH, Nginx, Apache, etc.)"
+    echo -e "  ⏱️  Configurable ban time and retry attempts"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 }
 
-# 安装Fail2ban
+# Install Fail2ban
 install_fail2ban() {
     show_fail2ban_info
 
     if check_fail2ban_installed; then
-        log_warning "Fail2ban 已经安装"
+        log_warning "Fail2ban is already installed"
         fail2ban-client version
         return
     fi
 
-    log_info "开始安装 Fail2ban..."
+    log_info "Starting Fail2ban installation..."
     detect_os
 
     case $OS in
         ubuntu|debian)
-            log_info "使用 APT 安装 Fail2ban..."
+            log_info "Installing Fail2ban using APT..."
             apt-get update
             apt-get install -y fail2ban
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
-            log_info "使用 YUM/DNF 安装 Fail2ban..."
+            log_info "Installing Fail2ban using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf install -y epel-release
                 dnf install -y fail2ban fail2ban-systemd
@@ -95,61 +95,61 @@ install_fail2ban() {
             ;;
 
         *)
-            log_error "不支持的操作系统: $OS"
+            log_error "Unsupported operating system: $OS"
             exit 1
             ;;
     esac
 
     if check_fail2ban_installed; then
-        log_success "Fail2ban 安装成功"
+        log_success "Fail2ban installed successfully"
         configure_fail2ban
     else
-        log_error "Fail2ban 安装失败"
+        log_error "Fail2ban installation failed"
         exit 1
     fi
 }
 
-# 配置Fail2ban
+# Configure Fail2ban
 configure_fail2ban() {
-    log_info "配置 Fail2ban..."
+    log_info "Configuring Fail2ban..."
 
-    # 创建本地配置文件
-    log_info "创建本地配置文件..."
+    # Create local configuration file
+    log_info "Creating local configuration file..."
 
-    # 询问SSH端口
-    read -p "请输入SSH端口 (默认: 22): " ssh_port
+    # Ask for SSH port
+    read -p "Enter SSH port (default: 22): " ssh_port
     ssh_port=${ssh_port:-22}
 
-    # 询问封禁时间
-    read -p "封禁时间(分钟，默认: 60): " ban_time
+    # Ask for ban time
+    read -p "Ban time in minutes (default: 60): " ban_time
     ban_time=${ban_time:-60}
-    ban_time=$((ban_time * 60))  # 转换为秒
+    ban_time=$((ban_time * 60))  # Convert to seconds
 
-    # 询问查找时间
-    read -p "查找时间窗口(分钟，默认: 10): " find_time
+    # Ask for find time
+    read -p "Find time window in minutes (default: 10): " find_time
     find_time=${find_time:-10}
-    find_time=$((find_time * 60))  # 转换为秒
+    find_time=$((find_time * 60))  # Convert to seconds
 
-    # 询问最大尝试次数
-    read -p "最大失败尝试次数 (默认: 5): " max_retry
+    # Ask for max retry
+    read -p "Maximum failed attempts (default: 5): " max_retry
     max_retry=${max_retry:-5}
 
-    # 创建jail.local配置
+    # Create jail.local configuration
     cat > /etc/fail2ban/jail.local <<EOF
 [DEFAULT]
-# 封禁时间（秒）
+# Ban time (seconds)
 bantime = ${ban_time}
 
-# 查找时间窗口（秒）
+# Find time window (seconds)
 findtime = ${find_time}
 
-# 最大尝试次数
+# Maximum attempts
 maxretry = ${max_retry}
 
-# 忽略的IP（本机和内网）
+# Ignored IPs (localhost and private networks)
 ignoreip = 127.0.0.1/8 ::1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
 
-# 封禁动作
+# Ban action
 banaction = iptables-multiport
 banaction_allports = iptables-allports
 
@@ -162,96 +162,96 @@ backend = systemd
 maxretry = ${max_retry}
 EOF
 
-    # 根据系统调整日志路径
+    # Adjust log path based on system
     if [[ "$OS" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
         sed -i 's|/var/log/auth.log|/var/log/secure|g' /etc/fail2ban/jail.local
     fi
 
-    log_success "配置文件已创建"
+    log_success "Configuration file created"
 
-    # 启动Fail2ban
-    log_info "启动 Fail2ban 服务..."
+    # Start Fail2ban
+    log_info "Starting Fail2ban service..."
     systemctl enable fail2ban
     systemctl start fail2ban
 
-    # 等待服务启动
+    # Wait for service to start
     sleep 2
 
-    # 验证状态
+    # Verify status
     if systemctl is-active --quiet fail2ban; then
-        log_success "Fail2ban 安装并配置完成！"
+        log_success "Fail2ban installation and configuration complete!"
         echo ""
-        log_info "配置摘要:"
-        echo -e "  SSH端口: ${GREEN}${ssh_port}${NC}"
-        echo -e "  封禁时间: ${GREEN}$((ban_time / 60)) 分钟${NC}"
-        echo -e "  查找时间: ${GREEN}$((find_time / 60)) 分钟${NC}"
-        echo -e "  最大尝试: ${GREEN}${max_retry} 次${NC}"
+        log_info "Configuration summary:"
+        echo -e "  SSH port: ${GREEN}${ssh_port}${NC}"
+        echo -e "  Ban time: ${GREEN}$((ban_time / 60)) minutes${NC}"
+        echo -e "  Find time: ${GREEN}$((find_time / 60)) minutes${NC}"
+        echo -e "  Max attempts: ${GREEN}${max_retry} times${NC}"
         echo ""
-        log_info "查看状态: fail2ban-client status sshd"
-        log_info "解封IP: fail2ban-client set sshd unbanip <IP>"
+        log_info "View status: fail2ban-client status sshd"
+        log_info "Unban IP: fail2ban-client set sshd unbanip <IP>"
     else
-        log_error "Fail2ban 启动失败"
+        log_error "Fail2ban failed to start"
         systemctl status fail2ban
     fi
 }
 
-# 显示Fail2ban状态
+# Display Fail2ban status
 show_status() {
     if ! check_fail2ban_installed; then
-        log_error "Fail2ban 未安装"
+        log_error "Fail2ban is not installed"
         return
     fi
 
     echo ""
-    log_info "Fail2ban 服务状态:"
+    log_info "Fail2ban service status:"
     systemctl status fail2ban --no-pager -l
 
     echo ""
-    log_info "Fail2ban 监狱状态:"
+    log_info "Fail2ban jail status:"
     fail2ban-client status
 
     echo ""
-    log_info "SSH 监狱详细信息:"
-    fail2ban-client status sshd 2>/dev/null || log_warning "SSH监狱未启用"
+    log_info "SSH jail detailed information:"
+    fail2ban-client status sshd 2>/dev/null || log_warning "SSH jail is not enabled"
 }
 
-# 解封IP
+# Unban IP
 unban_ip() {
     if ! check_fail2ban_installed; then
-        log_error "Fail2ban 未安装"
+        log_error "Fail2ban is not installed"
         return
     fi
 
-    read -p "请输入要解封的IP地址: " ip_address
+    read -p "Enter IP address to unban: " ip_address
 
     if [ -z "$ip_address" ]; then
-        log_error "IP地址不能为空"
+        log_error "IP address cannot be empty"
         return
     fi
 
-    log_info "正在解封 IP: ${ip_address}..."
+    log_info "Unbanning IP: ${ip_address}..."
 
     if fail2ban-client set sshd unbanip "$ip_address" 2>/dev/null; then
-        log_success "IP ${ip_address} 已解封"
+        log_success "IP ${ip_address} has been unbanned"
     else
-        log_error "解封失败，IP可能未被封禁"
+        log_error "Unban failed, IP may not be banned"
     fi
 }
 
-# 查看被封禁的IP
+# View banned IPs
 show_banned_ips() {
     if ! check_fail2ban_installed; then
-        log_error "Fail2ban 未安装"
+        log_error "Fail2ban is not installed"
         return
     fi
 
     echo ""
-    log_info "当前被封禁的IP地址:"
+    log_info "Currently banned IP addresses:"
 
     banned=$(fail2ban-client status sshd 2>/dev/null | grep "Banned IP list:" | cut -d: -f2)
 
     if [ -z "$banned" ] || [ "$banned" == " " ]; then
-        echo "  暂无被封禁的IP"
+        echo "  No currently banned IPs"
     else
         echo "$banned" | tr ' ' '\n' | grep -v '^$' | while read ip; do
             echo -e "  ${RED}${ip}${NC}"
@@ -259,38 +259,38 @@ show_banned_ips() {
     fi
 }
 
-# 卸载Fail2ban
+# Uninstall Fail2ban
 uninstall_fail2ban() {
-    log_warning "开始卸载 Fail2ban..."
+    log_warning "Starting Fail2ban uninstallation..."
 
     if ! check_fail2ban_installed; then
-        log_warning "Fail2ban 未安装，无需卸载"
+        log_warning "Fail2ban is not installed, no need to uninstall"
         return
     fi
 
-    read -p "确定要卸载 Fail2ban 吗? (y/N): " confirm
+    read -p "Are you sure you want to uninstall Fail2ban? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        log_info "取消卸载"
+        log_info "Uninstallation cancelled"
         return
     fi
 
     detect_os
 
-    # 停止服务
-    log_info "停止 Fail2ban 服务..."
+    # Stop service
+    log_info "Stopping Fail2ban service..."
     systemctl stop fail2ban
     systemctl disable fail2ban
 
-    # 卸载
+    # Uninstall
     case $OS in
         ubuntu|debian)
-            log_info "使用 APT 卸载 Fail2ban..."
+            log_info "Uninstalling Fail2ban using APT..."
             apt-get purge -y fail2ban
             apt-get autoremove -y
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
-            log_info "使用 YUM/DNF 卸载 Fail2ban..."
+            log_info "Uninstalling Fail2ban using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf remove -y fail2ban fail2ban-systemd
             else
@@ -299,42 +299,42 @@ uninstall_fail2ban() {
             ;;
 
         *)
-            log_error "不支持的操作系统: $OS"
+            log_error "Unsupported operating system: $OS"
             exit 1
             ;;
     esac
 
-    # 删除配置文件
-    read -p "是否删除配置文件? (y/N): " delete_config
+    # Delete configuration files
+    read -p "Delete configuration files? (y/N): " delete_config
     if [[ $delete_config =~ ^[Yy]$ ]]; then
-        log_info "删除配置文件..."
+        log_info "Deleting configuration files..."
         rm -rf /etc/fail2ban
     fi
 
     if check_fail2ban_installed; then
-        log_error "Fail2ban 卸载失败"
+        log_error "Fail2ban uninstallation failed"
     else
-        log_success "Fail2ban 卸载完成！"
+        log_success "Fail2ban uninstallation complete!"
     fi
 }
 
-# 显示帮助
+# Display help
 show_help() {
-    echo "用法: $0 {install|status|unban|show-banned|uninstall}"
+    echo "Usage: $0 {install|status|unban|show-banned|uninstall}"
     echo ""
-    echo "命令:"
-    echo "  install      - 安装并配置 Fail2ban"
-    echo "  status       - 查看 Fail2ban 状态"
-    echo "  unban        - 解封指定IP地址"
-    echo "  show-banned  - 查看被封禁的IP列表"
-    echo "  uninstall    - 卸载 Fail2ban"
+    echo "Commands:"
+    echo "  install      - Install and configure Fail2ban"
+    echo "  status       - View Fail2ban status"
+    echo "  unban        - Unban specific IP address"
+    echo "  show-banned  - View list of banned IPs"
+    echo "  uninstall    - Uninstall Fail2ban"
     echo ""
 }
 
-# 主函数
+# Main function
 main() {
     if [ "$EUID" -ne 0 ]; then
-        log_error "请使用root权限运行此脚本"
+        log_error "Please run this script with root privileges"
         exit 1
     fi
 

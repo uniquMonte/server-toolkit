@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #######################################
-# 网络质量检测脚本
-# 基于 NetQuality 项目
+# Network Quality Detection Script
+# Based on NetQuality project
 # Network Quality Check Script
 #######################################
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -31,190 +31,190 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 显示网络质量测试介绍
+# Display network quality test introduction
 show_network_quality_info() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                        ║${NC}"
-    echo -e "${CYAN}║          NetQuality - 网络质量检测工具                ║${NC}"
+    echo -e "${CYAN}║          NetQuality - Network Quality Check Tool       ║${NC}"
     echo -e "${CYAN}║          Network Quality Check Script                 ║${NC}"
     echo -e "${CYAN}║                                                        ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${BLUE}检测项目:${NC}"
-    echo -e "  🌐 ${GREEN}网络连通性${NC}    : 全球多地区网络测试"
-    echo -e "  ⚡ ${GREEN}网络延迟${NC}      : Ping 延迟测试"
-    echo -e "  📊 ${GREEN}带宽速度${NC}      : 上传/下载速度测试"
-    echo -e "  🔍 ${GREEN}路由追踪${NC}      : 网络路径分析"
-    echo -e "  📡 ${GREEN}DNS 解析${NC}      : DNS 响应时间测试"
-    echo -e "  🌍 ${GREEN}地理位置${NC}      : 网络节点位置信息"
+    echo -e "${BLUE}Detection Categories:${NC}"
+    echo -e "  🌐 ${GREEN}Network Connectivity${NC}: Global multi-region network testing"
+    echo -e "  ⚡ ${GREEN}Network Latency${NC}     : Ping latency testing"
+    echo -e "  📊 ${GREEN}Bandwidth Speed${NC}     : Upload/download speed testing"
+    echo -e "  🔍 ${GREEN}Route Tracing${NC}       : Network path analysis"
+    echo -e "  📡 ${GREEN}DNS Resolution${NC}      : DNS response time testing"
+    echo -e "  🌍 ${GREEN}Geolocation${NC}         : Network node location information"
     echo ""
-    echo -e "${YELLOW}注意事项:${NC}"
-    echo -e "  ⚠️  测试需要连接多个测试节点"
-    echo -e "  ⏱️  完整测试大约需要 2-5 分钟"
-    echo -e "  📝 测试结果会实时显示"
-    echo -e "  🌍 支持 IPv4 和 IPv6 双栈检测"
+    echo -e "${YELLOW}Notes:${NC}"
+    echo -e "  ⚠️  Testing requires connecting to multiple test nodes"
+    echo -e "  ⏱️  Full test takes approximately 2-5 minutes"
+    echo -e "  📝 Test results will be displayed in real-time"
+    echo -e "  🌍 Supports IPv4 and IPv6 dual-stack detection"
     echo ""
 }
 
-# 双栈检测（默认）
+# Dual-stack detection (default)
 run_dual_stack_test() {
-    log_info "开始网络质量检测 (IPv4 + IPv6 双栈)..."
+    log_info "Starting network quality detection (IPv4 + IPv6 dual-stack)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}测试内容: IPv4 和 IPv6 双栈网络检测${NC}"
-    echo -e "${PURPLE}预计时间: 2-5 分钟${NC}"
+    echo -e "${PURPLE}Test content: IPv4 and IPv6 dual-stack network detection${NC}"
+    echo -e "${PURPLE}Estimated time: 2-5 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "确认开始测试? (y/N): " confirm
+    read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        log_info "已取消测试"
+        log_info "Test cancelled"
         return
     fi
 
-    log_info "正在执行测试..."
+    log_info "Running test..."
     echo ""
 
     if bash <(curl -Ls https://Net.Check.Place); then
         echo ""
-        log_success "测试完成！"
+        log_success "Test complete!"
     else
         echo ""
-        log_error "测试失败，请检查网络连接"
+        log_error "Test failed, please check network connection"
     fi
 }
 
-# 仅 IPv4 检测
+# IPv4 only detection
 run_ipv4_test() {
-    log_info "开始网络质量检测 (仅 IPv4)..."
+    log_info "Starting network quality detection (IPv4 only)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}测试内容: 仅检测 IPv4 网络${NC}"
-    echo -e "${PURPLE}预计时间: 1-3 分钟${NC}"
+    echo -e "${PURPLE}Test content: IPv4 network only${NC}"
+    echo -e "${PURPLE}Estimated time: 1-3 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "确认开始测试? (y/N): " confirm
+    read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        log_info "已取消测试"
+        log_info "Test cancelled"
         return
     fi
 
-    log_info "正在执行测试..."
+    log_info "Running test..."
     echo ""
 
     if bash <(curl -Ls https://Net.Check.Place) -4; then
         echo ""
-        log_success "测试完成！"
+        log_success "Test complete!"
     else
         echo ""
-        log_error "测试失败，可能服务器不支持IPv4或网络连接异常"
+        log_error "Test failed, server may not support IPv4 or network connection error"
     fi
 }
 
-# 仅 IPv6 检测
+# IPv6 only detection
 run_ipv6_test() {
-    log_info "开始网络质量检测 (仅 IPv6)..."
+    log_info "Starting network quality detection (IPv6 only)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}测试内容: 仅检测 IPv6 网络${NC}"
-    echo -e "${PURPLE}预计时间: 1-3 分钟${NC}"
+    echo -e "${PURPLE}Test content: IPv6 network only${NC}"
+    echo -e "${PURPLE}Estimated time: 1-3 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "确认开始测试? (y/N): " confirm
+    read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        log_info "已取消测试"
+        log_info "Test cancelled"
         return
     fi
 
-    log_info "正在执行测试..."
+    log_info "Running test..."
     echo ""
 
     if bash <(curl -Ls https://Net.Check.Place) -6; then
         echo ""
-        log_success "测试完成！"
+        log_success "Test complete!"
     else
         echo ""
-        log_error "测试失败，可能服务器不支持IPv6或网络连接异常"
+        log_error "Test failed, server may not support IPv6 or network connection error"
     fi
 }
 
-# 检查网络连接状态
+# Check network connection status
 check_network_status() {
-    log_info "检查当前网络连接状态..."
+    log_info "Checking current network connection status..."
     echo ""
 
-    # 检查IPv4连通性
-    echo -e "${BLUE}━━━ IPv4 连通性测试 ━━━${NC}"
+    # Check IPv4 connectivity
+    echo -e "${BLUE}━━━ IPv4 Connectivity Test ━━━${NC}"
     if ping -4 -c 3 -W 3 8.8.8.8 &>/dev/null; then
-        echo -e "  IPv4 连接: ${GREEN}正常 ✓${NC}"
+        echo -e "  IPv4 connection: ${GREEN}Normal ✓${NC}"
 
-        # 获取IPv4地址
+        # Get IPv4 address
         if ipv4=$(curl -s -4 -m 5 https://api.ipify.org 2>/dev/null); then
             if [ -n "$ipv4" ]; then
-                echo -e "  IPv4 地址: ${GREEN}${ipv4}${NC}"
+                echo -e "  IPv4 address: ${GREEN}${ipv4}${NC}"
             fi
         fi
 
-        # 测试延迟
+        # Test latency
         if ping_result=$(ping -4 -c 3 8.8.8.8 2>/dev/null | tail -1); then
-            echo -e "  延迟 (Google DNS): ${GREEN}${ping_result}${NC}"
+            echo -e "  Latency (Google DNS): ${GREEN}${ping_result}${NC}"
         fi
     else
-        echo -e "  IPv4 连接: ${YELLOW}不可用${NC}"
+        echo -e "  IPv4 connection: ${YELLOW}Unavailable${NC}"
     fi
 
     echo ""
-    echo -e "${BLUE}━━━ IPv6 连通性测试 ━━━${NC}"
-    # 检查IPv6连通性
+    echo -e "${BLUE}━━━ IPv6 Connectivity Test ━━━${NC}"
+    # Check IPv6 connectivity
     if ping -6 -c 3 -W 3 2001:4860:4860::8888 &>/dev/null; then
-        echo -e "  IPv6 连接: ${GREEN}正常 ✓${NC}"
+        echo -e "  IPv6 connection: ${GREEN}Normal ✓${NC}"
 
-        # 获取IPv6地址
+        # Get IPv6 address
         if ipv6=$(curl -s -6 -m 5 https://api64.ipify.org 2>/dev/null); then
             if [ -n "$ipv6" ]; then
-                echo -e "  IPv6 地址: ${GREEN}${ipv6}${NC}"
+                echo -e "  IPv6 address: ${GREEN}${ipv6}${NC}"
             fi
         fi
 
-        # 测试延迟
+        # Test latency
         if ping_result=$(ping -6 -c 3 2001:4860:4860::8888 2>/dev/null | tail -1); then
-            echo -e "  延迟 (Google DNS): ${GREEN}${ping_result}${NC}"
+            echo -e "  Latency (Google DNS): ${GREEN}${ping_result}${NC}"
         fi
     else
-        echo -e "  IPv6 连接: ${YELLOW}未配置或不可用${NC}"
+        echo -e "  IPv6 connection: ${YELLOW}Not configured or unavailable${NC}"
     fi
 
     echo ""
-    echo -e "${BLUE}━━━ DNS 解析测试 ━━━${NC}"
-    # DNS测试
+    echo -e "${BLUE}━━━ DNS Resolution Test ━━━${NC}"
+    # DNS test
     if nslookup google.com &>/dev/null || host google.com &>/dev/null; then
-        echo -e "  DNS 解析: ${GREEN}正常 ✓${NC}"
+        echo -e "  DNS resolution: ${GREEN}Normal ✓${NC}"
     else
-        echo -e "  DNS 解析: ${RED}失败${NC}"
+        echo -e "  DNS resolution: ${RED}Failed${NC}"
     fi
 
     echo ""
 }
 
-# 网络质量测试菜单
+# Network quality test menu
 test_menu() {
     while true; do
         show_network_quality_info
 
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
-        echo -e "${CYAN}           网络质量测试选项                     ${NC}"
+        echo -e "${CYAN}           Network Quality Test Options        ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}1.${NC} 🌐 双栈检测 (IPv4 + IPv6，推荐)"
-        echo -e "${GREEN}2.${NC} 4️⃣  仅 IPv4 检测"
-        echo -e "${GREEN}3.${NC} 6️⃣  仅 IPv6 检测"
-        echo -e "${GREEN}4.${NC} 🔍 查看网络连接状态"
-        echo -e "${RED}0.${NC} 返回主菜单"
+        echo -e "${GREEN}1.${NC} 🌐 Dual-stack detection (IPv4 + IPv6, recommended)"
+        echo -e "${GREEN}2.${NC} 4️⃣  IPv4 only detection"
+        echo -e "${GREEN}3.${NC} 6️⃣  IPv6 only detection"
+        echo -e "${GREEN}4.${NC} 🔍 View network connection status"
+        echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "请选择测试类型 [0-4]: " choice
+        read -p "Please select test type [0-4]: " choice
 
         case $choice in
             1)
@@ -230,39 +230,39 @@ test_menu() {
                 check_network_status
                 ;;
             0)
-                log_info "返回主菜单"
+                log_info "Returning to main menu"
                 return
                 ;;
             *)
-                log_error "无效选择，请重新输入"
+                log_error "Invalid selection, please try again"
                 sleep 2
                 ;;
         esac
 
         echo ""
         echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        read -p "按回车键继续..."
+        read -p "Press Enter to continue..."
     done
 }
 
-# 显示帮助
+# Display help
 show_help() {
-    echo "用法: $0 {dual|ipv4|ipv6|check|menu}"
+    echo "Usage: $0 {dual|ipv4|ipv6|check|menu}"
     echo ""
-    echo "命令:"
-    echo "  dual    - 双栈检测 (IPv4 + IPv6)"
-    echo "  ipv4    - 仅 IPv4 检测"
-    echo "  ipv6    - 仅 IPv6 检测"
-    echo "  check   - 查看网络连接状态"
-    echo "  menu    - 显示交互式菜单 (默认)"
+    echo "Commands:"
+    echo "  dual    - Dual-stack detection (IPv4 + IPv6)"
+    echo "  ipv4    - IPv4 only detection"
+    echo "  ipv6    - IPv6 only detection"
+    echo "  check   - View network connection status"
+    echo "  menu    - Show interactive menu (default)"
     echo ""
 }
 
-# 主函数
+# Main function
 main() {
-    # 检查curl
+    # Check for curl
     if ! command -v curl &> /dev/null; then
-        log_error "curl 未安装，请先安装 curl"
+        log_error "curl is not installed, please install curl first"
         exit 1
     fi
 

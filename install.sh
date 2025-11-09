@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #######################################
-# VPS一键部署脚本
-# 作者: uniquMonte
-# 用途: 快速部署新购VPS的常用工具
+# VPS Quick Setup Script
+# Author: uniquMonte
+# Purpose: Quickly deploy commonly used tools on newly purchased VPS
 #######################################
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,11 +17,11 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# 脚本目录
+# Script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -42,67 +42,67 @@ log_step() {
     echo -e "${PURPLE}[STEP]${NC} $1"
 }
 
-# 打印横幅
+# Print banner
 print_banner() {
     echo -e "${CYAN}"
     cat << "EOF"
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║           VPS 一键部署脚本 v1.0                          ║
+║           VPS Quick Setup Script v1.0                     ║
 ║           VPS Quick Setup Script                          ║
 ║                                                           ║
-║           支持的组件:                                     ║
-║           - 系统更新 (System Update)                      ║
-║           - UFW 防火墙 (Firewall)                        ║
-║           - Docker 容器引擎                               ║
-║           - Nginx + Certbot 证书工具                     ║
-║           - YABS 性能测试 (Performance Test)             ║
-║           - Fail2ban 防暴力破解                          ║
-║           - SSH 安全配置 (SSH Security)                  ║
-║           - IP 质量检测 (IP Quality Test)                ║
-║           - 网络质量检测 (Network Quality Test)          ║
+║           Supported Components:                           ║
+║           - System Update                                 ║
+║           - UFW Firewall                                  ║
+║           - Docker Container Engine                       ║
+║           - Nginx + Certbot SSL Tool                      ║
+║           - YABS Performance Test                         ║
+║           - Fail2ban Brute Force Protection               ║
+║           - SSH Security Configuration                    ║
+║           - IP Quality Test                               ║
+║           - Network Quality Test                          ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
 }
 
-# 检测操作系统
+# Detect operating system
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
         OS_VERSION=$VERSION_ID
     else
-        log_error "无法检测操作系统类型"
+        log_error "Unable to detect operating system type"
         exit 1
     fi
 
-    log_info "检测到操作系统: ${OS} ${OS_VERSION}"
+    log_info "Detected operating system: ${OS} ${OS_VERSION}"
 
-    # 检查是否为支持的操作系统
+    # Check if the operating system is supported
     case $OS in
         ubuntu|debian|centos|fedora|rhel|rocky|almalinux)
-            log_success "操作系统支持"
+            log_success "Operating system is supported"
             ;;
         *)
-            log_warning "未经测试的操作系统，可能会出现问题"
+            log_warning "Untested operating system, issues may occur"
             ;;
     esac
 }
 
-# 检查root权限
+# Check root privileges
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        log_error "请使用root权限运行此脚本"
+        log_error "Please run this script with root privileges"
         exit 1
     fi
 }
 
-# 下载脚本文件（如果通过curl执行）
+# Download script files (if executed via curl)
 download_scripts() {
     if [ ! -d "$SCRIPTS_PATH" ]; then
-        log_info "检测到通过远程执行，正在下载脚本文件..."
+        log_info "Remote execution detected, downloading script files..."
 
         REPO_URL="https://raw.githubusercontent.com/uniquMonte/vps-setup/main"
         TEMP_DIR="/tmp/vps-setup-$$"
@@ -111,43 +111,43 @@ download_scripts() {
         SCRIPT_DIR="$TEMP_DIR"
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
-        # 下载所有脚本文件
+        # Download all script files
         scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh" "ip_quality_test.sh" "network_quality_test.sh")
 
         for script in "${scripts[@]}"; do
-            log_info "下载 ${script}..."
+            log_info "Downloading ${script}..."
             if ! curl -fsSL "${REPO_URL}/scripts/${script}" -o "${SCRIPTS_PATH}/${script}"; then
-                log_error "下载 ${script} 失败"
+                log_error "Failed to download ${script}"
                 exit 1
             fi
             chmod +x "${SCRIPTS_PATH}/${script}"
         done
 
-        log_success "脚本文件下载完成"
+        log_success "Script files downloaded successfully"
     fi
 }
 
-# 系统更新
+# System update
 system_update() {
-    log_step "执行系统更新..."
+    log_step "Performing system update..."
     if [ -f "${SCRIPTS_PATH}/system_update.sh" ]; then
         bash "${SCRIPTS_PATH}/system_update.sh"
     else
-        log_error "找不到系统更新脚本"
+        log_error "System update script not found"
     fi
 }
 
-# UFW管理菜单
+# UFW management menu
 ufw_menu() {
     echo ""
-    log_step "UFW 防火墙管理"
-    echo -e "${CYAN}1.${NC} 仅安装 UFW (不配置规则)"
-    echo -e "${CYAN}2.${NC} 安装 UFW 并开启常用端口 (22, 80, 443)"
-    echo -e "${CYAN}3.${NC} 安装 UFW 并自定义配置"
-    echo -e "${CYAN}4.${NC} 卸载 UFW"
-    echo -e "${CYAN}5.${NC} 返回主菜单"
+    log_step "UFW Firewall Management"
+    echo -e "${CYAN}1.${NC} Install UFW only (no rule configuration)"
+    echo -e "${CYAN}2.${NC} Install UFW and open common ports (22, 80, 443)"
+    echo -e "${CYAN}3.${NC} Install UFW with custom configuration"
+    echo -e "${CYAN}4.${NC} Uninstall UFW"
+    echo -e "${CYAN}5.${NC} Return to main menu"
     echo ""
-    read -p "请选择操作 [1-5]: " ufw_choice
+    read -p "Please select an action [1-5]: " ufw_choice
 
     case $ufw_choice in
         1)
@@ -166,21 +166,21 @@ ufw_menu() {
             return
             ;;
         *)
-            log_error "无效选择"
+            log_error "Invalid selection"
             ;;
     esac
 }
 
-# Docker管理菜单
+# Docker management menu
 docker_menu() {
     echo ""
-    log_step "Docker 容器引擎管理"
-    echo -e "${CYAN}1.${NC} 安装 Docker"
-    echo -e "${CYAN}2.${NC} 安装 Docker + Docker Compose"
-    echo -e "${CYAN}3.${NC} 卸载 Docker"
-    echo -e "${CYAN}4.${NC} 返回主菜单"
+    log_step "Docker Container Engine Management"
+    echo -e "${CYAN}1.${NC} Install Docker"
+    echo -e "${CYAN}2.${NC} Install Docker + Docker Compose"
+    echo -e "${CYAN}3.${NC} Uninstall Docker"
+    echo -e "${CYAN}4.${NC} Return to main menu"
     echo ""
-    read -p "请选择操作 [1-4]: " docker_choice
+    read -p "Please select an action [1-4]: " docker_choice
 
     case $docker_choice in
         1)
@@ -196,21 +196,21 @@ docker_menu() {
             return
             ;;
         *)
-            log_error "无效选择"
+            log_error "Invalid selection"
             ;;
     esac
 }
 
-# Nginx管理菜单
+# Nginx management menu
 nginx_menu() {
     echo ""
-    log_step "Nginx + Certbot 管理"
-    echo -e "${CYAN}1.${NC} 安装 Nginx"
-    echo -e "${CYAN}2.${NC} 安装 Nginx + Certbot"
-    echo -e "${CYAN}3.${NC} 卸载 Nginx"
-    echo -e "${CYAN}4.${NC} 返回主菜单"
+    log_step "Nginx + Certbot Management"
+    echo -e "${CYAN}1.${NC} Install Nginx"
+    echo -e "${CYAN}2.${NC} Install Nginx + Certbot"
+    echo -e "${CYAN}3.${NC} Uninstall Nginx"
+    echo -e "${CYAN}4.${NC} Return to main menu"
     echo ""
-    read -p "请选择操作 [1-4]: " nginx_choice
+    read -p "Please select an action [1-4]: " nginx_choice
 
     case $nginx_choice in
         1)
@@ -226,51 +226,51 @@ nginx_menu() {
             return
             ;;
         *)
-            log_error "无效选择"
+            log_error "Invalid selection"
             ;;
     esac
 }
 
-# 一键安装所有组件
+# One-click install all components
 install_all() {
-    log_step "开始一键安装所有组件..."
+    log_step "Starting one-click installation of all components..."
 
-    # 系统更新
+    # System update
     system_update
 
-    # 安装UFW并配置常用端口
+    # Install UFW and configure common ports
     bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
 
-    # 安装Docker和Docker Compose
+    # Install Docker and Docker Compose
     bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
 
-    # 安装Nginx和Certbot
+    # Install Nginx and Certbot
     bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
 
-    log_success "所有组件安装完成！"
+    log_success "All components installed successfully!"
 }
 
-# YABS性能测试菜单
+# YABS performance test menu
 yabs_test_menu() {
     if [ -f "${SCRIPTS_PATH}/yabs_test.sh" ]; then
         bash "${SCRIPTS_PATH}/yabs_test.sh" menu
     else
-        log_error "找不到YABS测试脚本"
+        log_error "YABS test script not found"
     fi
 }
 
-# Fail2ban管理菜单
+# Fail2ban management menu
 fail2ban_menu() {
     echo ""
-    log_step "Fail2ban 入侵防御管理"
-    echo -e "${CYAN}1.${NC} 安装并配置 Fail2ban"
-    echo -e "${CYAN}2.${NC} 查看 Fail2ban 状态"
-    echo -e "${CYAN}3.${NC} 查看被封禁的IP"
-    echo -e "${CYAN}4.${NC} 解封指定IP"
-    echo -e "${CYAN}5.${NC} 卸载 Fail2ban"
-    echo -e "${CYAN}6.${NC} 返回主菜单"
+    log_step "Fail2ban Intrusion Prevention Management"
+    echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
+    echo -e "${CYAN}2.${NC} View Fail2ban status"
+    echo -e "${CYAN}3.${NC} View banned IPs"
+    echo -e "${CYAN}4.${NC} Unban specific IP"
+    echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
+    echo -e "${CYAN}6.${NC} Return to main menu"
     echo ""
-    read -p "请选择操作 [1-6]: " fail2ban_choice
+    read -p "Please select an action [1-6]: " fail2ban_choice
 
     case $fail2ban_choice in
         1)
@@ -292,24 +292,24 @@ fail2ban_menu() {
             return
             ;;
         *)
-            log_error "无效选择"
+            log_error "Invalid selection"
             ;;
     esac
 }
 
-# SSH安全配置菜单
+# SSH security configuration menu
 ssh_security_menu() {
     echo ""
-    log_step "SSH 安全配置"
-    echo -e "${CYAN}1.${NC} 配置 SSH 密钥登录"
-    echo -e "${CYAN}2.${NC} 禁用 root 密码登录"
-    echo -e "${CYAN}3.${NC} 修改 SSH 端口"
-    echo -e "${CYAN}4.${NC} 配置连接超时"
-    echo -e "${CYAN}5.${NC} 完整安全配置（推荐）"
-    echo -e "${CYAN}6.${NC} 查看当前配置"
-    echo -e "${CYAN}7.${NC} 返回主菜单"
+    log_step "SSH Security Configuration"
+    echo -e "${CYAN}1.${NC} Configure SSH key login"
+    echo -e "${CYAN}2.${NC} Disable root password login"
+    echo -e "${CYAN}3.${NC} Change SSH port"
+    echo -e "${CYAN}4.${NC} Configure connection timeout"
+    echo -e "${CYAN}5.${NC} Full security configuration (recommended)"
+    echo -e "${CYAN}6.${NC} View current configuration"
+    echo -e "${CYAN}7.${NC} Return to main menu"
     echo ""
-    read -p "请选择操作 [1-7]: " ssh_choice
+    read -p "Please select an action [1-7]: " ssh_choice
 
     case $ssh_choice in
         1)
@@ -334,50 +334,50 @@ ssh_security_menu() {
             return
             ;;
         *)
-            log_error "无效选择"
+            log_error "Invalid selection"
             ;;
     esac
 }
 
-# IP质量测试菜单
+# IP quality test menu
 ip_quality_menu() {
     if [ -f "${SCRIPTS_PATH}/ip_quality_test.sh" ]; then
         bash "${SCRIPTS_PATH}/ip_quality_test.sh" menu
     else
-        log_error "找不到IP质量测试脚本"
+        log_error "IP quality test script not found"
     fi
 }
 
-# 网络质量测试菜单
+# Network quality test menu
 network_quality_menu() {
     if [ -f "${SCRIPTS_PATH}/network_quality_test.sh" ]; then
         bash "${SCRIPTS_PATH}/network_quality_test.sh" menu
     else
-        log_error "找不到网络质量测试脚本"
+        log_error "Network quality test script not found"
     fi
 }
 
-# 主菜单
+# Main menu
 main_menu() {
     while true; do
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
-        echo -e "${CYAN}           主菜单 Main Menu            ${NC}"
+        echo -e "${CYAN}           Main Menu                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
-        echo -e "${GREEN}1.${NC} 一键安装所有组件"
-        echo -e "${GREEN}2.${NC} 系统更新"
-        echo -e "${GREEN}3.${NC} UFW 防火墙管理"
-        echo -e "${GREEN}4.${NC} Docker 管理"
-        echo -e "${GREEN}5.${NC} Nginx 管理"
-        echo -e "${YELLOW}6.${NC} Fail2ban 防暴力破解"
-        echo -e "${YELLOW}7.${NC} SSH 安全配置"
-        echo -e "${PURPLE}8.${NC} YABS 性能测试"
-        echo -e "${PURPLE}9.${NC} IP 质量检测"
-        echo -e "${PURPLE}10.${NC} 网络质量检测"
-        echo -e "${RED}0.${NC} 退出"
+        echo -e "${GREEN}1.${NC} One-click install all components"
+        echo -e "${GREEN}2.${NC} System update"
+        echo -e "${GREEN}3.${NC} UFW Firewall management"
+        echo -e "${GREEN}4.${NC} Docker management"
+        echo -e "${GREEN}5.${NC} Nginx management"
+        echo -e "${YELLOW}6.${NC} Fail2ban brute force protection"
+        echo -e "${YELLOW}7.${NC} SSH security configuration"
+        echo -e "${PURPLE}8.${NC} YABS performance test"
+        echo -e "${PURPLE}9.${NC} IP quality check"
+        echo -e "${PURPLE}10.${NC} Network quality check"
+        echo -e "${RED}0.${NC} Exit"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "请选择操作 [0-10]: " choice
+        read -p "Please select an action [0-10]: " choice
 
         case $choice in
             1)
@@ -411,36 +411,36 @@ main_menu() {
                 network_quality_menu
                 ;;
             0)
-                log_info "感谢使用！"
+                log_info "Thank you for using!"
                 exit 0
                 ;;
             *)
-                log_error "无效选择，请重新输入"
+                log_error "Invalid selection, please try again"
                 ;;
         esac
     done
 }
 
-# 主函数
+# Main function
 main() {
-    # 清屏
+    # Clear screen
     clear
 
-    # 打印横幅
+    # Print banner
     print_banner
 
-    # 检查root权限
+    # Check root privileges
     check_root
 
-    # 检测操作系统
+    # Detect operating system
     detect_os
 
-    # 下载脚本（如果需要）
+    # Download scripts (if needed)
     download_scripts
 
-    # 显示主菜单
+    # Display main menu
     main_menu
 }
 
-# 执行主函数
+# Execute main function
 main "$@"
