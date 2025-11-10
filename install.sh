@@ -155,8 +155,8 @@ download_script_if_needed() {
     local script_name="$1"
     local script_path="${SCRIPTS_PATH}/${script_name}"
 
-    # If script already exists, no need to download
-    if [ -f "$script_path" ]; then
+    # If script already exists and not forcing update, no need to download
+    if [ -f "$script_path" ] && [ "$FORCE_UPDATE" != "true" ]; then
         return 0
     fi
 
@@ -167,7 +167,11 @@ download_script_if_needed() {
     fi
 
     # Remote execution mode - download the script
-    log_info "Downloading ${script_name}..."
+    if [ "$FORCE_UPDATE" = "true" ] && [ -f "$script_path" ]; then
+        log_info "Force updating ${script_name}..."
+    else
+        log_info "Downloading ${script_name}..."
+    fi
 
     if ! curl -fsSL --proto '=https' --tlsv1.2 "${REPO_URL}/scripts/${script_name}" -o "${script_path}"; then
         log_error "Failed to download ${script_name}"
@@ -673,24 +677,33 @@ parse_args() {
                 SETUP_BRANCH="$2"
                 shift 2
                 ;;
+            --force-update|--refresh)
+                FORCE_UPDATE="true"
+                shift
+                ;;
             --help|-h)
                 echo "VPS Quick Setup Script"
                 echo ""
                 echo "Usage: $0 [options]"
                 echo ""
                 echo "Options:"
-                echo "  --branch <name>    Specify git branch for remote script downloads"
-                echo "  --help, -h         Show this help message"
+                echo "  --branch <name>       Specify git branch for remote script downloads"
+                echo "  --force-update        Force re-download all scripts (clear cache)"
+                echo "  --refresh             Same as --force-update"
+                echo "  --help, -h            Show this help message"
                 echo ""
                 echo "Examples:"
                 echo "  # Use default (main) branch"
                 echo "  bash install.sh"
                 echo ""
+                echo "  # Force refresh cached scripts"
+                echo "  bash install.sh --force-update"
+                echo ""
                 echo "  # Use specific branch for testing"
                 echo "  bash install.sh --branch claude/review-script-optimization-011CUySPawcwxfwf39n9MnYv"
                 echo ""
-                echo "  # Remote execution with branch"
-                echo "  curl -Ls https://raw.githubusercontent.com/.../install.sh | bash -s -- --branch dev"
+                echo "  # Remote execution with force update"
+                echo "  curl -Ls https://raw.githubusercontent.com/.../install.sh | bash -s -- --force-update"
                 echo ""
                 exit 0
                 ;;
@@ -725,6 +738,12 @@ main() {
 
     # Initialize remote mode (if needed)
     init_remote_mode
+
+    # Show force update message if enabled
+    if [ "$FORCE_UPDATE" = "true" ]; then
+        log_info "Force update mode enabled - all scripts will be re-downloaded"
+        echo ""
+    fi
 
     # Display main menu
     main_menu
