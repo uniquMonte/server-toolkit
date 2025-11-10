@@ -436,20 +436,27 @@ install_all() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}Installed Services Status:${NC}"
     if command -v ufw &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} UFW Firewall - $(ufw version | head -n1)"
+        local ufw_ver=$(ufw version 2>/dev/null | head -n1 | grep -o '[0-9.]*' | head -n1)
+        [ -n "$ufw_ver" ] && echo -e "  ${GREEN}✓${NC} UFW Firewall - v${ufw_ver}" || echo -e "  ${GREEN}✓${NC} UFW Firewall - installed"
     fi
     if command -v docker &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Docker - $(docker --version 2>/dev/null | cut -d',' -f1)"
+        local docker_ver=$(docker --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        [ -n "$docker_ver" ] && echo -e "  ${GREEN}✓${NC} Docker - v${docker_ver}" || echo -e "  ${GREEN}✓${NC} Docker - installed"
     fi
     if command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1; then
-        local dc_version=$(docker-compose --version 2>/dev/null || docker compose version 2>/dev/null | head -n1)
-        echo -e "  ${GREEN}✓${NC} Docker Compose - $dc_version"
+        local dc_ver=$(docker-compose --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        if [ -z "$dc_ver" ]; then
+            dc_ver=$(docker compose version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        fi
+        [ -n "$dc_ver" ] && echo -e "  ${GREEN}✓${NC} Docker Compose - v${dc_ver}" || echo -e "  ${GREEN}✓${NC} Docker Compose - installed"
     fi
     if command -v nginx &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Nginx - $(nginx -v 2>&1 | cut -d'/' -f2)"
+        local nginx_ver=$(nginx -v 2>&1 | grep -o '[0-9.]*' | head -n1)
+        [ -n "$nginx_ver" ] && echo -e "  ${GREEN}✓${NC} Nginx - v${nginx_ver}" || echo -e "  ${GREEN}✓${NC} Nginx - installed"
     fi
     if command -v certbot &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Certbot - $(certbot --version 2>&1 | cut -d' ' -f2)"
+        local certbot_ver=$(certbot --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        [ -n "$certbot_ver" ] && echo -e "  ${GREEN}✓${NC} Certbot - v${certbot_ver}" || echo -e "  ${GREEN}✓${NC} Certbot - installed"
     fi
     echo ""
 
@@ -479,6 +486,8 @@ install_all() {
         log_info "System will reboot in 5 seconds..."
         sleep 5
         reboot
+    else
+        log_info "Skipping reboot. You can reboot later by running: reboot"
     fi
 }
 
