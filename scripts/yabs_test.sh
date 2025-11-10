@@ -96,20 +96,21 @@ run_full_test() {
         return
     fi
 
-    if run_yabs_safely ""; then
+    # Use -5 parameter to run GeekBench 5 instead of GeekBench 6
+    if run_yabs_safely "-5"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
     fi
 }
 
-# YABS test (without GeekBench 5)
+# YABS test (without GeekBench)
 run_basic_test() {
-    log_info "Starting YABS basic test (without GeekBench 5)..."
+    log_info "Starting YABS basic test (without GeekBench)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}Test content: CPU + Disk + Network${NC}"
-    echo -e "${PURPLE}Estimated time: 10-15 minutes${NC}"
+    echo -e "${PURPLE}Test content: Disk + Network (no GeekBench)${NC}"
+    echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log_warning "⚠️  This test will download and execute external scripts"
@@ -121,7 +122,8 @@ run_basic_test() {
         return
     fi
 
-    if run_yabs_safely "-i"; then
+    # Use -g parameter to disable GeekBench (system performance tests)
+    if run_yabs_safely "-g"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -144,14 +146,15 @@ run_geekbench_only() {
         return
     fi
 
-    if run_yabs_safely "-fg"; then
+    # Use -5 to run GB5, -f to skip disk, -i to skip network
+    if run_yabs_safely "-5fi"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
     fi
 }
 
-# YABS disk+network test (without CPU and GB5)
+# YABS disk+network test (without CPU and GeekBench)
 run_disk_network_test() {
     log_info "Starting disk and network speed test..."
     echo ""
@@ -167,7 +170,8 @@ run_disk_network_test() {
         return
     fi
 
-    if run_yabs_safely "-ig"; then
+    # Use -g to disable GeekBench (system performance tests)
+    if run_yabs_safely "-g"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -191,7 +195,8 @@ run_disk_only_test() {
         return
     fi
 
-    if run_yabs_safely "-fign"; then
+    # Use -g to disable GeekBench, -i to disable network, -n to skip network info
+    if run_yabs_safely "-gin"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -215,20 +220,21 @@ run_network_only_test() {
         return
     fi
 
-    if run_yabs_safely "-fdig"; then
+    # Use -f to disable disk, -g to disable GeekBench
+    if run_yabs_safely "-fg"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
     fi
 }
 
-# YABS quick test (basic CPU test only)
+# YABS quick test (basic system info only)
 run_quick_test() {
-    log_info "Starting quick CPU performance test..."
+    log_info "Starting quick system information test..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}Test content: Basic CPU performance${NC}"
-    echo -e "${PURPLE}Estimated time: 1-2 minutes${NC}"
+    echo -e "${PURPLE}Test content: System information only${NC}"
+    echo -e "${PURPLE}Estimated time: < 1 minute${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
@@ -238,7 +244,8 @@ run_quick_test() {
         return
     fi
 
-    if run_yabs_safely "-fgn"; then
+    # Use -f to disable disk, -g to disable GeekBench, -i to disable network, -n to skip network info
+    if run_yabs_safely "-fgin"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -253,13 +260,13 @@ test_menu() {
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${CYAN}           YABS Test Options                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}1.${NC} 🔥 Full test (CPU + Disk + Network + GeekBench 5)"
-        echo -e "${GREEN}2.${NC} ⚡ Basic test (CPU + Disk + Network, no GB5)"
-        echo -e "${GREEN}3.${NC} 💾 Disk + Network test (skip CPU benchmark)"
+        echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
+        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network, no GeekBench)"
+        echo -e "${GREEN}3.${NC} 💾 Disk + Network test (no GeekBench)"
         echo -e "${GREEN}4.${NC} 📊 GeekBench 5 only test"
         echo -e "${GREEN}5.${NC} 💿 Disk I/O only test"
         echo -e "${GREEN}6.${NC} 🌐 Network speed only test"
-        echo -e "${GREEN}7.${NC} ⚡ Quick CPU test"
+        echo -e "${GREEN}7.${NC} ⚡ Quick system info"
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
