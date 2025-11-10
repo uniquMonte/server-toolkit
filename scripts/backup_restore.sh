@@ -111,7 +111,7 @@ restore_backup() {
 
     # Ask for restore location
     echo ""
-    read -p "Restore to directory [${RESTORE_DIR}]: " restore_dir
+    read -p "Restore to directory [${RESTORE_DIR}] (直接回车使用默认): " restore_dir
     restore_dir="${restore_dir:-$RESTORE_DIR}"
 
     # Create restore directory
@@ -121,7 +121,7 @@ restore_backup() {
     log_warning "⚠️  WARNING: This will download and decrypt the backup"
     log_warning "Restore location: $restore_dir"
     echo ""
-    read -p "Continue? [y/N]: " confirm
+    read -p "Continue? [y/N] (直接回车取消): " confirm
 
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Restore cancelled"

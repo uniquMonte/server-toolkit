@@ -69,7 +69,7 @@ setup_ssh_key() {
     log_info "Configuring SSH key login..."
 
     # Ask for username
-    read -p "Enter username for key configuration (default: root): " username
+    read -p "Enter username for key configuration (default: root) (直接回车使用默认): " username
     username=${username:-root}
 
     # Determine user home directory
@@ -81,7 +81,7 @@ setup_ssh_key() {
         # Check if user exists
         if ! id "$username" &>/dev/null; then
             log_error "User $username does not exist"
-            read -p "Create this user? (y/N): " create_user
+            read -p "Create this user? (y/N) (直接回车跳过): " create_user
             if [[ $create_user =~ ^[Yy]$ ]]; then
                 useradd -m -s /bin/bash "$username"
                 passwd "$username"
@@ -104,7 +104,7 @@ setup_ssh_key() {
         log_warning "Existing SSH keys detected"
         cat "$authorized_keys"
         echo ""
-        read -p "Add new key? (y/N): " add_new
+        read -p "Add new key? (y/N) (直接回车跳过): " add_new
         if [[ ! $add_new =~ ^[Yy]$ ]]; then
             return
         fi
@@ -136,7 +136,7 @@ setup_ssh_key() {
         2)
             # Generate new key pair
             log_warning "Note: This will generate a key pair on the server, private key needs to be downloaded locally"
-            read -p "Confirm to generate new key pair? (y/N): " confirm
+            read -p "Confirm to generate new key pair? (y/N) (直接回车取消): " confirm
 
             if [[ ! $confirm =~ ^[Yy]$ ]]; then
                 return
@@ -157,7 +157,7 @@ setup_ssh_key() {
             cat "$key_file"
             echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo ""
-            read -p "Private key saved? (y/N): " saved
+            read -p "Private key saved? (y/N) (直接回车跳过): " saved
             if [[ $saved =~ ^[Yy]$ ]]; then
                 rm -f "$key_file"
                 log_success "Server private key deleted"
@@ -335,7 +335,7 @@ change_ssh_port() {
         log_warning "Note: Need to open new port ${new_port} in firewall"
 
         if command -v ufw &> /dev/null; then
-            read -p "Automatically open new port in UFW? (Y/n): " open_port
+            read -p "Automatically open new port in UFW? (Y/n) (直接回车确认): " open_port
             if [[ ! $open_port =~ ^[Nn]$ ]]; then
                 ufw allow ${new_port}/tcp comment 'SSH'
                 log_success "UFW has opened port ${new_port}"
@@ -359,10 +359,10 @@ change_ssh_port() {
 configure_timeout() {
     log_info "Configuring SSH timeout..."
 
-    read -p "Client alive interval in seconds (default: 60): " client_alive_interval
+    read -p "Client alive interval in seconds (default: 60) (直接回车使用默认): " client_alive_interval
     client_alive_interval=${client_alive_interval:-60}
 
-    read -p "Maximum alive count (default: 3): " client_alive_count
+    read -p "Maximum alive count (default: 3) (直接回车使用默认): " client_alive_count
     client_alive_count=${client_alive_count:-3}
 
     # Backup configuration
@@ -404,7 +404,7 @@ full_security_setup() {
 
     # 2. Change SSH port
     log_info "Step 2/4: Change SSH port"
-    read -p "Change SSH port? (Y/n): " change_port
+    read -p "Change SSH port? (Y/n) (直接回车确认): " change_port
     if [[ ! $change_port =~ ^[Nn]$ ]]; then
         change_ssh_port
     fi
@@ -414,7 +414,7 @@ full_security_setup() {
 
     # 3. Configure timeout
     log_info "Step 3/4: Configure connection timeout"
-    read -p "Configure SSH timeout? (Y/n): " config_timeout
+    read -p "Configure SSH timeout? (Y/n) (直接回车确认): " config_timeout
     if [[ ! $config_timeout =~ ^[Nn]$ ]]; then
         configure_timeout
     fi
