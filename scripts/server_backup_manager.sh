@@ -189,8 +189,6 @@ install_server_backup() {
     echo ""
     log_info "Installing Server Backup Manager..."
     echo ""
-    log_info "Download URL: https://raw.githubusercontent.com/uniquMonte/server-backup/main/install.sh"
-    echo ""
 
     if check_installed; then
         log_warning "Server Backup appears to be already installed"
@@ -204,34 +202,85 @@ install_server_backup() {
         fi
     fi
 
-    # Download and execute the installation script
+    # Create installation directory
+    local install_dir="/usr/local/bin"
+
+    log_info "Downloading backup script..."
+    # Download backup_restore.sh (main script)
     if command -v curl &> /dev/null; then
-        curl -Ls https://raw.githubusercontent.com/uniquMonte/server-backup/main/install.sh | sudo bash
+        if ! curl -fsSL https://raw.githubusercontent.com/uniquMonte/server-backup/main/backup_restore.sh -o "${install_dir}/vps-backup.sh"; then
+            log_error "Failed to download backup script"
+            return 1
+        fi
+        # Download restore script separately
+        if ! curl -fsSL https://raw.githubusercontent.com/uniquMonte/server-backup/main/backup_restore.sh -o "${install_dir}/vps-restore.sh"; then
+            log_error "Failed to download restore script"
+            return 1
+        fi
     elif command -v wget &> /dev/null; then
-        wget -qO- https://raw.githubusercontent.com/uniquMonte/server-backup/main/install.sh | sudo bash
+        if ! wget -qO "${install_dir}/vps-backup.sh" https://raw.githubusercontent.com/uniquMonte/server-backup/main/backup_restore.sh; then
+            log_error "Failed to download backup script"
+            return 1
+        fi
+        if ! wget -qO "${install_dir}/vps-restore.sh" https://raw.githubusercontent.com/uniquMonte/server-backup/main/backup_restore.sh; then
+            log_error "Failed to download restore script"
+            return 1
+        fi
     else
         log_error "Neither curl nor wget is available"
         log_error "Please install curl or wget first"
         return 1
     fi
 
-    local exit_code=$?
+    # Make scripts executable
+    chmod +x "${install_dir}/vps-backup.sh"
+    chmod +x "${install_dir}/vps-restore.sh"
 
-    echo ""
-    if [ $exit_code -eq 0 ]; then
-        log_success "Server Backup installation completed"
-        echo ""
-        log_info "Next steps:"
-        log_info "1. Configure backup settings (directories, cloud storage, etc.)"
-        log_info "2. Set up encryption password"
-        log_info "3. Configure Telegram notifications (optional)"
-        log_info "4. Test the backup"
-    else
-        log_error "Installation failed with exit code: $exit_code"
-        return 1
+    # Create initial configuration file template
+    if [ ! -f "$BACKUP_ENV" ]; then
+        cat > "$BACKUP_ENV" << 'EOF'
+# VPS Backup Configuration
+# Edit this file to configure your backups
+
+# Directories to backup (space-separated)
+BACKUP_DIRS="/etc /root /home"
+
+# Remote storage location (rclone format: remote:path)
+# Example: gdrive:VPS-Backups or dropbox:backups
+BACKUP_REMOTE_DIR=""
+
+# VPS identifier (to distinguish backups from multiple servers)
+VPS_IDENTIFIER=""
+
+# Backup retention in days
+BACKUP_RETENTION_DAYS="30"
+
+# Encryption password (leave empty to disable encryption)
+BACKUP_PASSWORD=""
+
+# Telegram notifications (optional)
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_CHAT_ID=""
+EOF
+        chmod 600 "$BACKUP_ENV"
     fi
 
-    return $exit_code
+    echo ""
+    log_success "Server Backup installed successfully"
+    echo ""
+    log_info "Installation paths:"
+    echo -e "  Backup script:  ${CYAN}${install_dir}/vps-backup.sh${NC}"
+    echo -e "  Restore script: ${CYAN}${install_dir}/vps-restore.sh${NC}"
+    echo -e "  Configuration:  ${CYAN}${BACKUP_ENV}${NC}"
+    echo ""
+    log_info "Next steps:"
+    log_info "1. Install rclone: curl https://rclone.org/install.sh | sudo bash"
+    log_info "2. Configure rclone: rclone config"
+    log_info "3. Edit backup configuration: ${BACKUP_ENV}"
+    log_info "4. Test your first backup"
+    echo ""
+
+    return 0
 }
 
 # Configure server backup
