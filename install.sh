@@ -63,15 +63,11 @@ print_banner() {
 ║           VPS Quick Setup Script v1.0                     ║
 ║                                                           ║
 ║           Supported Components:                           ║
-║           - System Update                                 ║
-║           - UFW Firewall                                  ║
-║           - Docker Container Engine                       ║
-║           - Nginx + Certbot SSL Tool                      ║
-║           - YABS Performance Test                         ║
-║           - Fail2ban Brute Force Protection               ║
-║           - SSH Security Configuration                    ║
-║           - IP Quality Test                               ║
-║           - Network Quality Test                          ║
+║           - System Update & Basic Tools                   ║
+║           - UFW Firewall / Docker / Nginx + Certbot       ║
+║           - Fail2ban / SSH Security / BBR Optimization    ║
+║           - Timezone & NTP / Hostname / Log Management    ║
+║           - YABS / IP Quality / Network Quality Tests     ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -303,6 +299,50 @@ hostname_menu() {
             bash "${SCRIPTS_PATH}/hostname_manager.sh" interactive
             ;;
         2)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
+# Log management menu
+log_management_menu() {
+    if ! download_script_if_needed "log_manager.sh"; then
+        log_error "Failed to load log manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "System and Docker Log Management"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/log_manager.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Apply intelligent log configuration (recommended)"
+    echo -e "${CYAN}2.${NC} Configure Docker logs only"
+    echo -e "${CYAN}3.${NC} Configure system journal only"
+    echo -e "${CYAN}4.${NC} Clean old logs"
+    echo -e "${CYAN}5.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-5]: " log_choice
+
+    case $log_choice in
+        1)
+            bash "${SCRIPTS_PATH}/log_manager.sh" configure
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/log_manager.sh" docker
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/log_manager.sh" journald
+            ;;
+        4)
+            bash "${SCRIPTS_PATH}/log_manager.sh" clean
+            ;;
+        5)
             return
             ;;
         *)
@@ -742,17 +782,18 @@ main_menu() {
         echo -e "${YELLOW}9.${NC} BBR TCP optimization"
         echo -e "${YELLOW}10.${NC} Timezone and NTP sync"
         echo -e "${YELLOW}11.${NC} Hostname modification"
+        echo -e "${YELLOW}12.${NC} Log management (system & Docker)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}12.${NC} YABS performance test"
-        echo -e "${PURPLE}13.${NC} IP quality check"
-        echo -e "${PURPLE}14.${NC} Network quality check"
+        echo -e "${PURPLE}13.${NC} YABS performance test"
+        echo -e "${PURPLE}14.${NC} IP quality check"
+        echo -e "${PURPLE}15.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-14, or press Enter to exit]: " choice
+        read -p "Please select an action [0-15, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -789,12 +830,15 @@ main_menu() {
                 hostname_menu
                 ;;
             12)
-                yabs_test_menu
+                log_management_menu
                 ;;
             13)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             14)
+                ip_quality_menu
+                ;;
+            15)
                 network_quality_menu
                 ;;
             0|"")
