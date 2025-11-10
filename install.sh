@@ -65,8 +65,8 @@ print_banner() {
 ║           Supported Components:                           ║
 ║           - System Update & Basic Tools                   ║
 ║           - UFW Firewall / Docker / Nginx + Certbot       ║
-║           - Fail2ban / SSH Security / BBR Optimization    ║
-║           - Timezone & NTP / Hostname / Log Management    ║
+║           - Fail2ban / SSH Security / SSH Notifications   ║
+║           - BBR / Timezone & NTP / Hostname / Logs        ║
 ║           - Swap Memory / Traffic Monitoring              ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
 ║           - System Reinstallation (DD)                    ║
@@ -786,6 +786,20 @@ traffic_reporter_menu() {
     bash "${SCRIPTS_PATH}/traffic_reporter_manager.sh" menu
 }
 
+# SSH login notifier management menu
+ssh_login_notifier_menu() {
+    if ! download_script_if_needed "ssh_login_notifier_manager.sh"; then
+        log_error "Failed to load SSH login notifier script"
+        return 1
+    fi
+
+    echo ""
+    log_step "SSH Login Notifier"
+
+    # Launch the SSH login notifier manager
+    bash "${SCRIPTS_PATH}/ssh_login_notifier_manager.sh" menu
+}
+
 # DD system reinstallation menu
 dd_system_menu() {
     if ! download_script_if_needed "dd_system.sh"; then
@@ -841,30 +855,31 @@ main_menu() {
         echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
-        echo -e "${YELLOW}9.${NC} BBR TCP optimization"
-        echo -e "${YELLOW}10.${NC} Timezone and NTP sync"
-        echo -e "${YELLOW}11.${NC} Hostname modification"
-        echo -e "${YELLOW}12.${NC} Log management (system & Docker)"
+        echo -e "${YELLOW}9.${NC} SSH login notifier"
+        echo -e "${YELLOW}10.${NC} BBR TCP optimization"
+        echo -e "${YELLOW}11.${NC} Timezone and NTP sync"
+        echo -e "${YELLOW}12.${NC} Hostname modification"
+        echo -e "${YELLOW}13.${NC} Log management (system & Docker)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ System Resources & Monitoring ──────┐${NC}"
-        echo -e "${PURPLE}13.${NC} Swap memory management"
-        echo -e "${PURPLE}14.${NC} Server traffic reporter"
+        echo -e "${PURPLE}14.${NC} Swap memory management"
+        echo -e "${PURPLE}15.${NC} Server traffic reporter"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}15.${NC} YABS performance test"
-        echo -e "${PURPLE}16.${NC} IP quality check"
-        echo -e "${PURPLE}17.${NC} Network quality check"
+        echo -e "${PURPLE}16.${NC} YABS performance test"
+        echo -e "${PURPLE}17.${NC} IP quality check"
+        echo -e "${PURPLE}18.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}18.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}19.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-18, or press Enter to exit]: " choice
+        read -p "Please select an action [0-19, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -892,33 +907,36 @@ main_menu() {
                 ssh_security_menu
                 ;;
             9)
-                bbr_menu
+                ssh_login_notifier_menu
                 ;;
             10)
-                timezone_ntp_menu
+                bbr_menu
                 ;;
             11)
-                hostname_menu
+                timezone_ntp_menu
                 ;;
             12)
-                log_management_menu
+                hostname_menu
                 ;;
             13)
-                swap_menu
+                log_management_menu
                 ;;
             14)
-                traffic_reporter_menu
+                swap_menu
                 ;;
             15)
-                yabs_test_menu
+                traffic_reporter_menu
                 ;;
             16)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             17)
-                network_quality_menu
+                ip_quality_menu
                 ;;
             18)
+                network_quality_menu
+                ;;
+            19)
                 dd_system_menu
                 ;;
             0|"")
