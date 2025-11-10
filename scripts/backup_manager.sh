@@ -1,0 +1,1001 @@
+#!/bin/bash
+
+#######################################
+# VPS Backup Manager
+# Automated backup to cloud storage with encryption
+#######################################
+
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
+
+# Configuration paths
+BACKUP_SCRIPT="/usr/local/bin/vps-backup.sh"
+BACKUP_ENV="/usr/local/bin/vps-backup.env"
+DEFAULT_LOG_FILE="/var/log/vps-backup.log"
+DEFAULT_TMP_DIR="/tmp/vps-backups"
+
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Check if backup is configured
+is_configured() {
+    [ -f "$BACKUP_ENV" ] && [ -f "$BACKUP_SCRIPT" ]
+}
+
+# Load configuration
+load_config() {
+    if [ -f "$BACKUP_ENV" ]; then
+        source "$BACKUP_ENV"
+    fi
+}
+
+# Check dependencies
+check_dependency() {
+    local tool="$1"
+    if command -v "$tool" &> /dev/null; then
+        echo -e "${GREEN}✓${NC} $tool"
+        return 0
+    else
+        echo -e "${RED}✗${NC} $tool (not installed)"
+        return 1
+    fi
+}
+
+# Install rclone
+install_rclone() {
+    echo ""
+    log_info "Installing rclone..."
+
+    if command -v rclone &> /dev/null; then
+        log_warning "rclone is already installed"
+        return 0
+    fi
+
+    # Install rclone using official script
+    curl https://rclone.org/install.sh | sudo bash
+
+    if [ $? -eq 0 ]; then
+        log_success "rclone installed successfully"
+        return 0
+    else
+        log_error "Failed to install rclone"
+        return 1
+    fi
+}
+
+# Show current configuration status
+show_status() {
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}VPS Backup Manager Status${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Check dependencies
+    echo -e "${GREEN}Dependencies:${NC}"
+    local deps_ok=true
+    check_dependency "tar" || deps_ok=false
+    check_dependency "openssl" || deps_ok=false
+    check_dependency "curl" || deps_ok=false
+    check_dependency "rclone" || deps_ok=false
+
+    echo ""
+
+    if is_configured; then
+        load_config
+
+        echo -e "${GREEN}Configuration Status:${NC}  ${GREEN}Configured ✓${NC}"
+        echo ""
+
+        # Display backup sources
+        if [ -n "$BACKUP_SRCS" ]; then
+            echo -e "${GREEN}Backup Sources:${NC}"
+            IFS='|' read -ra SOURCES <<< "$BACKUP_SRCS"
+            for src in "${SOURCES[@]}"; do
+                if [ -d "$src" ] || [ -f "$src" ]; then
+                    echo -e "  ${GREEN}✓${NC} $src"
+                else
+                    echo -e "  ${YELLOW}⚠${NC} $src (not found)"
+                fi
+            done
+        else
+            echo -e "${YELLOW}Backup Sources:${NC}    Not configured"
+        fi
+
+        echo ""
+        echo -e "${GREEN}Configuration Details:${NC}"
+        echo -e "  Remote Directory:  ${CYAN}${BACKUP_REMOTE_DIR:-Not set}${NC}"
+        echo -e "  Log File:          ${CYAN}${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}${NC}"
+        echo -e "  Temp Directory:    ${CYAN}${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}${NC}"
+        echo -e "  Max Backups:       ${CYAN}${BACKUP_MAX_KEEP:-2}${NC}"
+
+        # Encryption status
+        if [ -n "$BACKUP_PASSWORD" ]; then
+            echo -e "  Encryption:        ${GREEN}Enabled ✓${NC}"
+        else
+            echo -e "  Encryption:        ${YELLOW}Not configured${NC}"
+        fi
+
+        # Telegram notification status
+        if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+            echo -e "  Telegram Notify:   ${GREEN}Enabled ✓${NC}"
+            echo -e "    Bot Token:       ${CYAN}${TG_BOT_TOKEN:0:10}...${NC}"
+            echo -e "    Chat ID:         ${CYAN}${TG_CHAT_ID}${NC}"
+        else
+            echo -e "  Telegram Notify:   ${YELLOW}Disabled${NC}"
+        fi
+
+        # Check if rclone remote is configured
+        echo ""
+        if command -v rclone &> /dev/null && [ -n "$BACKUP_REMOTE_DIR" ]; then
+            local remote_name=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
+            if rclone listremotes | grep -q "^${remote_name}:$"; then
+                echo -e "${GREEN}Rclone Remote:${NC}     ${GREEN}Configured ✓${NC} ($remote_name)"
+            else
+                echo -e "${YELLOW}Rclone Remote:${NC}     ${YELLOW}Not found${NC} ($remote_name)"
+            fi
+        fi
+
+        # Check last backup
+        if [ -f "${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}" ]; then
+            echo ""
+            echo -e "${GREEN}Last Backup Activity:${NC}"
+            local last_backup=$(grep "备份过程完成\|backup completed" "${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}" | tail -1)
+            if [ -n "$last_backup" ]; then
+                echo -e "  ${CYAN}${last_backup}${NC}"
+            else
+                echo -e "  ${YELLOW}No backup history found${NC}"
+            fi
+        fi
+
+        # Quick action hint
+        echo ""
+        echo -e "${BLUE}💡 Tip:${NC} Press Enter in the menu to run backup immediately"
+
+    else
+        echo -e "${YELLOW}Configuration Status:${NC}  ${YELLOW}Not configured${NC}"
+        echo ""
+        log_info "Backup manager is not configured yet"
+        log_info "Use 'configure' option to set up backup"
+    fi
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Configure backup sources
+configure_backup_sources() {
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Configure Backup Sources${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    local sources=()
+
+    # Load existing sources if available
+    if [ -n "$BACKUP_SRCS" ]; then
+        IFS='|' read -ra sources <<< "$BACKUP_SRCS"
+        echo ""
+        echo -e "${GREEN}Current backup sources:${NC}"
+        for i in "${!sources[@]}"; do
+            echo -e "  $((i+1)). ${CYAN}${sources[$i]}${NC}"
+        done
+    fi
+
+    echo ""
+    echo -e "${YELLOW}Common directories to backup:${NC}"
+    echo -e "  • /var/www/html (Web files)"
+    echo -e "  • /etc/nginx (Nginx config)"
+    echo -e "  • /etc/apache2 (Apache config)"
+    echo -e "  • /home (User home directories)"
+    echo -e "  • /opt (Optional software)"
+    echo -e "  • /root (Root home directory)"
+
+    echo ""
+    log_info "Enter directories to backup (one per line)"
+    log_info "Press Enter on empty line to finish"
+    log_info "Enter 'clear' to clear all existing sources"
+
+    echo ""
+    local new_sources=()
+    local counter=1
+
+    while true; do
+        read -p "Source #$counter: " source
+
+        if [ -z "$source" ]; then
+            break
+        fi
+
+        if [ "$source" = "clear" ]; then
+            new_sources=()
+            log_info "All sources cleared"
+            counter=1
+            continue
+        fi
+
+        # Expand ~ to home directory
+        source="${source/#\~/$HOME}"
+
+        # Check if path exists
+        if [ -d "$source" ] || [ -f "$source" ]; then
+            new_sources+=("$source")
+            log_success "Added: $source"
+            counter=$((counter+1))
+        else
+            log_warning "Path does not exist: $source"
+            read -p "Add anyway? [y/N]: " add_anyway
+            if [[ $add_anyway =~ ^[Yy]$ ]]; then
+                new_sources+=("$source")
+                log_info "Added: $source"
+                counter=$((counter+1))
+            fi
+        fi
+    done
+
+    if [ ${#new_sources[@]} -eq 0 ]; then
+        if [ ${#sources[@]} -gt 0 ]; then
+            log_info "Keeping existing sources"
+        else
+            log_error "No backup sources configured"
+            return 1
+        fi
+    else
+        sources=("${new_sources[@]}")
+    fi
+
+    # Join array with |
+    BACKUP_SRCS=$(IFS='|'; echo "${sources[*]}")
+
+    echo ""
+    echo -e "${GREEN}Final backup sources:${NC}"
+    IFS='|' read -ra FINAL_SOURCES <<< "$BACKUP_SRCS"
+    for src in "${FINAL_SOURCES[@]}"; do
+        echo -e "  ${GREEN}✓${NC} $src"
+    done
+
+    return 0
+}
+
+# Setup rclone remote
+setup_rclone() {
+    echo ""
+    log_info "Setting up rclone remote..."
+
+    if ! command -v rclone &> /dev/null; then
+        log_error "rclone is not installed"
+        read -p "Install rclone now? [Y/n]: " install
+        if [[ ! $install =~ ^[Nn]$ ]]; then
+            install_rclone || return 1
+        else
+            return 1
+        fi
+    fi
+
+    echo ""
+    log_info "Current rclone remotes:"
+    rclone listremotes
+
+    echo ""
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  1. Configure new remote"
+    echo -e "  2. Use existing remote"
+    echo -e "  3. Skip (configure later manually)"
+    echo ""
+    read -p "Select option [1-3]: " option
+
+    case $option in
+        1)
+            log_info "Launching rclone config..."
+            echo ""
+            log_info "Common remotes: Google Drive (gdrive), Dropbox, OneDrive, S3, etc."
+            echo ""
+            rclone config
+            ;;
+        2)
+            log_info "Using existing remote"
+            ;;
+        3)
+            log_info "Skipping rclone setup"
+            log_warning "You'll need to configure rclone manually: rclone config"
+            return 0
+            ;;
+        *)
+            log_error "Invalid option"
+            return 1
+            ;;
+    esac
+
+    return 0
+}
+
+# Full configuration wizard
+configure_backup() {
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Backup Configuration Wizard${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Load existing config if available
+    load_config
+
+    # Step 1: Configure backup sources
+    echo ""
+    log_info "Step 1/6: Configure Backup Sources"
+    configure_backup_sources || return 1
+
+    # Step 2: Configure remote directory
+    echo ""
+    log_info "Step 2/6: Configure Remote Storage"
+    echo ""
+    if [ -n "$BACKUP_REMOTE_DIR" ]; then
+        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+    fi
+    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+
+    # Step 3: Setup rclone if needed
+    echo ""
+    log_info "Step 3/6: Configure Rclone"
+    local remote_name=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
+    if command -v rclone &> /dev/null; then
+        if rclone listremotes | grep -q "^${remote_name}:$"; then
+            log_success "Rclone remote '$remote_name' already configured"
+        else
+            log_warning "Rclone remote '$remote_name' not found"
+            read -p "Configure rclone now? [Y/n]: " setup
+            if [[ ! $setup =~ ^[Nn]$ ]]; then
+                setup_rclone
+            fi
+        fi
+    else
+        log_warning "rclone is not installed"
+        read -p "Install and configure rclone now? [Y/n]: " install
+        if [[ ! $install =~ ^[Nn]$ ]]; then
+            install_rclone && setup_rclone
+        fi
+    fi
+
+    # Step 4: Configure encryption password
+    echo ""
+    log_info "Step 4/6: Configure Encryption"
+    echo ""
+    if [ -n "$BACKUP_PASSWORD" ]; then
+        echo -e "Current password: ${CYAN}${BACKUP_PASSWORD:0:3}***${NC}"
+        read -p "Change password? [y/N]: " change_pass
+        if [[ ! $change_pass =~ ^[Yy]$ ]]; then
+            log_info "Keeping existing password"
+        else
+            read -sp "Enter encryption password: " BACKUP_PASSWORD
+            echo ""
+            read -sp "Confirm password: " pass_confirm
+            echo ""
+            if [ "$BACKUP_PASSWORD" != "$pass_confirm" ]; then
+                log_error "Passwords do not match"
+                return 1
+            fi
+        fi
+    else
+        read -sp "Enter encryption password: " BACKUP_PASSWORD
+        echo ""
+        read -sp "Confirm password: " pass_confirm
+        echo ""
+        if [ "$BACKUP_PASSWORD" != "$pass_confirm" ]; then
+            log_error "Passwords do not match"
+            return 1
+        fi
+    fi
+
+    # Step 5: Configure Telegram notifications (optional)
+    echo ""
+    log_info "Step 5/6: Configure Telegram Notifications (Optional)"
+    echo ""
+    read -p "Enable Telegram notifications? [y/N]: " enable_tg
+    if [[ $enable_tg =~ ^[Yy]$ ]]; then
+        read -p "Telegram Bot Token [${TG_BOT_TOKEN}]: " bot_token
+        TG_BOT_TOKEN="${bot_token:-$TG_BOT_TOKEN}"
+
+        read -p "Telegram Chat ID [${TG_CHAT_ID}]: " chat_id
+        TG_CHAT_ID="${chat_id:-$TG_CHAT_ID}"
+    else
+        log_info "Telegram notifications disabled"
+        TG_BOT_TOKEN=""
+        TG_CHAT_ID=""
+    fi
+
+    # Step 6: Other settings
+    echo ""
+    log_info "Step 6/6: Additional Settings"
+    echo ""
+
+    read -p "Max backups to keep [${BACKUP_MAX_KEEP:-2}]: " max_keep
+    BACKUP_MAX_KEEP="${max_keep:-${BACKUP_MAX_KEEP:-2}}"
+
+    read -p "Log file path [${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}]: " log_file
+    BACKUP_LOG_FILE="${log_file:-${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}}"
+
+    read -p "Temp directory [${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}]: " tmp_dir
+    BACKUP_TMP_DIR="${tmp_dir:-${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}}"
+
+    # Save configuration
+    echo ""
+    log_info "Saving configuration..."
+    save_config
+
+    # Create backup script
+    create_backup_script
+
+    echo ""
+    log_success "Configuration saved successfully!"
+    echo ""
+    echo -e "${GREEN}Configuration Summary:${NC}"
+    echo -e "  Config file:       ${CYAN}$BACKUP_ENV${NC}"
+    echo -e "  Backup script:     ${CYAN}$BACKUP_SCRIPT${NC}"
+    echo -e "  Log file:          ${CYAN}$BACKUP_LOG_FILE${NC}"
+    echo -e "  Remote directory:  ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+    echo -e "  Max backups:       ${CYAN}$BACKUP_MAX_KEEP${NC}"
+
+    echo ""
+    read -p "Test backup configuration now? [Y/n]: " test
+    if [[ ! $test =~ ^[Nn]$ ]]; then
+        test_configuration
+
+        # After testing, offer to run backup immediately
+        echo ""
+        read -p "Run backup now to verify everything works? [Y/n]: " run_now
+        if [[ ! $run_now =~ ^[Nn]$ ]]; then
+            echo ""
+            run_backup
+        fi
+    else
+        # If user skipped test, still offer to run backup
+        echo ""
+        read -p "Run backup now? [y/N]: " run_now
+        if [[ $run_now =~ ^[Yy]$ ]]; then
+            echo ""
+            run_backup
+        fi
+    fi
+}
+
+# Save configuration to env file
+save_config() {
+    cat > "$BACKUP_ENV" << EOF
+# VPS Backup Configuration
+# Generated on $(date)
+
+# Backup sources (separated by |)
+BACKUP_SRCS="$BACKUP_SRCS"
+
+# Remote directory (rclone format: remote:path)
+BACKUP_REMOTE_DIR="$BACKUP_REMOTE_DIR"
+
+# Encryption password
+BACKUP_PASSWORD="$BACKUP_PASSWORD"
+
+# Telegram notifications (optional)
+TG_BOT_TOKEN="$TG_BOT_TOKEN"
+TG_CHAT_ID="$TG_CHAT_ID"
+
+# Backup settings
+BACKUP_MAX_KEEP="$BACKUP_MAX_KEEP"
+BACKUP_LOG_FILE="$BACKUP_LOG_FILE"
+BACKUP_TMP_DIR="$BACKUP_TMP_DIR"
+EOF
+
+    chmod 600 "$BACKUP_ENV"
+    log_success "Configuration saved to $BACKUP_ENV"
+}
+
+# Create backup execution script
+create_backup_script() {
+    cat > "$BACKUP_SCRIPT" << 'EOFSCRIPT'
+#!/bin/bash
+
+# Load configuration
+if [ ! -f "/usr/local/bin/vps-backup.env" ]; then
+    echo "Error: Configuration file not found"
+    exit 1
+fi
+
+source "/usr/local/bin/vps-backup.env"
+
+# Parse backup sources
+IFS='|' read -ra BACKUP_SRCS_ARRAY <<< "$BACKUP_SRCS"
+
+# Variables
+DATE=$(date +"%Y%m%d-%H%M%S")
+HOSTNAME=$(hostname)
+BACKUP_FILE="backup-${HOSTNAME}-${DATE}.tar.gz"
+ENCRYPTED_BACKUP_FILE="${BACKUP_FILE}.enc"
+
+# Functions
+send_telegram_message() {
+    local message="$1"
+    if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+        curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${message}" \
+            --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
+    fi
+}
+
+log_and_notify() {
+    local message="$1"
+    local is_error="${2:-false}"
+
+    echo "$(date): ${message}" >> "$BACKUP_LOG_FILE"
+
+    if [ "$is_error" = "true" ]; then
+        echo "ERROR: ${message}"
+        send_telegram_message "🖥️ <b>$HOSTNAME</b>
+❌ <b>备份错误</b>
+${message}"
+        return 1
+    else
+        echo "INFO: ${message}"
+        return 0
+    fi
+}
+
+# Start backup
+log_and_notify "开始备份过程 - ${DATE}"
+
+# Clean and create temp directory
+rm -rf "${BACKUP_TMP_DIR}"
+mkdir -p "${BACKUP_TMP_DIR}"
+
+# Build tar command
+TAR_ARGS=(
+    "--ignore-failed-read"
+    "--warning=no-file-changed"
+    "-czf" "${BACKUP_TMP_DIR}/${BACKUP_FILE}"
+)
+
+for SRC in "${BACKUP_SRCS_ARRAY[@]}"; do
+    if [ -e "$SRC" ]; then
+        TAR_ARGS+=("-C" "$(dirname "$SRC")" "$(basename "$SRC")")
+    else
+        log_and_notify "警告: 备份源不存在 - $SRC"
+    fi
+done
+
+# Compress
+log_and_notify "正在压缩备份..."
+tar "${TAR_ARGS[@]}" >> "$BACKUP_LOG_FILE" 2>&1
+rc=$?
+
+if [ $rc -ne 0 ] && [ $rc -ne 1 ]; then
+    log_and_notify "压缩失败 (tar exit code $rc)" true
+    exit 1
+fi
+
+# Encrypt
+log_and_notify "正在加密备份..."
+openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$BACKUP_PASSWORD" \
+    -in "${BACKUP_TMP_DIR}/${BACKUP_FILE}" \
+    -out "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" >> "$BACKUP_LOG_FILE" 2>&1
+
+if [ $? -ne 0 ]; then
+    log_and_notify "加密失败" true
+    exit 1
+fi
+
+rm -f "${BACKUP_TMP_DIR}/${BACKUP_FILE}"
+
+# Get file size
+BACKUP_SIZE=$(du -h "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" | cut -f1)
+
+# Upload
+log_and_notify "正在上传到 ${BACKUP_REMOTE_DIR}..."
+rclone copy "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" "${BACKUP_REMOTE_DIR}" >> "$BACKUP_LOG_FILE" 2>&1
+
+if [ $? -ne 0 ]; then
+    log_and_notify "上传失败" true
+    exit 1
+fi
+
+# Cleanup local file
+rm -f "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}"
+
+# Remove old backups
+log_and_notify "正在清理旧备份..."
+OLD_BACKUPS=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-" | sort -r | tail -n +$((BACKUP_MAX_KEEP + 1)))
+
+for file in $OLD_BACKUPS; do
+    rclone delete "${BACKUP_REMOTE_DIR}/${file}" --drive-use-trash=false >> "$BACKUP_LOG_FILE" 2>&1
+    log_and_notify "已删除旧备份: $file"
+done
+
+# Get backup stats
+BACKUP_COUNT=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-" | wc -l)
+
+# Success notification
+send_telegram_message "🖥️ <b>$HOSTNAME 备份完成</b>
+✅ 备份成功
+📦 文件大小: ${BACKUP_SIZE}
+🔢 保留备份数: ${BACKUP_COUNT}
+📅 备份文件: ${ENCRYPTED_BACKUP_FILE}"
+
+log_and_notify "备份过程完成! 文件: ${ENCRYPTED_BACKUP_FILE} (${BACKUP_SIZE})"
+
+exit 0
+EOFSCRIPT
+
+    chmod +x "$BACKUP_SCRIPT"
+    log_success "Backup script created at $BACKUP_SCRIPT"
+}
+
+# Test configuration
+test_configuration() {
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Testing Backup Configuration${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    load_config
+
+    # Test 1: Check backup sources
+    echo ""
+    log_info "Test 1: Checking backup sources..."
+    IFS='|' read -ra SOURCES <<< "$BACKUP_SRCS"
+    local sources_ok=true
+    for src in "${SOURCES[@]}"; do
+        if [ -e "$src" ]; then
+            echo -e "  ${GREEN}✓${NC} $src"
+        else
+            echo -e "  ${RED}✗${NC} $src (not found)"
+            sources_ok=false
+        fi
+    done
+
+    # Test 2: Check rclone remote
+    echo ""
+    log_info "Test 2: Checking rclone remote..."
+    local remote_name=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
+    if rclone listremotes | grep -q "^${remote_name}:$"; then
+        echo -e "  ${GREEN}✓${NC} Remote '$remote_name' is configured"
+
+        # Test connection
+        if rclone lsd "${BACKUP_REMOTE_DIR}" &> /dev/null; then
+            echo -e "  ${GREEN}✓${NC} Remote is accessible"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Remote exists but may not be accessible"
+        fi
+    else
+        echo -e "  ${RED}✗${NC} Remote '$remote_name' not found"
+    fi
+
+    # Test 3: Check encryption
+    echo ""
+    log_info "Test 3: Testing encryption..."
+    if [ -n "$BACKUP_PASSWORD" ]; then
+        echo -e "  ${GREEN}✓${NC} Encryption password is set"
+
+        # Test encryption/decryption
+        local test_file=$(mktemp)
+        local test_enc=$(mktemp)
+        echo "test" > "$test_file"
+
+        if openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$BACKUP_PASSWORD" \
+            -in "$test_file" -out "$test_enc" 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} Encryption works"
+            rm -f "$test_file" "$test_enc"
+        else
+            echo -e "  ${RED}✗${NC} Encryption test failed"
+            rm -f "$test_file" "$test_enc"
+        fi
+    else
+        echo -e "  ${RED}✗${NC} Encryption password not set"
+    fi
+
+    # Test 4: Check Telegram
+    echo ""
+    log_info "Test 4: Testing Telegram notifications..."
+    if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+        echo -e "  ${GREEN}✓${NC} Telegram credentials configured"
+        read -p "Send test message? [y/N]: " send_test
+        if [[ $send_test =~ ^[Yy]$ ]]; then
+            local test_msg="🖥️ <b>$(hostname) - 测试消息</b>
+✅ Telegram 通知配置正常"
+            curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+                --data-urlencode "chat_id=${TG_CHAT_ID}" \
+                --data-urlencode "text=${test_msg}" \
+                --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                echo -e "  ${GREEN}✓${NC} Test message sent"
+            else
+                echo -e "  ${RED}✗${NC} Failed to send message"
+            fi
+        fi
+    else
+        echo -e "  ${YELLOW}⚠${NC} Telegram notifications disabled"
+    fi
+
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Run backup
+run_backup() {
+    if ! is_configured; then
+        log_error "Backup is not configured"
+        log_info "Please run configuration wizard first"
+        return 1
+    fi
+
+    if [ ! -x "$BACKUP_SCRIPT" ]; then
+        log_error "Backup script not found or not executable"
+        return 1
+    fi
+
+    load_config
+
+    # Show backup summary before execution
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Backup Summary${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}What will be backed up:${NC}"
+    IFS='|' read -ra SOURCES <<< "$BACKUP_SRCS"
+    for src in "${SOURCES[@]}"; do
+        if [ -e "$src" ]; then
+            local size=$(du -sh "$src" 2>/dev/null | cut -f1)
+            echo -e "  ${GREEN}✓${NC} $src ${CYAN}(${size})${NC}"
+        else
+            echo -e "  ${YELLOW}⚠${NC} $src ${YELLOW}(not found)${NC}"
+        fi
+    done
+    echo ""
+    echo -e "${GREEN}Backup destination:${NC}    ${CYAN}${BACKUP_REMOTE_DIR}${NC}"
+    echo -e "${GREEN}Encryption:${NC}            ${CYAN}Enabled (AES-256-CBC)${NC}"
+    echo -e "${GREEN}Max backups to keep:${NC}   ${CYAN}${BACKUP_MAX_KEEP}${NC}"
+    if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+        echo -e "${GREEN}Telegram notify:${NC}       ${CYAN}Enabled${NC}"
+    fi
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    read -p "Proceed with backup? [Y/n]: " proceed
+    if [[ $proceed =~ ^[Nn]$ ]]; then
+        log_info "Backup cancelled"
+        return 0
+    fi
+
+    echo ""
+    log_info "Starting backup process..."
+    echo ""
+
+    "$BACKUP_SCRIPT"
+
+    local exit_code=$?
+    echo ""
+    if [ $exit_code -eq 0 ]; then
+        log_success "Backup completed successfully!"
+        echo ""
+        log_info "Check logs for details: ${BACKUP_LOG_FILE}"
+    else
+        log_error "Backup failed with exit code: $exit_code"
+        echo ""
+        log_info "Check logs for details: ${BACKUP_LOG_FILE}"
+    fi
+
+    return $exit_code
+}
+
+# List remote backups
+list_backups() {
+    if ! is_configured; then
+        log_error "Backup is not configured"
+        return 1
+    fi
+
+    load_config
+
+    echo ""
+    log_info "Listing backups in $BACKUP_REMOTE_DIR..."
+    echo ""
+
+    if ! command -v rclone &> /dev/null; then
+        log_error "rclone is not installed"
+        return 1
+    fi
+
+    local backups=$(rclone lsl "${BACKUP_REMOTE_DIR}" 2>/dev/null | grep "backup-")
+
+    if [ -z "$backups" ]; then
+        log_warning "No backups found"
+        return 0
+    fi
+
+    echo -e "${GREEN}Available backups:${NC}"
+    echo "$backups" | while read -r size date time file; do
+        # Convert size to human readable
+        local size_mb=$((size / 1024 / 1024))
+        echo -e "  ${CYAN}$file${NC}"
+        echo -e "    Size: ${YELLOW}${size_mb}MB${NC}  Date: ${YELLOW}$date $time${NC}"
+    done
+
+    echo ""
+    local total_size=$(rclone size "${BACKUP_REMOTE_DIR}" 2>/dev/null | grep "Total size:" | awk '{print $3, $4}')
+    echo -e "Total size: ${CYAN}${total_size}${NC}"
+}
+
+# View logs
+view_logs() {
+    if ! is_configured; then
+        log_error "Backup is not configured"
+        return 1
+    fi
+
+    load_config
+
+    local log_file="${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}"
+
+    if [ ! -f "$log_file" ]; then
+        log_warning "Log file not found: $log_file"
+        return 0
+    fi
+
+    echo ""
+    echo -e "${CYAN}Last 50 log entries:${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    tail -50 "$log_file"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "Full log: ${CYAN}$log_file${NC}"
+}
+
+# Setup cron job
+setup_cron() {
+    if ! is_configured; then
+        log_error "Backup is not configured"
+        log_info "Please run configuration wizard first"
+        return 1
+    fi
+
+    echo ""
+    log_info "Setting up automatic backup schedule..."
+    echo ""
+
+    echo -e "${YELLOW}Common schedules:${NC}"
+    echo -e "  1. Daily at 2:00 AM      (0 2 * * *)"
+    echo -e "  2. Daily at 3:00 AM      (0 3 * * *)"
+    echo -e "  3. Every 12 hours        (0 */12 * * *)"
+    echo -e "  4. Weekly (Sunday 2 AM)  (0 2 * * 0)"
+    echo -e "  5. Custom schedule"
+    echo -e "  6. Remove scheduled backup"
+    echo ""
+
+    read -p "Select option [1-6]: " schedule_option
+
+    local cron_schedule=""
+    case $schedule_option in
+        1) cron_schedule="0 2 * * *" ;;
+        2) cron_schedule="0 3 * * *" ;;
+        3) cron_schedule="0 */12 * * *" ;;
+        4) cron_schedule="0 2 * * 0" ;;
+        5)
+            read -p "Enter cron schedule (e.g., '0 2 * * *'): " cron_schedule
+            ;;
+        6)
+            # Remove existing cron job
+            crontab -l 2>/dev/null | grep -v "$BACKUP_SCRIPT" | crontab -
+            log_success "Scheduled backup removed"
+            return 0
+            ;;
+        *)
+            log_error "Invalid option"
+            return 1
+            ;;
+    esac
+
+    # Add to crontab
+    local cron_cmd="$cron_schedule $BACKUP_SCRIPT >> ${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE} 2>&1"
+
+    # Remove old entry if exists
+    crontab -l 2>/dev/null | grep -v "$BACKUP_SCRIPT" | { cat; echo "$cron_cmd"; } | crontab -
+
+    log_success "Backup scheduled: $cron_schedule"
+    echo ""
+    log_info "Current crontab:"
+    crontab -l | grep "$BACKUP_SCRIPT"
+}
+
+# Main menu
+main() {
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Please run this script with root privileges"
+        exit 1
+    fi
+
+    case "${1:-menu}" in
+        status)
+            show_status
+            ;;
+        configure|config|setup)
+            configure_backup
+            ;;
+        run|backup)
+            run_backup
+            ;;
+        list)
+            list_backups
+            ;;
+        logs)
+            view_logs
+            ;;
+        test)
+            test_configuration
+            ;;
+        cron|schedule)
+            setup_cron
+            ;;
+        install-deps)
+            install_rclone
+            ;;
+        menu)
+            show_status
+            echo ""
+
+            if is_configured; then
+                echo -e "${GREEN}Available actions:${NC}"
+                echo -e "  ${GREEN}1.${NC} ${GREEN}⚡ 立即运行备份 (Run backup now)${NC}"
+                echo -e "  ${CYAN}2.${NC} List remote backups"
+                echo -e "  ${CYAN}3.${NC} View logs"
+                echo -e "  ${CYAN}4.${NC} Test configuration"
+                echo -e "  ${CYAN}5.${NC} Reconfigure backup"
+                echo -e "  ${CYAN}6.${NC} Setup automatic backup (cron)"
+                echo -e "  ${CYAN}7.${NC} Install dependencies"
+                echo -e "  ${CYAN}0.${NC} Exit"
+                echo ""
+                read -p "Select action [0-7, default: 1]: " action
+                action="${action:-1}"  # Default to option 1 (run backup)
+
+                case $action in
+                    1) run_backup ;;
+                    2) list_backups ;;
+                    3) view_logs ;;
+                    4) test_configuration ;;
+                    5) configure_backup ;;
+                    6) setup_cron ;;
+                    7) install_rclone ;;
+                    0) log_info "Exiting" ;;
+                    *) log_error "Invalid selection" ;;
+                esac
+            else
+                echo ""
+                read -p "Backup is not configured. Configure now? [Y/n]: " config
+                if [[ ! $config =~ ^[Nn]$ ]]; then
+                    configure_backup
+                fi
+            fi
+            ;;
+        *)
+            log_error "Unknown command: $1"
+            echo "Usage: $0 {status|configure|run|list|logs|test|cron|menu}"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

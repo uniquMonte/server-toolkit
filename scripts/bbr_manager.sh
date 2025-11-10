@@ -195,13 +195,22 @@ show_status() {
     local current=$(echo $status | cut -d'|' -f1)
     local available=$(echo $status | cut -d'|' -f2)
 
+    # Get current qdisc
+    local current_qdisc=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "unknown")
+
     echo ""
     echo -e "Current Congestion Control: ${GREEN}$current${NC}"
     echo -e "Available Controls        : $available"
+    echo -e "Current Queue Discipline  : ${CYAN}$current_qdisc${NC}"
 
     if [ "$current" = "bbr" ]; then
         echo ""
-        echo -e "${GREEN}Status: BBR is ENABLED ✓${NC}"
+        if [ "$current_qdisc" = "fq" ]; then
+            echo -e "${GREEN}Status: BBR is ENABLED ✓ (with optimal qdisc: fq)${NC}"
+        else
+            echo -e "${YELLOW}Status: BBR is ENABLED but qdisc is not optimal${NC}"
+            echo -e "${YELLOW}Recommended: net.core.default_qdisc = fq${NC}"
+        fi
     else
         echo ""
         echo -e "${YELLOW}Status: BBR is NOT enabled${NC}"

@@ -65,8 +65,9 @@ print_banner() {
 ║           Supported Components:                           ║
 ║           - System Update & Basic Tools                   ║
 ║           - UFW Firewall / Docker / Nginx + Certbot       ║
-║           - Fail2ban / SSH Security / BBR Optimization    ║
-║           - Timezone & NTP / Hostname / Log Management    ║
+║           - Fail2ban / SSH Security / SSH Notifications   ║
+║           - BBR / Timezone & NTP / Hostname / Logs        ║
+║           - Swap / Traffic Monitor / Backup Manager       ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
 ║           - System Reinstallation (DD)                    ║
 ║                                                           ║
@@ -757,6 +758,62 @@ network_quality_menu() {
     fi
 }
 
+# Swap management menu
+swap_menu() {
+    if ! download_script_if_needed "swap_manager.sh"; then
+        log_error "Failed to load swap manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Swap Memory Management"
+
+    # Launch the swap manager
+    bash "${SCRIPTS_PATH}/swap_manager.sh" menu
+}
+
+# Traffic reporter management menu
+traffic_reporter_menu() {
+    if ! download_script_if_needed "traffic_reporter_manager.sh"; then
+        log_error "Failed to load traffic reporter script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Server Traffic Reporter"
+
+    # Launch the traffic reporter manager
+    bash "${SCRIPTS_PATH}/traffic_reporter_manager.sh" menu
+}
+
+# SSH login notifier management menu
+ssh_login_notifier_menu() {
+    if ! download_script_if_needed "ssh_login_notifier_manager.sh"; then
+        log_error "Failed to load SSH login notifier script"
+        return 1
+    fi
+
+    echo ""
+    log_step "SSH Login Notifier"
+
+    # Launch the SSH login notifier manager
+    bash "${SCRIPTS_PATH}/ssh_login_notifier_manager.sh" menu
+}
+
+# Backup management menu
+backup_manager_menu() {
+    if ! download_script_if_needed "backup_manager.sh"; then
+        log_error "Failed to load backup manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "VPS Backup Manager"
+
+    # Launch the backup manager
+    bash "${SCRIPTS_PATH}/backup_manager.sh" menu
+}
+
 # DD system reinstallation menu
 dd_system_menu() {
     if ! download_script_if_needed "dd_system.sh"; then
@@ -812,25 +869,32 @@ main_menu() {
         echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
-        echo -e "${YELLOW}9.${NC} BBR TCP optimization"
-        echo -e "${YELLOW}10.${NC} Timezone and NTP sync"
-        echo -e "${YELLOW}11.${NC} Hostname modification"
-        echo -e "${YELLOW}12.${NC} Log management (system & Docker)"
+        echo -e "${YELLOW}9.${NC} SSH login notifier"
+        echo -e "${YELLOW}10.${NC} BBR TCP optimization"
+        echo -e "${YELLOW}11.${NC} Timezone and NTP sync"
+        echo -e "${YELLOW}12.${NC} Hostname modification"
+        echo -e "${YELLOW}13.${NC} Log management (system & Docker)"
+        echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
+        echo ""
+        echo -e "${CYAN}┌─ System Resources & Monitoring ──────┐${NC}"
+        echo -e "${PURPLE}14.${NC} Swap memory management"
+        echo -e "${PURPLE}15.${NC} Server traffic reporter"
+        echo -e "${PURPLE}16.${NC} VPS backup manager"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}13.${NC} YABS performance test"
-        echo -e "${PURPLE}14.${NC} IP quality check"
-        echo -e "${PURPLE}15.${NC} Network quality check"
+        echo -e "${PURPLE}17.${NC} YABS performance test"
+        echo -e "${PURPLE}18.${NC} IP quality check"
+        echo -e "${PURPLE}19.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}16.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}20.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-16, or press Enter to exit]: " choice
+        read -p "Please select an action [0-20, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -858,27 +922,39 @@ main_menu() {
                 ssh_security_menu
                 ;;
             9)
-                bbr_menu
+                ssh_login_notifier_menu
                 ;;
             10)
-                timezone_ntp_menu
+                bbr_menu
                 ;;
             11)
-                hostname_menu
+                timezone_ntp_menu
                 ;;
             12)
-                log_management_menu
+                hostname_menu
                 ;;
             13)
-                yabs_test_menu
+                log_management_menu
                 ;;
             14)
-                ip_quality_menu
+                swap_menu
                 ;;
             15)
-                network_quality_menu
+                traffic_reporter_menu
                 ;;
             16)
+                backup_manager_menu
+                ;;
+            17)
+                yabs_test_menu
+                ;;
+            18)
+                ip_quality_menu
+                ;;
+            19)
+                network_quality_menu
+                ;;
+            20)
                 dd_system_menu
                 ;;
             0|"")
