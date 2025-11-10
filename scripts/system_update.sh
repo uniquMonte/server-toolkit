@@ -161,6 +161,33 @@ update_system() {
     esac
 
     log_success "System update complete!"
+
+    # Display installed tools summary
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✓${NC} ${CYAN}Installation Summary${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}The following tools have been installed:${NC}"
+    echo ""
+    echo -e "  ${YELLOW}Network & Download${NC}"
+    echo -e "    • curl, wget"
+    echo ""
+    echo -e "  ${YELLOW}Version Control${NC}"
+    echo -e "    • git"
+    echo ""
+    echo -e "  ${YELLOW}Text Editors${NC}"
+    echo -e "    • vim, nano"
+    echo ""
+    echo -e "  ${YELLOW}System Monitoring${NC}"
+    echo -e "    • htop, net-tools"
+    echo ""
+    echo -e "  ${YELLOW}Compression Tools${NC}"
+    echo -e "    • unzip, zip, tar, gzip, bzip2"
+    echo ""
+    echo -e "  ${YELLOW}Security & System${NC}"
+    echo -e "    • ca-certificates, gnupg, lsb-release"
+    echo -e "    • software-properties-common, apt-transport-https"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 # Main function
