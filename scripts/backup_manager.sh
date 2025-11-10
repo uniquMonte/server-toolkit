@@ -921,6 +921,230 @@ setup_cron() {
     crontab -l | grep "$BACKUP_SCRIPT"
 }
 
+# Edit specific configuration items
+edit_configuration() {
+    if ! is_configured; then
+        log_error "Backup is not configured"
+        log_info "Please run configuration wizard first"
+        return 1
+    fi
+
+    load_config
+
+    while true; do
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Edit Backup Configuration${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${GREEN}What do you want to modify?${NC}"
+        echo -e "  ${CYAN}1.${NC} Backup sources (add/remove directories)"
+        echo -e "  ${CYAN}2.${NC} Remote storage directory"
+        echo -e "  ${CYAN}3.${NC} Encryption password"
+        echo -e "  ${CYAN}4.${NC} Telegram notifications"
+        echo -e "  ${CYAN}5.${NC} Backup retention (max backups)"
+        echo -e "  ${CYAN}6.${NC} Log and temp paths"
+        echo -e "  ${CYAN}7.${NC} View current configuration"
+        echo -e "  ${CYAN}8.${NC} Setup/modify backup schedule (cron)"
+        echo -e "  ${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Select option [0-8]: " edit_choice
+
+        case $edit_choice in
+            1)
+                # Edit backup sources
+                echo ""
+                log_info "Current backup sources:"
+                IFS='|' read -ra SOURCES <<< "$BACKUP_SRCS"
+                for i in "${!SOURCES[@]}"; do
+                    echo -e "  $((i+1)). ${CYAN}${SOURCES[$i]}${NC}"
+                done
+
+                echo ""
+                echo -e "${YELLOW}Options:${NC}"
+                echo -e "  a. Add new source"
+                echo -e "  r. Remove source"
+                echo -e "  c. Clear all and reconfigure"
+                echo -e "  b. Back"
+                echo ""
+                read -p "Select [a/r/c/b]: " src_action
+
+                case $src_action in
+                    a|A)
+                        echo ""
+                        read -p "Enter path to add: " new_src
+                        new_src="${new_src/#\~/$HOME}"
+                        if [ -e "$new_src" ]; then
+                            SOURCES+=("$new_src")
+                            BACKUP_SRCS=$(IFS='|'; echo "${SOURCES[*]}")
+                            save_config
+                            create_backup_script
+                            log_success "Added: $new_src"
+                        else
+                            log_warning "Path does not exist: $new_src"
+                            read -p "Add anyway? [y/N]: " add_anyway
+                            if [[ $add_anyway =~ ^[Yy]$ ]]; then
+                                SOURCES+=("$new_src")
+                                BACKUP_SRCS=$(IFS='|'; echo "${SOURCES[*]}")
+                                save_config
+                                create_backup_script
+                                log_success "Added: $new_src"
+                            fi
+                        fi
+                        ;;
+                    r|R)
+                        echo ""
+                        read -p "Enter number to remove (1-${#SOURCES[@]}): " remove_idx
+                        if [[ $remove_idx =~ ^[0-9]+$ ]] && [ $remove_idx -ge 1 ] && [ $remove_idx -le ${#SOURCES[@]} ]; then
+                            removed="${SOURCES[$((remove_idx-1))]}"
+                            unset 'SOURCES[$((remove_idx-1))]'
+                            SOURCES=("${SOURCES[@]}")  # Reindex array
+                            BACKUP_SRCS=$(IFS='|'; echo "${SOURCES[*]}")
+                            save_config
+                            create_backup_script
+                            log_success "Removed: $removed"
+                        else
+                            log_error "Invalid selection"
+                        fi
+                        ;;
+                    c|C)
+                        configure_backup_sources
+                        save_config
+                        create_backup_script
+                        ;;
+                    *)
+                        ;;
+                esac
+                ;;
+
+            2)
+                # Edit remote directory
+                echo ""
+                echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                read -p "New remote directory (or Enter to keep): " new_remote
+                if [ -n "$new_remote" ]; then
+                    BACKUP_REMOTE_DIR="$new_remote"
+                    save_config
+                    create_backup_script
+                    log_success "Remote directory updated"
+                fi
+                ;;
+
+            3)
+                # Change encryption password
+                echo ""
+                log_warning "Changing password will not re-encrypt existing backups"
+                read -sp "Enter new encryption password: " new_pass
+                echo ""
+                read -sp "Confirm password: " pass_confirm
+                echo ""
+                if [ "$new_pass" = "$pass_confirm" ] && [ -n "$new_pass" ]; then
+                    BACKUP_PASSWORD="$new_pass"
+                    save_config
+                    create_backup_script
+                    log_success "Encryption password updated"
+                else
+                    log_error "Passwords do not match or empty"
+                fi
+                ;;
+
+            4)
+                # Edit Telegram settings
+                echo ""
+                if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+                    echo -e "Current Bot Token: ${CYAN}${TG_BOT_TOKEN:0:10}...${NC}"
+                    echo -e "Current Chat ID:   ${CYAN}${TG_CHAT_ID}${NC}"
+                    echo ""
+                    read -p "Disable Telegram notifications? [y/N]: " disable
+                    if [[ $disable =~ ^[Yy]$ ]]; then
+                        TG_BOT_TOKEN=""
+                        TG_CHAT_ID=""
+                        save_config
+                        create_backup_script
+                        log_success "Telegram notifications disabled"
+                    else
+                        read -p "New Bot Token (or Enter to keep): " new_token
+                        read -p "New Chat ID (or Enter to keep): " new_chat
+                        if [ -n "$new_token" ]; then
+                            TG_BOT_TOKEN="$new_token"
+                        fi
+                        if [ -n "$new_chat" ]; then
+                            TG_CHAT_ID="$new_chat"
+                        fi
+                        save_config
+                        create_backup_script
+                        log_success "Telegram settings updated"
+                    fi
+                else
+                    log_info "Telegram notifications are disabled"
+                    read -p "Enable Telegram notifications? [y/N]: " enable
+                    if [[ $enable =~ ^[Yy]$ ]]; then
+                        read -p "Bot Token: " TG_BOT_TOKEN
+                        read -p "Chat ID: " TG_CHAT_ID
+                        save_config
+                        create_backup_script
+                        log_success "Telegram notifications enabled"
+                    fi
+                fi
+                ;;
+
+            5)
+                # Edit max backups
+                echo ""
+                echo -e "Current max backups: ${CYAN}$BACKUP_MAX_KEEP${NC}"
+                read -p "New max backups to keep: " new_max
+                if [[ $new_max =~ ^[0-9]+$ ]]; then
+                    BACKUP_MAX_KEEP="$new_max"
+                    save_config
+                    create_backup_script
+                    log_success "Max backups updated to $new_max"
+                else
+                    log_error "Invalid number"
+                fi
+                ;;
+
+            6)
+                # Edit paths
+                echo ""
+                echo -e "Current log file:  ${CYAN}$BACKUP_LOG_FILE${NC}"
+                echo -e "Current temp dir:  ${CYAN}$BACKUP_TMP_DIR${NC}"
+                echo ""
+                read -p "New log file path (or Enter to keep): " new_log
+                read -p "New temp directory (or Enter to keep): " new_tmp
+                if [ -n "$new_log" ]; then
+                    BACKUP_LOG_FILE="$new_log"
+                fi
+                if [ -n "$new_tmp" ]; then
+                    BACKUP_TMP_DIR="$new_tmp"
+                fi
+                save_config
+                create_backup_script
+                log_success "Paths updated"
+                ;;
+
+            7)
+                # View configuration
+                show_status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+
+            8)
+                # Setup cron
+                setup_cron
+                ;;
+
+            0)
+                return 0
+                ;;
+
+            *)
+                log_error "Invalid selection"
+                ;;
+        esac
+    done
+}
+
 # Main menu
 main() {
     if [ "$EUID" -ne 0 ]; then
@@ -950,6 +1174,9 @@ main() {
         cron|schedule)
             setup_cron
             ;;
+        edit|modify)
+            edit_configuration
+            ;;
         install-deps)
             install_rclone
             ;;
@@ -963,12 +1190,13 @@ main() {
                 echo -e "  ${CYAN}2.${NC} List remote backups"
                 echo -e "  ${CYAN}3.${NC} View logs"
                 echo -e "  ${CYAN}4.${NC} Test configuration"
-                echo -e "  ${CYAN}5.${NC} Reconfigure backup"
-                echo -e "  ${CYAN}6.${NC} Setup automatic backup (cron)"
-                echo -e "  ${CYAN}7.${NC} Install dependencies"
+                echo -e "  ${YELLOW}5.${NC} ${YELLOW}📝 Edit configuration (modify settings)${NC}"
+                echo -e "  ${CYAN}6.${NC} Reconfigure backup (full setup)"
+                echo -e "  ${CYAN}7.${NC} Setup automatic backup (cron)"
+                echo -e "  ${CYAN}8.${NC} Install dependencies"
                 echo -e "  ${CYAN}0.${NC} Exit"
                 echo ""
-                read -p "Select action [0-7, default: 1]: " action
+                read -p "Select action [0-8, default: 1]: " action
                 action="${action:-1}"  # Default to option 1 (run backup)
 
                 case $action in
@@ -976,9 +1204,10 @@ main() {
                     2) list_backups ;;
                     3) view_logs ;;
                     4) test_configuration ;;
-                    5) configure_backup ;;
-                    6) setup_cron ;;
-                    7) install_rclone ;;
+                    5) edit_configuration ;;
+                    6) configure_backup ;;
+                    7) setup_cron ;;
+                    8) install_rclone ;;
                     0) log_info "Exiting" ;;
                     *) log_error "Invalid selection" ;;
                 esac
@@ -992,7 +1221,18 @@ main() {
             ;;
         *)
             log_error "Unknown command: $1"
-            echo "Usage: $0 {status|configure|run|list|logs|test|cron|menu}"
+            echo "Usage: $0 {status|configure|edit|run|list|logs|test|cron|menu}"
+            echo ""
+            echo "Commands:"
+            echo "  status     - Show backup configuration status"
+            echo "  configure  - Run full configuration wizard"
+            echo "  edit       - Edit specific configuration items"
+            echo "  run        - Run backup now"
+            echo "  list       - List remote backups"
+            echo "  logs       - View backup logs"
+            echo "  test       - Test backup configuration"
+            echo "  cron       - Setup automatic backup schedule"
+            echo "  menu       - Interactive menu (default)"
             exit 1
             ;;
     esac
