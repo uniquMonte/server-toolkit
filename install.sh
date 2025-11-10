@@ -321,6 +321,26 @@ install_all() {
         fi
     done
 
+    # Pre-installation detection
+    echo ""
+    log_info "Checking current installation status..."
+    echo ""
+
+    local ufw_before=$(command -v ufw &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_before=$(command -v docker &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_compose_before=$(command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1 && echo "installed" || echo "not_installed")
+    local nginx_before=$(command -v nginx &> /dev/null && echo "installed" || echo "not_installed")
+    local certbot_before=$(command -v certbot &> /dev/null && echo "installed" || echo "not_installed")
+
+    # Display pre-installation status
+    echo -e "${CYAN}Current Status:${NC}"
+    echo -e "  UFW Firewall      : $([ "$ufw_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Docker Engine     : $([ "$docker_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Docker Compose    : $([ "$docker_compose_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Nginx             : $([ "$nginx_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Certbot           : $([ "$certbot_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo ""
+
     # System update
     system_update
 
@@ -328,16 +348,54 @@ install_all() {
     basic_tools
 
     # Install UFW and configure common ports
-    log_step "Installing UFW firewall..."
-    bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+    if [ "$ufw_before" = "not_installed" ]; then
+        log_step "Installing UFW firewall..."
+        bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+    else
+        log_info "UFW already installed, skipping..."
+    fi
 
     # Install Docker and Docker Compose
-    log_step "Installing Docker and Docker Compose..."
-    bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+    if [ "$docker_before" = "not_installed" ]; then
+        log_step "Installing Docker and Docker Compose..."
+        bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+    else
+        log_info "Docker already installed, skipping..."
+    fi
 
     # Install Nginx and Certbot
-    log_step "Installing Nginx and Certbot..."
-    bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+    if [ "$nginx_before" = "not_installed" ]; then
+        log_step "Installing Nginx and Certbot..."
+        bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+    else
+        log_info "Nginx already installed, skipping..."
+    fi
+
+    # Post-installation detection
+    local ufw_after=$(command -v ufw &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_after=$(command -v docker &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_compose_after=$(command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1 && echo "installed" || echo "not_installed")
+    local nginx_after=$(command -v nginx &> /dev/null && echo "installed" || echo "not_installed")
+    local certbot_after=$(command -v certbot &> /dev/null && echo "installed" || echo "not_installed")
+
+    # Categorize components
+    local newly_installed=()
+    local already_latest=()
+
+    [ "$ufw_before" = "not_installed" ] && [ "$ufw_after" = "installed" ] && newly_installed+=("UFW Firewall")
+    [ "$ufw_before" = "installed" ] && already_latest+=("UFW Firewall")
+
+    [ "$docker_before" = "not_installed" ] && [ "$docker_after" = "installed" ] && newly_installed+=("Docker Engine")
+    [ "$docker_before" = "installed" ] && already_latest+=("Docker Engine")
+
+    [ "$docker_compose_before" = "not_installed" ] && [ "$docker_compose_after" = "installed" ] && newly_installed+=("Docker Compose")
+    [ "$docker_compose_before" = "installed" ] && already_latest+=("Docker Compose")
+
+    [ "$nginx_before" = "not_installed" ] && [ "$nginx_after" = "installed" ] && newly_installed+=("Nginx")
+    [ "$nginx_before" = "installed" ] && already_latest+=("Nginx")
+
+    [ "$certbot_before" = "not_installed" ] && [ "$certbot_after" = "installed" ] && newly_installed+=("Certbot")
+    [ "$certbot_before" = "installed" ] && already_latest+=("Certbot")
 
     # Display comprehensive summary
     echo ""
@@ -347,44 +405,64 @@ install_all() {
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Check what was installed
-    echo -e "${YELLOW}System Components:${NC}"
+    echo -e "${YELLOW}System Updates:${NC}"
     echo -e "  ${GREEN}✓${NC} System packages updated"
     echo ""
 
     echo -e "${YELLOW}Basic Tools:${NC}"
-    local basic_tools_list="curl wget git vim nano htop net-tools unzip zip tar gzip bzip2"
-    for tool in $basic_tools_list; do
-        if command -v "$tool" &> /dev/null; then
-            echo -e "  ${GREEN}✓${NC} $tool"
-        fi
-    done
+    echo -e "  ${CYAN}Note:${NC} See basic tools installation output above for details"
     echo ""
 
-    echo -e "${YELLOW}Services Installed:${NC}"
+    if [ ${#newly_installed[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Newly Installed Services:${NC}"
+        for service in "${newly_installed[@]}"; do
+            echo -e "  ${GREEN}✓${NC} $service"
+        done
+        echo ""
+    fi
+
+    if [ ${#already_latest[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Already Installed (Skipped):${NC}"
+        for service in "${already_latest[@]}"; do
+            echo -e "  ${BLUE}○${NC} $service - already installed"
+        done
+        echo ""
+    fi
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Installed Services Status:${NC}"
     if command -v ufw &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} UFW Firewall (ports 22, 80, 443 opened)"
+        echo -e "  ${GREEN}✓${NC} UFW Firewall - $(ufw version | head -n1)"
     fi
     if command -v docker &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Docker Engine"
-        if command -v docker-compose &> /dev/null || docker compose version &> /dev/null; then
-            echo -e "  ${GREEN}✓${NC} Docker Compose"
-        fi
+        echo -e "  ${GREEN}✓${NC} Docker - $(docker --version 2>/dev/null | cut -d',' -f1)"
+    fi
+    if command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1; then
+        local dc_version=$(docker-compose --version 2>/dev/null || docker compose version 2>/dev/null | head -n1)
+        echo -e "  ${GREEN}✓${NC} Docker Compose - $dc_version"
     fi
     if command -v nginx &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Nginx Web Server"
+        echo -e "  ${GREEN}✓${NC} Nginx - $(nginx -v 2>&1 | cut -d'/' -f2)"
     fi
     if command -v certbot &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Certbot SSL Tool"
+        echo -e "  ${GREEN}✓${NC} Certbot - $(certbot --version 2>&1 | cut -d' ' -f2)"
     fi
     echo ""
 
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}Next Steps:${NC}"
-    echo -e "  • Check UFW status: ${CYAN}ufw status${NC}"
-    echo -e "  • Check Docker: ${CYAN}docker --version${NC}"
-    echo -e "  • Check Nginx: ${CYAN}nginx -v${NC}"
-    echo -e "  • Configure SSL: ${CYAN}certbot --nginx${NC}"
+    if command -v ufw &> /dev/null; then
+        echo -e "  • Check UFW status: ${CYAN}ufw status${NC}"
+    fi
+    if command -v docker &> /dev/null; then
+        echo -e "  • Check Docker: ${CYAN}docker ps${NC}"
+    fi
+    if command -v nginx &> /dev/null; then
+        echo -e "  • Check Nginx: ${CYAN}systemctl status nginx${NC}"
+    fi
+    if command -v certbot &> /dev/null; then
+        echo -e "  • Configure SSL: ${CYAN}certbot --nginx -d yourdomain.com${NC}"
+    fi
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     log_success "Complete setup finished successfully!"
