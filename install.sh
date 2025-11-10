@@ -667,7 +667,7 @@ main_menu() {
         echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
-        echo -e "${YELLOW}9.${NC} Enable BBR (TCP optimization)"
+        echo -e "${YELLOW}9.${NC} BBR TCP optimization"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
