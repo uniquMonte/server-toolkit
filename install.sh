@@ -67,7 +67,7 @@ print_banner() {
 ║           - UFW Firewall / Docker / Nginx + Certbot       ║
 ║           - Fail2ban / SSH Security / SSH Notifications   ║
 ║           - BBR / Timezone & NTP / Hostname / Logs        ║
-║           - Swap Memory / Traffic Monitoring              ║
+║           - Swap / Traffic Monitor / Backup Manager       ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
 ║           - System Reinstallation (DD)                    ║
 ║                                                           ║
@@ -800,6 +800,20 @@ ssh_login_notifier_menu() {
     bash "${SCRIPTS_PATH}/ssh_login_notifier_manager.sh" menu
 }
 
+# Backup management menu
+backup_manager_menu() {
+    if ! download_script_if_needed "backup_manager.sh"; then
+        log_error "Failed to load backup manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "VPS Backup Manager"
+
+    # Launch the backup manager
+    bash "${SCRIPTS_PATH}/backup_manager.sh" menu
+}
+
 # DD system reinstallation menu
 dd_system_menu() {
     if ! download_script_if_needed "dd_system.sh"; then
@@ -865,21 +879,22 @@ main_menu() {
         echo -e "${CYAN}┌─ System Resources & Monitoring ──────┐${NC}"
         echo -e "${PURPLE}14.${NC} Swap memory management"
         echo -e "${PURPLE}15.${NC} Server traffic reporter"
+        echo -e "${PURPLE}16.${NC} VPS backup manager"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}16.${NC} YABS performance test"
-        echo -e "${PURPLE}17.${NC} IP quality check"
-        echo -e "${PURPLE}18.${NC} Network quality check"
+        echo -e "${PURPLE}17.${NC} YABS performance test"
+        echo -e "${PURPLE}18.${NC} IP quality check"
+        echo -e "${PURPLE}19.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}19.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}20.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-19, or press Enter to exit]: " choice
+        read -p "Please select an action [0-20, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -928,15 +943,18 @@ main_menu() {
                 traffic_reporter_menu
                 ;;
             16)
-                yabs_test_menu
+                backup_manager_menu
                 ;;
             17)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             18)
-                network_quality_menu
+                ip_quality_menu
                 ;;
             19)
+                network_quality_menu
+                ;;
+            20)
                 dd_system_menu
                 ;;
             0|"")
