@@ -95,7 +95,7 @@ configure_nginx() {
     log_info "Configuring Nginx..."
 
     # Configure firewall
-    read -p "Open HTTP/HTTPS ports in firewall? (Y/n): " fw_choice
+    read -p "Open HTTP/HTTPS ports in firewall? (Y/n) (直接回车确认): " fw_choice
     if [[ ! $fw_choice =~ ^[Nn]$ ]]; then
         if command -v ufw &> /dev/null; then
             log_info "Configuring UFW firewall..."
@@ -112,7 +112,7 @@ configure_nginx() {
     fi
 
     # Optimize Nginx configuration
-    read -p "Apply recommended Nginx optimization configuration? (Y/n): " optimize_choice
+    read -p "Apply recommended Nginx optimization configuration? (Y/n) (直接回车确认): " optimize_choice
     if [[ ! $optimize_choice =~ ^[Nn]$ ]]; then
         log_info "Optimizing Nginx configuration..."
 
@@ -295,7 +295,7 @@ uninstall_nginx() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Nginx? (y/N): " confirm
+    read -p "Are you sure you want to uninstall Nginx? (y/N) (直接回车取消): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Uninstallation cancelled"
         return
@@ -332,7 +332,7 @@ uninstall_nginx() {
     esac
 
     # Ask about deleting configuration and data
-    read -p "Delete Nginx configuration files and website data? (y/N): " delete_data
+    read -p "Delete Nginx configuration files and website data? (y/N) (直接回车跳过): " delete_data
     if [[ $delete_data =~ ^[Yy]$ ]]; then
         log_info "Deleting Nginx configuration and data..."
         rm -rf /etc/nginx
@@ -342,7 +342,7 @@ uninstall_nginx() {
 
     # Uninstall Certbot
     if check_certbot_installed; then
-        read -p "Also uninstall Certbot? (y/N): " uninstall_certbot
+        read -p "Also uninstall Certbot? (y/N) (直接回车跳过): " uninstall_certbot
         if [[ $uninstall_certbot =~ ^[Yy]$ ]]; then
             log_info "Uninstalling Certbot..."
 
@@ -362,7 +362,7 @@ uninstall_nginx() {
             esac
 
             # Delete Let's Encrypt data
-            read -p "Delete SSL certificate data? (y/N): " delete_ssl
+            read -p "Delete SSL certificate data? (y/N) (直接回车跳过): " delete_ssl
             if [[ $delete_ssl =~ ^[Yy]$ ]]; then
                 rm -rf /etc/letsencrypt
                 rm -rf /var/lib/letsencrypt

@@ -154,7 +154,7 @@ configure_docker() {
     systemctl enable docker
 
     # Configure Docker mirror acceleration (optional)
-    read -p "Would you like to configure Docker mirror acceleration? (y/N): " mirror_choice
+    read -p "Would you like to configure Docker mirror acceleration? (y/N) (直接回车跳过): " mirror_choice
     if [[ $mirror_choice =~ ^[Yy]$ ]]; then
         log_info "Configuring Docker mirror acceleration..."
 
@@ -300,7 +300,7 @@ uninstall_docker() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Docker? This will delete all containers, images, and data (y/N): " confirm
+    read -p "Are you sure you want to uninstall Docker? This will delete all containers, images, and data (y/N) (直接回车取消): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Uninstallation cancelled"
         return
@@ -361,7 +361,7 @@ uninstall_docker() {
     esac
 
     # Delete Docker data
-    read -p "Delete all Docker data? (y/N): " delete_data
+    read -p "Delete all Docker data? (y/N) (直接回车跳过): " delete_data
     if [[ $delete_data =~ ^[Yy]$ ]]; then
         log_info "Deleting Docker data..."
         rm -rf /var/lib/docker
