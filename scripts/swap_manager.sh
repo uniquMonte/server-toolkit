@@ -194,7 +194,7 @@ main() {
             echo ""
             log_info "Use 'setup' to launch the full swap configuration tool"
             echo ""
-            read -p "Launch swap setup now? [Y/n]: " launch
+            read -p "Launch swap setup now? [Y/n] (press Enter to launch): " launch
             if [[ ! $launch =~ ^[Nn]$ ]]; then
                 launch_swap_setup
             fi
