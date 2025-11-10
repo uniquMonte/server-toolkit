@@ -450,8 +450,8 @@ main_menu() {
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo -e "${CYAN}           Main Menu                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
-        echo -e "${GREEN}1.${NC} One-click install all components"
-        echo -e "${GREEN}2.${NC} System update"
+        echo -e "${GREEN}1.${NC} System update"
+        echo -e "${GREEN}2.${NC} Complete essential setup (System/UFW/Docker/Nginx)"
         echo -e "${GREEN}3.${NC} UFW Firewall management"
         echo -e "${GREEN}4.${NC} Docker management"
         echo -e "${GREEN}5.${NC} Nginx management"
@@ -463,14 +463,14 @@ main_menu() {
         echo -e "${RED}0.${NC} Exit"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select an action [0-10]: " choice
+        read -p "Please select an action [0-10, or press Enter to exit]: " choice
 
         case $choice in
             1)
-                install_all
+                system_update
                 ;;
             2)
-                system_update
+                install_all
                 ;;
             3)
                 ufw_menu
@@ -496,7 +496,7 @@ main_menu() {
             10)
                 network_quality_menu
                 ;;
-            0)
+            0|"")
                 log_info "Thank you for using!"
                 exit 0
                 ;;
