@@ -93,7 +93,7 @@ run_dual_stack_test() {
     log_warning "⚠️  This test will download and execute external scripts from IP.Check.Place"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -119,7 +119,7 @@ run_ipv4_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -145,7 +145,7 @@ run_ipv6_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return

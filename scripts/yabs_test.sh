@@ -90,7 +90,7 @@ run_full_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -115,7 +115,7 @@ run_basic_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -138,7 +138,7 @@ run_geekbench_only() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -161,7 +161,7 @@ run_disk_network_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -185,7 +185,7 @@ run_disk_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -209,7 +209,7 @@ run_network_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return
@@ -232,7 +232,7 @@ run_quick_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (直接回车取消): " confirm
+    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Test cancelled"
         return

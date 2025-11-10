@@ -126,7 +126,7 @@ configure_ufw_common() {
     log_warning "⚠️  IMPORTANT: Resetting UFW will temporarily remove all firewall rules!"
     log_warning "This may briefly interrupt your SSH connection if not configured properly."
     echo ""
-    read -p "Continue with UFW reset? (y/N) (直接回车取消): " reset_confirm
+    read -p "Continue with UFW reset? (y/N) (press Enter to cancel): " reset_confirm
     if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
         log_info "Operation cancelled"
         return
@@ -142,7 +142,7 @@ configure_ufw_common() {
     ufw default allow outgoing
 
     # Ask for SSH port
-    read -p "Enter SSH port (default: 22) (直接回车使用默认): " ssh_port
+    read -p "Enter SSH port (default: 22) (press Enter for default): " ssh_port
     ssh_port=${ssh_port:-22}
 
     log_info "Allowing SSH port ${ssh_port}..."
@@ -179,7 +179,7 @@ configure_ufw_custom() {
     log_warning "⚠️  IMPORTANT: Resetting UFW will temporarily remove all firewall rules!"
     log_warning "This may briefly interrupt your SSH connection if not configured properly."
     echo ""
-    read -p "Continue with UFW reset? (y/N) (直接回车取消): " reset_confirm
+    read -p "Continue with UFW reset? (y/N) (press Enter to cancel): " reset_confirm
     if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
         log_info "Operation cancelled"
         return
@@ -195,20 +195,20 @@ configure_ufw_custom() {
     ufw default allow outgoing
 
     # Ask for SSH port
-    read -p "Enter SSH port (default: 22) (直接回车使用默认): " ssh_port
+    read -p "Enter SSH port (default: 22) (press Enter for default): " ssh_port
     ssh_port=${ssh_port:-22}
 
     log_info "Allowing SSH port ${ssh_port}..."
     ufw allow ${ssh_port}/tcp comment 'SSH'
 
     # Ask about HTTP/HTTPS
-    read -p "Open HTTP (80) port? (Y/n) (直接回车确认): " http_choice
+    read -p "Open HTTP (80) port? (Y/n) (press Enter to confirm): " http_choice
     if [[ ! $http_choice =~ ^[Nn]$ ]]; then
         log_info "Allowing HTTP port 80..."
         ufw allow 80/tcp comment 'HTTP'
     fi
 
-    read -p "Open HTTPS (443) port? (Y/n) (直接回车确认): " https_choice
+    read -p "Open HTTPS (443) port? (Y/n) (press Enter to confirm): " https_choice
     if [[ ! $https_choice =~ ^[Nn]$ ]]; then
         log_info "Allowing HTTPS port 443..."
         ufw allow 443/tcp comment 'HTTPS'
@@ -216,10 +216,10 @@ configure_ufw_custom() {
 
     # Ask about custom ports
     while true; do
-        read -p "Do you need to open additional ports? (y/N) (直接回车跳过): " custom_choice
+        read -p "Do you need to open additional ports? (y/N) (press Enter to skip): " custom_choice
         if [[ $custom_choice =~ ^[Yy]$ ]]; then
             read -p "Enter port number: " custom_port
-            read -p "Protocol (tcp/udp/both, default tcp) (直接回车使用默认): " protocol
+            read -p "Protocol (tcp/udp/both, default tcp) (press Enter for default): " protocol
             protocol=${protocol:-tcp}
 
             if [ "$protocol" == "both" ]; then
@@ -257,7 +257,7 @@ uninstall_ufw() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall UFW? This will remove all firewall rules (y/N) (直接回车取消): " confirm
+    read -p "Are you sure you want to uninstall UFW? This will remove all firewall rules (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Uninstallation cancelled"
         return
