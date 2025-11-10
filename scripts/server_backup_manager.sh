@@ -505,7 +505,7 @@ main() {
                 fi
             else
                 echo ""
-                read -p "Server Backup is not installed. Install now? [Y/n]: " install
+                read -p "Server Backup is not installed. Install now? [Y/n] (press Enter to install): " install
                 if [[ ! $install =~ ^[Nn]$ ]]; then
                     install_server_backup
                 fi
