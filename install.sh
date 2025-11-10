@@ -463,7 +463,7 @@ main_menu() {
         echo -e "${RED}0.${NC} Exit"
         echo -e "${CYAN}═══════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select an action [0-10]: " choice
+        read -p "Please select an action [0-10, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -496,7 +496,7 @@ main_menu() {
             10)
                 network_quality_menu
                 ;;
-            0)
+            0|"")
                 log_info "Thank you for using!"
                 exit 0
                 ;;
