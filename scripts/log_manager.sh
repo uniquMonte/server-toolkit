@@ -95,6 +95,36 @@ calculate_log_params() {
     echo "$mode|$docker_max_size|$docker_max_file|$journald_max_use|$journald_keep_free|$journald_max_file_size"
 }
 
+# Get current Docker log configuration
+get_current_docker_config() {
+    if [ ! -f /etc/docker/daemon.json ]; then
+        echo "not_configured|||"
+        return
+    fi
+
+    local max_size=$(grep -o '"max-size"[[:space:]]*:[[:space:]]*"[^"]*"' /etc/docker/daemon.json 2>/dev/null | cut -d'"' -f4)
+    local max_file=$(grep -o '"max-file"[[:space:]]*:[[:space:]]*"[^"]*"' /etc/docker/daemon.json 2>/dev/null | cut -d'"' -f4)
+
+    if [ -z "$max_size" ] && [ -z "$max_file" ]; then
+        echo "not_configured|||"
+    else
+        echo "configured|${max_size:-unlimited}|${max_file:-unlimited}"
+    fi
+}
+
+# Get current journald configuration
+get_current_journald_config() {
+    local max_use=$(grep "^SystemMaxUse=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
+    local keep_free=$(grep "^SystemKeepFree=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
+    local max_file_size=$(grep "^SystemMaxFileSize=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
+
+    if [ -z "$max_use" ] && [ -z "$keep_free" ] && [ -z "$max_file_size" ]; then
+        echo "not_configured|||"
+    else
+        echo "configured|${max_use:-default}|${keep_free:-default}|${max_file_size:-default}"
+    fi
+}
+
 # Show current disk space status
 show_disk_status() {
     local available_gb=$(get_disk_space)
@@ -136,29 +166,25 @@ show_docker_log_config() {
         return
     fi
 
-    if [ -f /etc/docker/daemon.json ]; then
-        echo -e "Config File: ${GREEN}/etc/docker/daemon.json${NC}"
-        echo ""
+    local docker_config=$(get_current_docker_config)
+    local status=$(echo "$docker_config" | cut -d'|' -f1)
+    local max_size=$(echo "$docker_config" | cut -d'|' -f2)
+    local max_file=$(echo "$docker_config" | cut -d'|' -f3)
 
-        # Try to extract log settings
-        local max_size=$(grep -o '"max-size"[[:space:]]*:[[:space:]]*"[^"]*"' /etc/docker/daemon.json 2>/dev/null | cut -d'"' -f4)
-        local max_file=$(grep -o '"max-file"[[:space:]]*:[[:space:]]*"[^"]*"' /etc/docker/daemon.json 2>/dev/null | cut -d'"' -f4)
-
-        if [ -n "$max_size" ] || [ -n "$max_file" ]; then
-            [ -n "$max_size" ] && echo -e "Max Size per File: ${CYAN}$max_size${NC}" || echo -e "Max Size per File: ${YELLOW}Not configured${NC}"
-            [ -n "$max_file" ] && echo -e "Max Files        : ${CYAN}$max_file${NC}" || echo -e "Max Files        : ${YELLOW}Not configured${NC}"
-        else
-            echo -e "${YELLOW}No log rotation configured${NC}"
-        fi
+    if [ "$status" = "not_configured" ]; then
+        echo -e "Status: ${YELLOW}Not Configured${NC}"
+        echo -e "        ${YELLOW}Using Docker default (no log rotation)${NC}"
+        echo -e "        ${RED}⚠ Logs will grow indefinitely!${NC}"
     else
-        echo -e "Config File: ${YELLOW}Not found${NC}"
-        echo -e "${YELLOW}Using Docker default settings (no rotation)${NC}"
+        echo -e "Status: ${GREEN}Configured${NC}"
+        echo -e "Max Size per File: ${CYAN}$max_size${NC}"
+        echo -e "Max Files        : ${CYAN}$max_file${NC}"
     fi
 
     # Show current Docker log disk usage
     if [ -d /var/lib/docker/containers ]; then
         local docker_log_size=$(du -sh /var/lib/docker/containers 2>/dev/null | cut -f1)
-        [ -n "$docker_log_size" ] && echo -e "Current Log Size: ${CYAN}$docker_log_size${NC}"
+        [ -n "$docker_log_size" ] && echo -e "Current Log Size : ${CYAN}$docker_log_size${NC}"
     fi
 
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -171,16 +197,22 @@ show_journald_config() {
     echo -e "${CYAN}System Journal (journald) Configuration${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    if [ -f /etc/systemd/journald.conf ]; then
-        local max_use=$(grep "^SystemMaxUse=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
-        local keep_free=$(grep "^SystemKeepFree=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
-        local max_file_size=$(grep "^SystemMaxFileSize=" /etc/systemd/journald.conf 2>/dev/null | cut -d'=' -f2)
+    local journald_config=$(get_current_journald_config)
+    local status=$(echo "$journald_config" | cut -d'|' -f1)
+    local max_use=$(echo "$journald_config" | cut -d'|' -f2)
+    local keep_free=$(echo "$journald_config" | cut -d'|' -f3)
+    local max_file_size=$(echo "$journald_config" | cut -d'|' -f4)
 
-        [ -n "$max_use" ] && echo -e "Max Disk Usage  : ${CYAN}$max_use${NC}" || echo -e "Max Disk Usage  : ${YELLOW}Default (10% of disk)${NC}"
-        [ -n "$keep_free" ] && echo -e "Keep Free       : ${CYAN}$keep_free${NC}" || echo -e "Keep Free       : ${YELLOW}Default (15% of disk)${NC}"
-        [ -n "$max_file_size" ] && echo -e "Max File Size   : ${CYAN}$max_file_size${NC}" || echo -e "Max File Size   : ${YELLOW}Default${NC}"
+    if [ "$status" = "not_configured" ]; then
+        echo -e "Status: ${YELLOW}Not Configured${NC}"
+        echo -e "Max Disk Usage  : ${YELLOW}Default (10% of disk)${NC}"
+        echo -e "Keep Free       : ${YELLOW}Default (15% of disk)${NC}"
+        echo -e "Max File Size   : ${YELLOW}Default${NC}"
     else
-        echo -e "${YELLOW}Using system defaults${NC}"
+        echo -e "Status: ${GREEN}Configured${NC}"
+        echo -e "Max Disk Usage  : ${CYAN}$max_use${NC}"
+        echo -e "Keep Free       : ${CYAN}$keep_free${NC}"
+        echo -e "Max File Size   : ${CYAN}$max_file_size${NC}"
     fi
 
     # Show current journal disk usage
@@ -244,20 +276,113 @@ show_recommended_config() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
+# Show comparison: current vs recommended
+show_comparison() {
+    local available_gb=$(get_disk_space)
+    local params=$(calculate_log_params "$available_gb")
+
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}         ${YELLOW}Current vs Recommended Configuration${NC}           ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
+
+    # Docker comparison
+    if command -v docker &> /dev/null; then
+        echo ""
+        echo -e "${CYAN}━━━ Docker Log Settings ━━━${NC}"
+
+        local docker_config=$(get_current_docker_config)
+        local current_status=$(echo "$docker_config" | cut -d'|' -f1)
+        local current_max_size=$(echo "$docker_config" | cut -d'|' -f2)
+        local current_max_file=$(echo "$docker_config" | cut -d'|' -f3)
+
+        local rec_max_size=$(echo "$params" | cut -d'|' -f2)
+        local rec_max_file=$(echo "$params" | cut -d'|' -f3)
+
+        if [ "$current_status" = "not_configured" ]; then
+            echo -e "${YELLOW}Current:${NC} Not configured (unlimited growth)"
+        else
+            echo -e "${YELLOW}Current:${NC} max-size=${current_max_size}, max-file=${current_max_file}"
+        fi
+        echo -e "${GREEN}Recommended:${NC} max-size=${rec_max_size}, max-file=${rec_max_file}"
+    fi
+
+    # Journald comparison
+    echo ""
+    echo -e "${CYAN}━━━ System Journal Settings ━━━${NC}"
+
+    local journald_config=$(get_current_journald_config)
+    local current_status=$(echo "$journald_config" | cut -d'|' -f1)
+    local current_max_use=$(echo "$journald_config" | cut -d'|' -f2)
+    local current_keep_free=$(echo "$journald_config" | cut -d'|' -f3)
+    local current_max_file_size=$(echo "$journald_config" | cut -d'|' -f4)
+
+    local rec_max_use=$(echo "$params" | cut -d'|' -f4)
+    local rec_keep_free=$(echo "$params" | cut -d'|' -f5)
+    local rec_max_file_size=$(echo "$params" | cut -d'|' -f6)
+
+    if [ "$current_status" = "not_configured" ]; then
+        echo -e "${YELLOW}Current:${NC} Using system defaults"
+    else
+        echo -e "${YELLOW}Current:${NC} MaxUse=${current_max_use}, KeepFree=${current_keep_free}, MaxFileSize=${current_max_file_size}"
+    fi
+    echo -e "${GREEN}Recommended:${NC} MaxUse=${rec_max_use}, KeepFree=${rec_keep_free}, MaxFileSize=${rec_max_file_size}"
+
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
 # Configure Docker log rotation
 configure_docker_logs() {
+    # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
         log_warning "Docker is not installed, skipping Docker log configuration"
+        echo ""
+        log_info "Install Docker first using menu option 5 (Docker management)"
         return 0
     fi
 
-    log_info "Configuring Docker log rotation..."
+    log_info "Checking Docker log configuration..."
     echo ""
 
+    # Show current vs recommended
     local available_gb=$(get_disk_space)
     local params=$(calculate_log_params "$available_gb")
-    local docker_max_size=$(echo "$params" | cut -d'|' -f2)
-    local docker_max_file=$(echo "$params" | cut -d'|' -f3)
+    local docker_config=$(get_current_docker_config)
+    local current_status=$(echo "$docker_config" | cut -d'|' -f1)
+    local current_max_size=$(echo "$docker_config" | cut -d'|' -f2)
+    local current_max_file=$(echo "$docker_config" | cut -d'|' -f3)
+    local rec_max_size=$(echo "$params" | cut -d'|' -f2)
+    local rec_max_file=$(echo "$params" | cut -d'|' -f3)
+
+    echo -e "${CYAN}━━━ Docker Log Configuration ━━━${NC}"
+    if [ "$current_status" = "not_configured" ]; then
+        echo -e "${YELLOW}Current Status:${NC} Not configured ${RED}(logs will grow indefinitely!)${NC}"
+    else
+        echo -e "${YELLOW}Current Status:${NC} Configured"
+        echo -e "  Max Size: ${CYAN}$current_max_size${NC}, Max Files: ${CYAN}$current_max_file${NC}"
+    fi
+    echo ""
+    echo -e "${GREEN}Recommended:${NC}"
+    echo -e "  Max Size: ${CYAN}$rec_max_size${NC}, Max Files: ${CYAN}$rec_max_file${NC}"
+    echo -e "  (Based on ${available_gb}GB available space)"
+    echo ""
+
+    # Check if already optimally configured
+    if [ "$current_max_size" = "$rec_max_size" ] && [ "$current_max_file" = "$rec_max_file" ]; then
+        log_success "Docker logs are already optimally configured!"
+        return 0
+    fi
+
+    # Ask for confirmation
+    read -p "Apply recommended Docker log configuration? [Y/n, or press Enter to apply]: " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Docker log configuration cancelled"
+        return 0
+    fi
+
+    echo ""
+    log_info "Applying Docker log configuration..."
 
     # Create /etc/docker directory if it doesn't exist
     mkdir -p /etc/docker
@@ -265,29 +390,27 @@ configure_docker_logs() {
     # Backup existing config if it exists
     if [ -f /etc/docker/daemon.json ]; then
         cp /etc/docker/daemon.json /etc/docker/daemon.json.bak.$(date +%Y%m%d_%H%M%S)
-        log_info "Backed up existing Docker configuration"
+        log_info "Backed up existing configuration"
     fi
 
     # Create or update daemon.json
     if [ -f /etc/docker/daemon.json ] && [ -s /etc/docker/daemon.json ]; then
         # File exists and is not empty, try to merge settings
-        log_info "Updating existing Docker configuration..."
-
-        # Use python or jq if available, otherwise recreate file
         if command -v jq &> /dev/null; then
             local temp_file=$(mktemp)
-            jq --arg maxsize "$docker_max_size" --arg maxfile "$docker_max_file" \
+            jq --arg maxsize "$rec_max_size" --arg maxfile "$rec_max_file" \
                 '. + {"log-driver": "json-file", "log-opts": {"max-size": $maxsize, "max-file": $maxfile}}' \
                 /etc/docker/daemon.json > "$temp_file" && mv "$temp_file" /etc/docker/daemon.json
+            log_info "Merged with existing configuration using jq"
         else
             # Simple recreation (may lose other settings)
-            log_warning "jq not found, recreating Docker config (existing settings may be lost)"
+            log_warning "jq not found, recreating config file"
             cat > /etc/docker/daemon.json <<EOF
 {
   "log-driver": "json-file",
   "log-opts": {
-    "max-size": "$docker_max_size",
-    "max-file": "$docker_max_file"
+    "max-size": "$rec_max_size",
+    "max-file": "$rec_max_file"
   }
 }
 EOF
@@ -298,42 +421,78 @@ EOF
 {
   "log-driver": "json-file",
   "log-opts": {
-    "max-size": "$docker_max_size",
-    "max-file": "$docker_max_file"
+    "max-size": "$rec_max_size",
+    "max-file": "$rec_max_file"
   }
 }
 EOF
     fi
 
     log_success "Docker log configuration updated"
-    echo -e "  Max Size: ${CYAN}$docker_max_size${NC}"
-    echo -e "  Max Files: ${CYAN}$docker_max_file${NC}"
     echo ""
 
     # Restart Docker to apply changes
-    log_info "Restarting Docker service..."
+    log_info "Restarting Docker service to apply changes..."
     if systemctl restart docker 2>/dev/null; then
         log_success "Docker service restarted successfully"
+        log_info "New log rotation settings are now active"
     else
-        log_warning "Failed to restart Docker, please restart manually: systemctl restart docker"
+        log_warning "Failed to restart Docker automatically"
+        log_info "Please restart manually: systemctl restart docker"
     fi
 }
 
 # Configure journald log rotation
 configure_journald_logs() {
-    log_info "Configuring system journal (journald) log rotation..."
+    log_info "Checking system journal configuration..."
     echo ""
 
+    # Show current vs recommended
     local available_gb=$(get_disk_space)
     local params=$(calculate_log_params "$available_gb")
-    local journald_max_use=$(echo "$params" | cut -d'|' -f4)
-    local journald_keep_free=$(echo "$params" | cut -d'|' -f5)
-    local journald_max_file_size=$(echo "$params" | cut -d'|' -f6)
+    local journald_config=$(get_current_journald_config)
+    local current_status=$(echo "$journald_config" | cut -d'|' -f1)
+    local current_max_use=$(echo "$journald_config" | cut -d'|' -f2)
+    local current_keep_free=$(echo "$journald_config" | cut -d'|' -f3)
+    local current_max_file_size=$(echo "$journald_config" | cut -d'|' -f4)
+    local rec_max_use=$(echo "$params" | cut -d'|' -f4)
+    local rec_keep_free=$(echo "$params" | cut -d'|' -f5)
+    local rec_max_file_size=$(echo "$params" | cut -d'|' -f6)
 
-    # Backup existing config if it exists
+    echo -e "${CYAN}━━━ System Journal Configuration ━━━${NC}"
+    if [ "$current_status" = "not_configured" ]; then
+        echo -e "${YELLOW}Current Status:${NC} Using system defaults"
+        echo -e "  (Typically 10% of disk for logs)"
+    else
+        echo -e "${YELLOW}Current Status:${NC} Configured"
+        echo -e "  MaxUse: ${CYAN}$current_max_use${NC}, KeepFree: ${CYAN}$current_keep_free${NC}, MaxFileSize: ${CYAN}$current_max_file_size${NC}"
+    fi
+    echo ""
+    echo -e "${GREEN}Recommended:${NC}"
+    echo -e "  MaxUse: ${CYAN}$rec_max_use${NC}, KeepFree: ${CYAN}$rec_keep_free${NC}, MaxFileSize: ${CYAN}$rec_max_file_size${NC}"
+    echo -e "  (Based on ${available_gb}GB available space)"
+    echo ""
+
+    # Check if already optimally configured
+    if [ "$current_max_use" = "$rec_max_use" ] && [ "$current_keep_free" = "$rec_keep_free" ] && [ "$current_max_file_size" = "$rec_max_file_size" ]; then
+        log_success "System journal is already optimally configured!"
+        return 0
+    fi
+
+    # Ask for confirmation
+    read -p "Apply recommended journal configuration? [Y/n, or press Enter to apply]: " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Journal configuration cancelled"
+        return 0
+    fi
+
+    echo ""
+    log_info "Applying system journal configuration..."
+
+    # Backup existing config
     if [ -f /etc/systemd/journald.conf ]; then
         cp /etc/systemd/journald.conf /etc/systemd/journald.conf.bak.$(date +%Y%m%d_%H%M%S)
-        log_info "Backed up existing journald configuration"
+        log_info "Backed up existing configuration"
     fi
 
     # Update journald configuration
@@ -346,30 +505,29 @@ configure_journald_logs() {
 
     # Add new settings under [Journal] section
     if grep -q "^\[Journal\]" "$config_file"; then
-        sed -i "/^\[Journal\]/a SystemMaxUse=$journald_max_use\nSystemKeepFree=$journald_keep_free\nSystemMaxFileSize=$journald_max_file_size" "$config_file"
+        sed -i "/^\[Journal\]/a SystemMaxUse=$rec_max_use\nSystemKeepFree=$rec_keep_free\nSystemMaxFileSize=$rec_max_file_size" "$config_file"
     else
         # Add [Journal] section if not exists
         cat >> "$config_file" <<EOF
 
 [Journal]
-SystemMaxUse=$journald_max_use
-SystemKeepFree=$journald_keep_free
-SystemMaxFileSize=$journald_max_file_size
+SystemMaxUse=$rec_max_use
+SystemKeepFree=$rec_keep_free
+SystemMaxFileSize=$rec_max_file_size
 EOF
     fi
 
-    log_success "Journald configuration updated"
-    echo -e "  Max Disk Usage: ${CYAN}$journald_max_use${NC}"
-    echo -e "  Keep Free: ${CYAN}$journald_keep_free${NC}"
-    echo -e "  Max File Size: ${CYAN}$journald_max_file_size${NC}"
+    log_success "Journal configuration updated"
     echo ""
 
     # Restart journald to apply changes
-    log_info "Restarting systemd-journald service..."
+    log_info "Restarting systemd-journald service to apply changes..."
     if systemctl restart systemd-journald 2>/dev/null; then
         log_success "systemd-journald service restarted successfully"
+        log_info "New journal settings are now active"
     else
-        log_warning "Failed to restart journald, please restart manually: systemctl restart systemd-journald"
+        log_warning "Failed to restart journald automatically"
+        log_info "Please restart manually: systemctl restart systemd-journald"
     fi
 }
 
@@ -384,7 +542,6 @@ clean_old_logs() {
     if command -v docker &> /dev/null; then
         log_info "Cleaning Docker container logs..."
 
-        # Get Docker log size before cleaning
         if [ -d /var/lib/docker/containers ]; then
             local docker_before=$(du -sm /var/lib/docker/containers 2>/dev/null | cut -f1)
 
@@ -400,6 +557,8 @@ clean_old_logs() {
                 log_info "Docker logs already clean"
             fi
         fi
+    else
+        log_info "Docker not installed, skipping Docker log cleanup"
     fi
 
     # Clean journald logs
@@ -432,33 +591,42 @@ clean_old_logs() {
 
 # Apply all configurations
 configure_all() {
-    log_info "Applying intelligent log management configuration..."
+    log_info "Intelligent log management configuration"
     echo ""
 
     # Show current status
     show_disk_status
-    show_recommended_config
+
+    # Show comparison
+    show_comparison
 
     echo ""
-    read -p "Apply these configurations? [Y/n, or press Enter to apply]: " confirm
+    log_info "This will configure both Docker and system journal logs"
+    read -p "Proceed with configuration? [Y/n, or press Enter to proceed]: " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Configuration cancelled"
         return 0
     fi
 
     echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    # Configure Docker logs
-    configure_docker_logs
+    # Configure Docker logs (with internal confirmation)
+    if command -v docker &> /dev/null; then
+        echo ""
+        configure_docker_logs
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    fi
 
+    # Configure journald logs (with internal confirmation)
     echo ""
-
-    # Configure journald logs
     configure_journald_logs
 
     echo ""
-    log_success "Log management configuration applied successfully!"
-    log_info "Logs will now be automatically rotated according to available disk space"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log_success "Log management configuration completed!"
+    log_info "Your system logs are now optimized for ${available_gb}GB available space"
 }
 
 # Show status
