@@ -128,10 +128,10 @@ check_dependencies() {
     fi
 }
 
-# Download script files (if executed via curl)
-download_scripts() {
+# Initialize remote execution mode (if executed via curl)
+init_remote_mode() {
     if [ ! -d "$SCRIPTS_PATH" ]; then
-        log_info "Remote execution detected, downloading script files..."
+        IS_REMOTE_MODE=true
 
         # Priority: CLI arg > env var > default (main)
         # SETUP_BRANCH is set in main() from command line args
@@ -143,38 +143,59 @@ download_scripts() {
         SCRIPT_DIR="$TEMP_DIR"
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
+        log_info "Remote execution mode enabled, scripts will be downloaded on demand"
         log_info "Using branch: ${BRANCH}"
-
-        # Download all script files
-        scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh" "ip_quality_test.sh" "network_quality_test.sh")
-
-        for script in "${scripts[@]}"; do
-            log_info "Downloading ${script}..."
-            if ! curl -fsSL --proto '=https' --tlsv1.2 "${REPO_URL}/scripts/${script}" -o "${SCRIPTS_PATH}/${script}"; then
-                log_error "Failed to download ${script}"
-                log_error "URL: ${REPO_URL}/scripts/${script}"
-                log_info "Tip: Make sure the branch '${BRANCH}' exists and contains the scripts"
-                exit 1
-            fi
-            chmod +x "${SCRIPTS_PATH}/${script}"
-        done
-
-        log_success "Script files downloaded successfully from branch: ${BRANCH}"
+    else
+        IS_REMOTE_MODE=false
     fi
+}
+
+# Download a single script if needed (for remote execution)
+download_script_if_needed() {
+    local script_name="$1"
+    local script_path="${SCRIPTS_PATH}/${script_name}"
+
+    # If script already exists, no need to download
+    if [ -f "$script_path" ]; then
+        return 0
+    fi
+
+    # If not in remote execution mode, script should exist locally
+    if [ "$IS_REMOTE_MODE" != "true" ]; then
+        log_error "${script_name} not found at ${script_path}"
+        return 1
+    fi
+
+    # Remote execution mode - download the script
+    log_info "Downloading ${script_name}..."
+
+    if ! curl -fsSL --proto '=https' --tlsv1.2 "${REPO_URL}/scripts/${script_name}" -o "${script_path}"; then
+        log_error "Failed to download ${script_name}"
+        log_error "URL: ${REPO_URL}/scripts/${script_name}"
+        return 1
+    fi
+
+    chmod +x "${script_path}"
+    return 0
 }
 
 # System update
 system_update() {
     log_step "Performing system update..."
-    if [ -f "${SCRIPTS_PATH}/system_update.sh" ]; then
+    if download_script_if_needed "system_update.sh"; then
         bash "${SCRIPTS_PATH}/system_update.sh"
     else
-        log_error "System update script not found"
+        log_error "Failed to load system update script"
     fi
 }
 
 # UFW management menu
 ufw_menu() {
+    if ! download_script_if_needed "ufw_manager.sh"; then
+        log_error "Failed to load UFW manager script"
+        return 1
+    fi
+
     echo ""
     log_step "UFW Firewall Management"
     echo -e "${CYAN}1.${NC} Install UFW only (no rule configuration)"
@@ -209,6 +230,11 @@ ufw_menu() {
 
 # Docker management menu
 docker_menu() {
+    if ! download_script_if_needed "docker_manager.sh"; then
+        log_error "Failed to load Docker manager script"
+        return 1
+    fi
+
     echo ""
     log_step "Docker Container Engine Management"
     echo -e "${CYAN}1.${NC} Install Docker"
@@ -239,6 +265,11 @@ docker_menu() {
 
 # Nginx management menu
 nginx_menu() {
+    if ! download_script_if_needed "nginx_manager.sh"; then
+        log_error "Failed to load Nginx manager script"
+        return 1
+    fi
+
     echo ""
     log_step "Nginx + Certbot Management"
     echo -e "${CYAN}1.${NC} Install Nginx"
@@ -271,6 +302,15 @@ nginx_menu() {
 install_all() {
     log_step "Starting one-click installation of all components..."
 
+    # Download all required scripts first
+    local required_scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
+    for script in "${required_scripts[@]}"; do
+        if ! download_script_if_needed "$script"; then
+            log_error "Failed to load $script, aborting installation"
+            return 1
+        fi
+    done
+
     # System update
     system_update
 
@@ -288,15 +328,20 @@ install_all() {
 
 # YABS performance test menu
 yabs_test_menu() {
-    if [ -f "${SCRIPTS_PATH}/yabs_test.sh" ]; then
+    if download_script_if_needed "yabs_test.sh"; then
         bash "${SCRIPTS_PATH}/yabs_test.sh" menu
     else
-        log_error "YABS test script not found"
+        log_error "Failed to load YABS test script"
     fi
 }
 
 # Fail2ban management menu
 fail2ban_menu() {
+    if ! download_script_if_needed "fail2ban_manager.sh"; then
+        log_error "Failed to load Fail2ban manager script"
+        return 1
+    fi
+
     echo ""
     log_step "Fail2ban Intrusion Prevention Management"
     echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
@@ -335,6 +380,11 @@ fail2ban_menu() {
 
 # SSH security configuration menu
 ssh_security_menu() {
+    if ! download_script_if_needed "ssh_security.sh"; then
+        log_error "Failed to load SSH security script"
+        return 1
+    fi
+
     echo ""
     log_step "SSH Security Configuration"
     echo -e "${CYAN}1.${NC} Configure SSH key login"
@@ -377,19 +427,19 @@ ssh_security_menu() {
 
 # IP quality test menu
 ip_quality_menu() {
-    if [ -f "${SCRIPTS_PATH}/ip_quality_test.sh" ]; then
+    if download_script_if_needed "ip_quality_test.sh"; then
         bash "${SCRIPTS_PATH}/ip_quality_test.sh" menu
     else
-        log_error "IP quality test script not found"
+        log_error "Failed to load IP quality test script"
     fi
 }
 
 # Network quality test menu
 network_quality_menu() {
-    if [ -f "${SCRIPTS_PATH}/network_quality_test.sh" ]; then
+    if download_script_if_needed "network_quality_test.sh"; then
         bash "${SCRIPTS_PATH}/network_quality_test.sh" menu
     else
-        log_error "Network quality test script not found"
+        log_error "Failed to load network quality test script"
     fi
 }
 
@@ -515,8 +565,8 @@ main() {
     # Detect operating system
     detect_os
 
-    # Download scripts (if needed)
-    download_scripts
+    # Initialize remote mode (if needed)
+    init_remote_mode
 
     # Display main menu
     main_menu
