@@ -5,7 +5,7 @@ Quickly install and configure common tools on newly purchased VPS servers.
 ## Quick Start
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/vps-setup/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
 ```
 
 ## Menu Options
@@ -44,4 +44,4 @@ Special thanks to the authors and contributors of these projects!
 
 ---
 
-MIT License | [GitHub](https://github.com/uniquMonte/vps-setup)
+MIT License | [GitHub](https://github.com/uniquMonte/server-toolkit)

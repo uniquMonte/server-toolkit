@@ -133,7 +133,7 @@ download_scripts() {
     if [ ! -d "$SCRIPTS_PATH" ]; then
         log_info "Remote execution detected, downloading script files..."
 
-        REPO_URL="https://raw.githubusercontent.com/uniquMonte/vps-setup/main"
+        REPO_URL="https://raw.githubusercontent.com/uniquMonte/server-toolkit/main"
         TEMP_DIR="/tmp/vps-setup-$$"
         mkdir -p "$TEMP_DIR/scripts"
 
