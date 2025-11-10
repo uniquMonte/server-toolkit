@@ -106,7 +106,7 @@ main() {
     log_info "All updates completed!"
     log_info "It is recommended to reboot the system to apply all updates"
 
-    read -p "Would you like to reboot now? (Y/n): " restart_choice
+    read -p "Would you like to reboot now? [Y/n, or press Enter to reboot]: " restart_choice
     if [[ ! $restart_choice =~ ^[Nn]$ ]]; then
         log_info "System will reboot in 5 seconds..."
         sleep 5
