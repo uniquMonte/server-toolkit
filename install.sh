@@ -67,6 +67,7 @@ print_banner() {
 ║           - UFW Firewall / Docker / Nginx + Certbot       ║
 ║           - Fail2ban / SSH Security / BBR Optimization    ║
 ║           - Timezone & NTP / Hostname / Log Management    ║
+║           - Swap Memory / Traffic Monitoring              ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
 ║           - System Reinstallation (DD)                    ║
 ║                                                           ║
@@ -757,6 +758,34 @@ network_quality_menu() {
     fi
 }
 
+# Swap management menu
+swap_menu() {
+    if ! download_script_if_needed "swap_manager.sh"; then
+        log_error "Failed to load swap manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Swap Memory Management"
+
+    # Launch the swap manager
+    bash "${SCRIPTS_PATH}/swap_manager.sh" menu
+}
+
+# Traffic reporter management menu
+traffic_reporter_menu() {
+    if ! download_script_if_needed "traffic_reporter_manager.sh"; then
+        log_error "Failed to load traffic reporter script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Server Traffic Reporter"
+
+    # Launch the traffic reporter manager
+    bash "${SCRIPTS_PATH}/traffic_reporter_manager.sh" menu
+}
+
 # DD system reinstallation menu
 dd_system_menu() {
     if ! download_script_if_needed "dd_system.sh"; then
@@ -818,19 +847,24 @@ main_menu() {
         echo -e "${YELLOW}12.${NC} Log management (system & Docker)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
+        echo -e "${CYAN}┌─ System Resources & Monitoring ──────┐${NC}"
+        echo -e "${PURPLE}13.${NC} Swap memory management"
+        echo -e "${PURPLE}14.${NC} Server traffic reporter"
+        echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
+        echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}13.${NC} YABS performance test"
-        echo -e "${PURPLE}14.${NC} IP quality check"
-        echo -e "${PURPLE}15.${NC} Network quality check"
+        echo -e "${PURPLE}15.${NC} YABS performance test"
+        echo -e "${PURPLE}16.${NC} IP quality check"
+        echo -e "${PURPLE}17.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}16.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}18.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-16, or press Enter to exit]: " choice
+        read -p "Please select an action [0-18, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -870,15 +904,21 @@ main_menu() {
                 log_management_menu
                 ;;
             13)
-                yabs_test_menu
+                swap_menu
                 ;;
             14)
-                ip_quality_menu
+                traffic_reporter_menu
                 ;;
             15)
-                network_quality_menu
+                yabs_test_menu
                 ;;
             16)
+                ip_quality_menu
+                ;;
+            17)
+                network_quality_menu
+                ;;
+            18)
                 dd_system_menu
                 ;;
             0|"")
