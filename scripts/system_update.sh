@@ -97,7 +97,7 @@ update_system() {
 
             echo ""
             log_success "Ubuntu/Debian system update complete"
-            log_success "Common tools installed successfully!"
+            log_success "Essential system tools installed"
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
@@ -151,7 +151,7 @@ update_system() {
 
             echo ""
             log_success "CentOS/RHEL/Rocky/AlmaLinux/Fedora system update complete"
-            log_success "Common tools installed successfully!"
+            log_success "Essential system tools installed"
             ;;
 
         *)
