@@ -447,9 +447,9 @@ network_quality_menu() {
 main_menu() {
     while true; do
         echo ""
-        echo -e "${CYAN}╔═══════════════════════════════════════╗${NC}"
-        echo -e "${CYAN}║${NC}            ${CYAN}Main Menu${NC}                    ${CYAN}║${NC}"
-        echo -e "${CYAN}╚═══════════════════════════════════════╝${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}              Main Menu${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "${CYAN}┌─ Basic System Setup ─────────────────┐${NC}"
         echo -e "${GREEN}1.${NC} System update"
