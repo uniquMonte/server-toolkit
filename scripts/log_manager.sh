@@ -279,17 +279,47 @@ show_recommended_config() {
 # Show comparison: current vs recommended
 show_comparison() {
     local available_gb=$(get_disk_space)
+    local total_gb=$(get_total_disk_space)
     local params=$(calculate_log_params "$available_gb")
+    local mode=$(echo "$params" | cut -d'|' -f1)
 
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}         ${YELLOW}Current vs Recommended Configuration${NC}           ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Show recommendation basis
+    echo -e "${BLUE}📊 Analysis Basis:${NC}"
+    echo -e "   Total Disk Space    : ${CYAN}${total_gb}GB${NC}"
+    echo -e "   Available Space     : ${GREEN}${available_gb}GB${NC}"
+
+    # Show mode explanation
+    case $mode in
+        strict)
+            echo -e "   Recommendation Mode : ${RED}Strict${NC}"
+            echo -e "   ${YELLOW}⚠ Very low space detected! Aggressive log rotation recommended.${NC}"
+            ;;
+        normal)
+            echo -e "   Recommendation Mode : ${YELLOW}Normal${NC}"
+            echo -e "   ${YELLOW}→ Limited space. Balanced log retention recommended.${NC}"
+            ;;
+        relaxed)
+            echo -e "   Recommendation Mode : ${GREEN}Relaxed${NC}"
+            echo -e "   ${GREEN}→ Sufficient space. Keep more logs for debugging.${NC}"
+            ;;
+        ample)
+            echo -e "   Recommendation Mode : ${CYAN}Ample${NC}"
+            echo -e "   ${CYAN}→ Plenty of space. Extended log retention available.${NC}"
+            ;;
+    esac
 
     # Docker comparison
     if command -v docker &> /dev/null; then
         echo ""
-        echo -e "${CYAN}━━━ Docker Log Settings ━━━${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🐳 Docker Log Settings${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
         local docker_config=$(get_current_docker_config)
         local current_status=$(echo "$docker_config" | cut -d'|' -f1)
@@ -300,16 +330,35 @@ show_comparison() {
         local rec_max_file=$(echo "$params" | cut -d'|' -f3)
 
         if [ "$current_status" = "not_configured" ]; then
-            echo -e "${YELLOW}Current:${NC} Not configured (unlimited growth)"
+            echo -e "${YELLOW}Current Configuration:${NC}"
+            echo -e "  Status: ${RED}Not configured (logs grow indefinitely!)${NC}"
+            echo -e "  Risk  : ${RED}May fill up disk space${NC}"
         else
-            echo -e "${YELLOW}Current:${NC} max-size=${current_max_size}, max-file=${current_max_file}"
+            echo -e "${YELLOW}Current Configuration:${NC}"
+            echo -e "  Max Size per File: ${current_max_size}"
+            echo -e "  Max Files        : ${current_max_file}"
+            echo -e "  Total per Container: ~$((${current_max_size//[!0-9]/} * ${current_max_file//[!0-9]/}))MB"
         fi
-        echo -e "${GREEN}Recommended:${NC} max-size=${rec_max_size}, max-file=${rec_max_file}"
+
+        echo ""
+        echo -e "${GREEN}Recommended Configuration:${NC}"
+        echo -e "  Max Size per File: ${CYAN}${rec_max_size}${NC}"
+        echo -e "  Max Files        : ${CYAN}${rec_max_file}${NC}"
+        echo -e "  Total per Container: ${CYAN}~$((${rec_max_size//[!0-9]/} * ${rec_max_file//[!0-9]/}))MB${NC}"
+        echo -e "  ${BLUE}→ Each container will keep up to ${rec_max_file} log files${NC}"
+    else
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🐳 Docker Log Settings${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}Docker is not installed - will skip Docker configuration${NC}"
     fi
 
     # Journald comparison
     echo ""
-    echo -e "${CYAN}━━━ System Journal Settings ━━━${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📋 System Journal (journald) Settings${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     local journald_config=$(get_current_journald_config)
     local current_status=$(echo "$journald_config" | cut -d'|' -f1)
@@ -322,13 +371,42 @@ show_comparison() {
     local rec_max_file_size=$(echo "$params" | cut -d'|' -f6)
 
     if [ "$current_status" = "not_configured" ]; then
-        echo -e "${YELLOW}Current:${NC} Using system defaults"
+        echo -e "${YELLOW}Current Configuration:${NC}"
+        echo -e "  Status: ${YELLOW}Using system defaults${NC}"
+        echo -e "  Max Disk Usage  : ${YELLOW}~10% of disk (~$((total_gb / 10))GB)${NC}"
+        echo -e "  Keep Free       : ${YELLOW}~15% of disk (~$((total_gb * 15 / 100))GB)${NC}"
     else
-        echo -e "${YELLOW}Current:${NC} MaxUse=${current_max_use}, KeepFree=${current_keep_free}, MaxFileSize=${current_max_file_size}"
+        echo -e "${YELLOW}Current Configuration:${NC}"
+        echo -e "  Max Disk Usage  : ${current_max_use}"
+        echo -e "  Keep Free       : ${current_keep_free}"
+        echo -e "  Max File Size   : ${current_max_file_size}"
     fi
-    echo -e "${GREEN}Recommended:${NC} MaxUse=${rec_max_use}, KeepFree=${rec_keep_free}, MaxFileSize=${rec_max_file_size}"
 
     echo ""
+    echo -e "${GREEN}Recommended Configuration:${NC}"
+    echo -e "  Max Disk Usage  : ${CYAN}${rec_max_use}${NC}"
+    echo -e "  Keep Free       : ${CYAN}${rec_keep_free}${NC}"
+    echo -e "  Max File Size   : ${CYAN}${rec_max_file_size}${NC}"
+    echo -e "  ${BLUE}→ System logs limited to ${rec_max_use}, ensuring ${rec_keep_free} always free${NC}"
+
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${BLUE}💡 Why these recommendations?${NC}"
+    case $mode in
+        strict)
+            echo -e "   ${YELLOW}With only ${available_gb}GB available, aggressive rotation prevents disk full.${NC}"
+            ;;
+        normal)
+            echo -e "   ${YELLOW}With ${available_gb}GB available, balanced settings prevent space issues.${NC}"
+            ;;
+        relaxed)
+            echo -e "   ${GREEN}With ${available_gb}GB available, you can keep more logs for debugging.${NC}"
+            ;;
+        ample)
+            echo -e "   ${CYAN}With ${available_gb}GB available, extended retention helps with analysis.${NC}"
+            ;;
+    esac
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
