@@ -6,7 +6,19 @@
 # Purpose: Quickly deploy commonly used tools on newly purchased VPS
 #######################################
 
-set -e
+# Error handling - exit on critical errors only
+set -o pipefail
+
+# Trap errors for cleanup
+trap 'handle_error $? $LINENO' ERR
+
+handle_error() {
+    local exit_code=$1
+    local line_num=$2
+    if [ $exit_code -ne 0 ]; then
+        log_error "Error occurred at line $line_num with exit code $exit_code"
+    fi
+}
 
 # Color definitions
 RED='\033[0;31m'
@@ -49,7 +61,6 @@ print_banner() {
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
 ║           VPS Quick Setup Script v1.0                     ║
-║           VPS Quick Setup Script                          ║
 ║                                                           ║
 ║           Supported Components:                           ║
 ║           - System Update                                 ║
@@ -95,6 +106,24 @@ detect_os() {
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         log_error "Please run this script with root privileges"
+        exit 1
+    fi
+}
+
+# Check dependencies
+check_dependencies() {
+    local deps=("curl" "bash")
+    local missing=()
+
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing+=("$dep")
+        fi
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_error "Missing required dependencies: ${missing[*]}"
+        log_info "Please install them first and try again"
         exit 1
     fi
 }
@@ -431,6 +460,9 @@ main() {
 
     # Check root privileges
     check_root
+
+    # Check dependencies
+    check_dependencies
 
     # Detect operating system
     detect_os

@@ -121,6 +121,17 @@ install_custom() {
 configure_ufw_common() {
     log_info "Configuring UFW firewall rules (common ports)..."
 
+    # Warn about resetting UFW
+    echo ""
+    log_warning "⚠️  IMPORTANT: Resetting UFW will temporarily remove all firewall rules!"
+    log_warning "This may briefly interrupt your SSH connection if not configured properly."
+    echo ""
+    read -p "Continue with UFW reset? (y/N): " reset_confirm
+    if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
+        log_info "Operation cancelled"
+        return
+    fi
+
     # Reset UFW rules
     log_info "Resetting existing rules..."
     ufw --force reset
@@ -162,6 +173,17 @@ configure_ufw_common() {
 # Custom UFW configuration
 configure_ufw_custom() {
     log_info "Configuring UFW firewall rules (custom mode)..."
+
+    # Warn about resetting UFW
+    echo ""
+    log_warning "⚠️  IMPORTANT: Resetting UFW will temporarily remove all firewall rules!"
+    log_warning "This may briefly interrupt your SSH connection if not configured properly."
+    echo ""
+    read -p "Continue with UFW reset? (y/N): " reset_confirm
+    if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
+        log_info "Operation cancelled"
+        return
+    fi
 
     # Reset UFW rules
     log_info "Resetting existing rules..."

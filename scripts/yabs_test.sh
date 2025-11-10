@@ -30,6 +30,30 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Helper function to safely download and run YABS with parameters
+run_yabs_safely() {
+    local params="$1"
+    local script_file="/tmp/yabs-$$.sh"
+
+    log_info "Downloading test script..."
+    if ! curl -fsSL --proto '=https' --tlsv1.2 https://yabs.sh -o "$script_file"; then
+        log_error "Failed to download test script"
+        rm -f "$script_file"
+        return 1
+    fi
+
+    log_info "Running test..."
+    if [ -n "$params" ]; then
+        bash "$script_file" $params
+    else
+        bash "$script_file"
+    fi
+    local result=$?
+
+    rm -f "$script_file"
+    return $result
+}
+
 # Display test information
 show_test_info() {
     echo ""
@@ -63,6 +87,8 @@ run_full_test() {
     echo -e "${PURPLE}Estimated time: 15-30 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
+    log_warning "⚠️  This test will download and execute external scripts"
+    echo ""
 
     read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
@@ -70,8 +96,7 @@ run_full_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash; then
+    if run_yabs_safely ""; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -87,6 +112,8 @@ run_basic_test() {
     echo -e "${PURPLE}Estimated time: 10-15 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
+    log_warning "⚠️  This test will download and execute external scripts"
+    echo ""
 
     read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
@@ -94,8 +121,7 @@ run_basic_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -i; then
+    if run_yabs_safely "-i"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -118,8 +144,7 @@ run_geekbench_only() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -fg; then
+    if run_yabs_safely "-fg"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -142,8 +167,7 @@ run_disk_network_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -ig; then
+    if run_yabs_safely "-ig"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -167,8 +191,7 @@ run_disk_only_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -fign; then
+    if run_yabs_safely "-fign"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -192,8 +215,7 @@ run_network_only_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -fdig; then
+    if run_yabs_safely "-fdig"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -216,8 +238,7 @@ run_quick_test() {
         return
     fi
 
-    log_info "Running test..."
-    if curl -sL yabs.sh | bash -s -- -fgn; then
+    if run_yabs_safely "-fgn"; then
         log_success "Test complete!"
     else
         log_error "Test failed"

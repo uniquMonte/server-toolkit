@@ -264,8 +264,16 @@ disable_password_login() {
         echo "  4. If unable to login, recover via VPS console"
     else
         log_error "Configuration file has errors, changes not applied"
-        log_info "Restoring backup..."
-        cp /etc/ssh/sshd_config.backup.* /etc/ssh/sshd_config
+        log_info "Restoring from backup..."
+
+        # Find the most recent backup
+        latest_backup=$(ls -t /etc/ssh/sshd_config.backup.* 2>/dev/null | head -n1)
+        if [ -n "$latest_backup" ] && [ -f "$latest_backup" ]; then
+            cp "$latest_backup" /etc/ssh/sshd_config
+            log_success "Configuration restored from: $latest_backup"
+        else
+            log_error "No backup file found!"
+        fi
     fi
 }
 
@@ -289,7 +297,20 @@ change_ssh_port() {
     fi
 
     # Check if port is in use
-    if netstat -tuln 2>/dev/null | grep -q ":${new_port} " || ss -tuln 2>/dev/null | grep -q ":${new_port} "; then
+    local port_in_use=false
+    if command -v ss &>/dev/null; then
+        if ss -tuln 2>/dev/null | grep -q ":${new_port} "; then
+            port_in_use=true
+        fi
+    elif command -v netstat &>/dev/null; then
+        if netstat -tuln 2>/dev/null | grep -q ":${new_port} "; then
+            port_in_use=true
+        fi
+    else
+        log_warning "Cannot verify if port is in use (ss/netstat not available)"
+    fi
+
+    if [ "$port_in_use" = true ]; then
         log_error "Port ${new_port} is already in use"
         return
     fi

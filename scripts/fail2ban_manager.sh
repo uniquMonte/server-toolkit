@@ -134,8 +134,20 @@ configure_fail2ban() {
     read -p "Maximum failed attempts (default: 5): " max_retry
     max_retry=${max_retry:-5}
 
+    # Detect if systemd journal is available
+    local use_systemd="auto"
+    if command -v journalctl &>/dev/null && systemctl is-active --quiet systemd-journald; then
+        use_systemd="systemd"
+        log_info "Detected systemd, using journal backend"
+    else
+        use_systemd="auto"
+        log_info "Using traditional log files"
+    fi
+
     # Create jail.local configuration
-    cat > /etc/fail2ban/jail.local <<EOF
+    if [ "$use_systemd" = "systemd" ]; then
+        # Configuration for systemd backend (no logpath needed)
+        cat > /etc/fail2ban/jail.local <<EOF
 [DEFAULT]
 # Ban time (seconds)
 bantime = ${ban_time}
@@ -157,14 +169,41 @@ banaction_allports = iptables-allports
 enabled = true
 port = ${ssh_port}
 filter = sshd
-logpath = /var/log/auth.log
 backend = systemd
 maxretry = ${max_retry}
 EOF
+    else
+        # Configuration for file-based logs
+        local logpath="/var/log/auth.log"
+        if [[ "$OS" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
+            logpath="/var/log/secure"
+        fi
 
-    # Adjust log path based on system
-    if [[ "$OS" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
-        sed -i 's|/var/log/auth.log|/var/log/secure|g' /etc/fail2ban/jail.local
+        cat > /etc/fail2ban/jail.local <<EOF
+[DEFAULT]
+# Ban time (seconds)
+bantime = ${ban_time}
+
+# Find time window (seconds)
+findtime = ${find_time}
+
+# Maximum attempts
+maxretry = ${max_retry}
+
+# Ignored IPs (localhost and private networks)
+ignoreip = 127.0.0.1/8 ::1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+
+# Ban action
+banaction = iptables-multiport
+banaction_allports = iptables-allports
+
+[sshd]
+enabled = true
+port = ${ssh_port}
+filter = sshd
+logpath = ${logpath}
+maxretry = ${max_retry}
+EOF
     fi
 
     log_success "Configuration file created"
@@ -248,13 +287,22 @@ show_banned_ips() {
     echo ""
     log_info "Currently banned IP addresses:"
 
-    banned=$(fail2ban-client status sshd 2>/dev/null | grep "Banned IP list:" | cut -d: -f2)
+    # More robust parsing using fail2ban-client
+    if ! banned=$(fail2ban-client status sshd 2>/dev/null); then
+        log_error "Failed to get fail2ban status (sshd jail may not be enabled)"
+        return
+    fi
 
-    if [ -z "$banned" ] || [ "$banned" == " " ]; then
+    # Extract banned IPs more reliably
+    banned_ips=$(echo "$banned" | grep -oP '(?<=Banned IP list:).*' | xargs)
+
+    if [ -z "$banned_ips" ] || [ "$banned_ips" = "" ]; then
         echo "  No currently banned IPs"
     else
-        echo "$banned" | tr ' ' '\n' | grep -v '^$' | while read ip; do
-            echo -e "  ${RED}${ip}${NC}"
+        echo "$banned_ips" | tr ' ' '\n' | grep -v '^$' | while read -r ip; do
+            if [ -n "$ip" ]; then
+                echo -e "  ${RED}${ip}${NC}"
+            fi
         done
     fi
 }

@@ -152,7 +152,23 @@ EOF
     # Create default site directory
     log_info "Creating default site directory..."
     mkdir -p /var/www/html
-    chown -R www-data:www-data /var/www/html 2>/dev/null || chown -R nginx:nginx /var/www/html
+
+    # Detect and use correct web server user
+    if id www-data &>/dev/null; then
+        web_user="www-data"
+        log_info "Using www-data user for web directory"
+    elif id nginx &>/dev/null; then
+        web_user="nginx"
+        log_info "Using nginx user for web directory"
+    elif id apache &>/dev/null; then
+        web_user="apache"
+        log_info "Using apache user for web directory"
+    else
+        log_warning "No web server user found, using root (not recommended)"
+        web_user="root"
+    fi
+
+    chown -R ${web_user}:${web_user} /var/www/html
 
     # Verify installation
     log_info "Verifying Nginx installation..."
@@ -240,10 +256,18 @@ install_certbot() {
 
         # Configure automatic renewal
         log_info "Configuring automatic certificate renewal..."
-        systemctl enable certbot-renew.timer 2>/dev/null || {
-            # If no timer, create cron job
-            (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
-        }
+        if systemctl enable certbot-renew.timer 2>/dev/null; then
+            log_success "Enabled certbot renewal timer"
+        else
+            # If no timer, create cron job (check for duplicates first)
+            local cron_cmd="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
+            if ! crontab -l 2>/dev/null | grep -qF "certbot renew"; then
+                (crontab -l 2>/dev/null; echo "$cron_cmd") | crontab -
+                log_success "Added certbot renewal cron job"
+            else
+                log_info "Certbot renewal cron job already exists"
+            fi
+        fi
 
         echo ""
         log_info "Usage instructions:"

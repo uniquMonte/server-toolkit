@@ -185,8 +185,26 @@ install_rclone() {
 
     log_info "Installing rclone (using official installation script)..."
 
-    # Use official installation script
-    if curl -fsSL https://rclone.org/install.sh | bash; then
+    # Download and verify the installation script
+    local install_script="/tmp/rclone-install-$$.sh"
+    log_info "Downloading rclone installation script..."
+
+    if ! curl -fsSL --proto '=https' --tlsv1.2 https://rclone.org/install.sh -o "$install_script"; then
+        log_error "Failed to download rclone installation script"
+        rm -f "$install_script"
+        return 1
+    fi
+
+    # Basic verification - check if it looks like a valid script
+    if ! head -n1 "$install_script" | grep -q "^#!/"; then
+        log_error "Downloaded file doesn't appear to be a valid script"
+        rm -f "$install_script"
+        return 1
+    fi
+
+    log_info "Executing installation script..."
+    if bash "$install_script"; then
+        rm -f "$install_script"
         echo ""
         log_success "rclone installed successfully!"
         rclone version | head -n 1
@@ -196,6 +214,7 @@ install_rclone() {
         echo -e "  ${GREEN}View help${NC}      : rclone --help"
         echo -e "  ${GREEN}Documentation${NC}  : https://rclone.org/docs/"
     else
+        rm -f "$install_script"
         log_error "Official script installation failed, trying repository installation..."
 
         # Manual installation method

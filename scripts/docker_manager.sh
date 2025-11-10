@@ -133,6 +133,17 @@ install_docker_rhel() {
     fi
 }
 
+# Detect region for mirror selection
+detect_region() {
+    # Try to detect if server is in China
+    local country=$(curl -s --connect-timeout 3 https://ipapi.co/country 2>/dev/null || echo "")
+    if [ "$country" = "CN" ]; then
+        echo "CN"
+    else
+        echo "OTHER"
+    fi
+}
+
 # Configure Docker
 configure_docker() {
     log_info "Configuring Docker..."
@@ -148,7 +159,12 @@ configure_docker() {
         log_info "Configuring Docker mirror acceleration..."
 
         mkdir -p /etc/docker
-        cat > /etc/docker/daemon.json <<EOF
+
+        # Detect region and suggest appropriate mirrors
+        local region=$(detect_region)
+        if [ "$region" = "CN" ]; then
+            log_info "Detected China region, using China mirrors"
+            cat > /etc/docker/daemon.json <<EOF
 {
   "registry-mirrors": [
     "https://docker.mirrors.ustc.edu.cn",
@@ -162,10 +178,23 @@ configure_docker() {
   "storage-driver": "overlay2"
 }
 EOF
+        else
+            log_info "Using default Docker Hub (fastest for most regions)"
+            cat > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+        fi
 
         systemctl daemon-reload
         systemctl restart docker
-        log_success "Mirror acceleration configured"
+        log_success "Docker configuration optimized"
     fi
 
     # Add current user to docker group (if not root)
@@ -281,15 +310,27 @@ uninstall_docker() {
 
     # Stop all running containers
     log_info "Stopping all running containers..."
-    docker stop $(docker ps -aq) 2>/dev/null || true
+    if [ -n "$(docker ps -q)" ]; then
+        docker stop $(docker ps -q) || log_warning "Failed to stop some containers"
+    else
+        log_info "No running containers to stop"
+    fi
 
     # Remove all containers
     log_info "Removing all containers..."
-    docker rm $(docker ps -aq) 2>/dev/null || true
+    if [ -n "$(docker ps -aq)" ]; then
+        docker rm -f $(docker ps -aq) || log_warning "Failed to remove some containers"
+    else
+        log_info "No containers to remove"
+    fi
 
     # Remove all images
     log_info "Removing all images..."
-    docker rmi $(docker images -q) 2>/dev/null || true
+    if [ -n "$(docker images -q)" ]; then
+        docker rmi -f $(docker images -q) || log_warning "Failed to remove some images"
+    else
+        log_info "No images to remove"
+    fi
 
     # Stop Docker service
     log_info "Stopping Docker service..."
