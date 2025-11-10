@@ -187,7 +187,7 @@ download_script_if_needed() {
 system_update() {
     log_step "Performing system update..."
     if download_script_if_needed "system_update.sh"; then
-        bash "${SCRIPTS_PATH}/system_update.sh"
+        bash "${SCRIPTS_PATH}/system_update.sh" "$@"
     else
         log_error "Failed to load system update script"
     fi
@@ -345,8 +345,8 @@ install_all() {
     echo -e "  Certbot           : $([ "$certbot_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
     echo ""
 
-    # System update
-    system_update
+    # System update (skip reboot prompt in complete setup)
+    system_update --no-reboot-prompt
 
     # Install basic tools
     basic_tools
@@ -470,6 +470,16 @@ install_all() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     log_success "Complete setup finished successfully!"
+
+    # Ask about reboot at the end
+    echo ""
+    log_info "It is recommended to reboot the system to apply all updates"
+    read -p "Would you like to reboot now? [Y/n, or press Enter to reboot]: " restart_choice
+    if [[ ! $restart_choice =~ ^[Nn]$ ]]; then
+        log_info "System will reboot in 5 seconds..."
+        sleep 5
+        reboot
+    fi
 }
 
 # YABS performance test menu
