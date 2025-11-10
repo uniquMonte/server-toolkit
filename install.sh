@@ -256,7 +256,8 @@ timezone_ntp_menu() {
     echo -e "${CYAN}3.${NC} Configure both (recommended)"
     echo -e "${CYAN}4.${NC} Return to main menu"
     echo ""
-    read -p "Please select an action [1-4]: " tz_choice
+    read -p "Please select an action [1-4] (press Enter for 3): " tz_choice
+    tz_choice="${tz_choice:-3}"
 
     case $tz_choice in
         1)
