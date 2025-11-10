@@ -802,16 +802,16 @@ ssh_login_notifier_menu() {
 
 # Backup management menu
 backup_manager_menu() {
-    if ! download_script_if_needed "backup_manager.sh"; then
-        log_error "Failed to load backup manager script"
+    if ! download_script_if_needed "server_backup_manager.sh"; then
+        log_error "Failed to load server backup manager script"
         return 1
     fi
 
     echo ""
-    log_step "VPS Backup Manager"
+    log_step "Server Backup Manager"
 
-    # Launch the backup manager
-    bash "${SCRIPTS_PATH}/backup_manager.sh" menu
+    # Launch the server backup manager (integrates uniquMonte/server-backup)
+    bash "${SCRIPTS_PATH}/server_backup_manager.sh" menu
 }
 
 # DD system reinstallation menu
