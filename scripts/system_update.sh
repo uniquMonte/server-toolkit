@@ -55,49 +55,12 @@ update_system() {
             log_info "Performing full upgrade..."
             apt-get full-upgrade -y
 
-            log_info "Preparing to install common tools..."
-            echo ""
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${BLUE}Installing the following tools:${NC}"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "  📥 ${GREEN}Network Tools${NC}  : curl, wget"
-            echo -e "  📝 ${GREEN}Version Control${NC}: git"
-            echo -e "  ✏️  ${GREEN}Text Editors${NC}   : vim, nano"
-            echo -e "  📊 ${GREEN}System Monitor${NC} : htop, net-tools"
-            echo -e "  📦 ${GREEN}Compression${NC}    : unzip, zip, tar, gzip, bzip2"
-            echo -e "  🔒 ${GREEN}Security Certs${NC} : ca-certificates, gnupg"
-            echo -e "  ⚙️  ${GREEN}System Tools${NC}   : lsb-release, software-properties-common"
-            echo -e "  🌐 ${GREEN}Transport${NC}      : apt-transport-https"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo ""
-
-            log_info "Starting tool installation..."
-            apt-get install -y \
-                curl \
-                wget \
-                git \
-                vim \
-                nano \
-                htop \
-                net-tools \
-                ca-certificates \
-                gnupg \
-                lsb-release \
-                software-properties-common \
-                apt-transport-https \
-                unzip \
-                zip \
-                tar \
-                gzip \
-                bzip2
-
             log_info "Cleaning up unused packages..."
             apt-get autoremove -y
             apt-get autoclean -y
 
             echo ""
             log_success "Ubuntu/Debian system update complete"
-            log_success "Essential system tools installed"
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
@@ -113,45 +76,11 @@ update_system() {
             log_info "Updating system packages..."
             $PKG_MANAGER update -y
 
-            log_info "Preparing to install common tools..."
-            echo ""
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${BLUE}Installing the following tools:${NC}"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "  📥 ${GREEN}Network Tools${NC}  : curl, wget"
-            echo -e "  📝 ${GREEN}Version Control${NC}: git"
-            echo -e "  ✏️  ${GREEN}Text Editors${NC}   : vim, nano"
-            echo -e "  📊 ${GREEN}System Monitor${NC} : htop, net-tools"
-            echo -e "  📦 ${GREEN}Compression${NC}    : unzip, zip, tar, gzip, bzip2"
-            echo -e "  🔒 ${GREEN}Security Certs${NC} : ca-certificates, gnupg"
-            echo -e "  ⚙️  ${GREEN}Package Tools${NC}  : yum-utils"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo ""
-
-            log_info "Starting tool installation..."
-            $PKG_MANAGER install -y \
-                curl \
-                wget \
-                git \
-                vim \
-                nano \
-                htop \
-                net-tools \
-                ca-certificates \
-                gnupg \
-                yum-utils \
-                unzip \
-                zip \
-                tar \
-                gzip \
-                bzip2
-
             log_info "Cleaning cache..."
             $PKG_MANAGER clean all
 
             echo ""
             log_success "CentOS/RHEL/Rocky/AlmaLinux/Fedora system update complete"
-            log_success "Essential system tools installed"
             ;;
 
         *)
@@ -161,12 +90,6 @@ update_system() {
     esac
 
     log_success "System update complete!"
-
-    # Display installed tools summary
-    echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}Installed tools:${NC} curl, wget, git, vim, nano, htop, net-tools, unzip, zip, tar, gzip, bzip2, ca-certificates, gnupg, lsb-release, software-properties-common, apt-transport-https"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 # Main function

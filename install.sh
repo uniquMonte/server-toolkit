@@ -189,6 +189,16 @@ system_update() {
     fi
 }
 
+# Basic tools installation
+basic_tools() {
+    log_step "Installing basic tools..."
+    if download_script_if_needed "basic_tools.sh"; then
+        bash "${SCRIPTS_PATH}/basic_tools.sh"
+    else
+        log_error "Failed to load basic tools script"
+    fi
+}
+
 # UFW management menu
 ufw_menu() {
     if ! download_script_if_needed "ufw_manager.sh"; then
@@ -300,10 +310,10 @@ nginx_menu() {
 
 # One-click install all components
 install_all() {
-    log_step "Starting one-click installation of all components..."
+    log_step "Starting complete setup (all-in-one)..."
 
     # Download all required scripts first
-    local required_scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
+    local required_scripts=("system_update.sh" "basic_tools.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
     for script in "${required_scripts[@]}"; do
         if ! download_script_if_needed "$script"; then
             log_error "Failed to load $script, aborting installation"
@@ -314,6 +324,9 @@ install_all() {
     # System update
     system_update
 
+    # Install basic tools
+    basic_tools
+
     # Install UFW and configure common ports
     bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
 
@@ -323,7 +336,7 @@ install_all() {
     # Install Nginx and Certbot
     bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
 
-    log_success "All components installed successfully!"
+    log_success "Complete setup finished successfully!"
 }
 
 # YABS performance test menu
@@ -453,59 +466,63 @@ main_menu() {
         echo ""
         echo -e "${CYAN}┌─ Basic System Setup ─────────────────┐${NC}"
         echo -e "${GREEN}1.${NC} System update"
-        echo -e "${GREEN}2.${NC} Install common tools (one-click)"
+        echo -e "${GREEN}2.${NC} Install basic tools"
+        echo -e "${GREEN}3.${NC} Complete setup (all-in-one)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Service Management ─────────────────┐${NC}"
-        echo -e "${GREEN}3.${NC} UFW Firewall management"
-        echo -e "${GREEN}4.${NC} Docker management"
-        echo -e "${GREEN}5.${NC} Nginx management"
+        echo -e "${GREEN}4.${NC} UFW Firewall management"
+        echo -e "${GREEN}5.${NC} Docker management"
+        echo -e "${GREEN}6.${NC} Nginx management"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Security Configuration ─────────────┐${NC}"
-        echo -e "${YELLOW}6.${NC} Fail2ban brute force protection"
-        echo -e "${YELLOW}7.${NC} SSH security configuration"
+        echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
+        echo -e "${YELLOW}8.${NC} SSH security configuration"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}8.${NC} YABS performance test"
-        echo -e "${PURPLE}9.${NC} IP quality check"
-        echo -e "${PURPLE}10.${NC} Network quality check"
+        echo -e "${PURPLE}9.${NC} YABS performance test"
+        echo -e "${PURPLE}10.${NC} IP quality check"
+        echo -e "${PURPLE}11.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-10, or press Enter to exit]: " choice
+        read -p "Please select an action [0-11, or press Enter to exit]: " choice
 
         case $choice in
             1)
                 system_update
                 ;;
             2)
-                install_all
+                basic_tools
                 ;;
             3)
-                ufw_menu
+                install_all
                 ;;
             4)
-                docker_menu
+                ufw_menu
                 ;;
             5)
-                nginx_menu
+                docker_menu
                 ;;
             6)
-                fail2ban_menu
+                nginx_menu
                 ;;
             7)
-                ssh_security_menu
+                fail2ban_menu
                 ;;
             8)
-                yabs_test_menu
+                ssh_security_menu
                 ;;
             9)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             10)
+                ip_quality_menu
+                ;;
+            11)
                 network_quality_menu
                 ;;
             0|"")
