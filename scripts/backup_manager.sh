@@ -350,47 +350,42 @@ configure_backup() {
     if command -v rclone &> /dev/null; then
         local existing_remotes=$(rclone listremotes 2>/dev/null)
         if [ -n "$existing_remotes" ]; then
-            echo -e "${GREEN}Found existing rclone remotes:${NC}"
+            echo -e "${GREEN}发现已配置的 rclone 远程存储：${NC}"
             echo "$existing_remotes" | nl
             echo ""
-            read -p "Use existing remote? [Y/n] (直接回车确认): " use_existing
 
-            if [[ ! $use_existing =~ ^[Nn]$ ]]; then
-                # Let user select from existing remotes
-                local remote_count=$(echo "$existing_remotes" | wc -l)
+            local remote_count=$(echo "$existing_remotes" | wc -l)
 
-                # If only one remote, use it directly
-                if [ $remote_count -eq 1 ]; then
-                    local selected_remote=$(echo "$existing_remotes" | head -1 | tr -d ':')
-                    log_success "使用远程存储: ${selected_remote}"
-                    echo ""
-                    read -p "远程目录路径 (例如: vps-backup) [vps-backup] (直接回车使用默认): " remote_path
-                    remote_path="${remote_path:-vps-backup}"
-                    BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
-                    log_success "完整路径: $BACKUP_REMOTE_DIR"
-                else
-                    # Multiple remotes, let user choose
-                    echo -e "${YELLOW}检测到多个远程存储，请选择一个：${NC}"
-                    read -p "选择编号 (1-$remote_count) 或直接回车手动输入: " remote_choice
-
-                    if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
-                        local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
-                        read -p "远程目录路径 (例如: vps-backup) [vps-backup] (直接回车使用默认): " remote_path
-                        remote_path="${remote_path:-vps-backup}"
-                        BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
-                        log_success "使用远程: $BACKUP_REMOTE_DIR"
-                    else
-                        # Manual input
-                        if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                            echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
-                        fi
-                        log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
-                        read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
-                        BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
-                    fi
-                fi
+            # Unified prompt for both single and multiple remotes
+            if [ $remote_count -eq 1 ]; then
+                local remote_name=$(echo "$existing_remotes" | head -1 | tr -d ':')
+                echo -e "${CYAN}选项：${NC}"
+                echo -e "  ${GREEN}1.${NC} 使用现有的 ${CYAN}${remote_name}${NC}"
+                echo -e "  ${GREEN}2.${NC} 手动输入其它配置"
+                echo ""
+                read -p "请选择 [1-2] (直接回车选择1): " remote_choice
+                remote_choice="${remote_choice:-1}"
             else
-                # User wants to configure new remote
+                echo -e "${CYAN}选项：${NC}"
+                echo "$existing_remotes" | nl | sed 's/^/  /'
+                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
+                echo ""
+                read -p "请选择 [1-${remote_count}或0] (直接回车选择0): " remote_choice
+                remote_choice="${remote_choice:-0}"
+            fi
+
+            # Process user choice
+            if [[ $remote_choice =~ ^[1-9][0-9]*$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
+                # User selected an existing remote
+                local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
+                log_success "已选择远程存储: ${selected_remote}"
+                echo ""
+                read -p "远程目录路径 (例如: vps-backup) [vps-backup] (直接回车使用默认): " remote_path
+                remote_path="${remote_path:-vps-backup}"
+                BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
+                log_success "完整路径: $BACKUP_REMOTE_DIR"
+            else
+                # Manual input - user chose 0 or pressed Enter (for multiple) or chose 2 (for single)
                 if [ -n "$BACKUP_REMOTE_DIR" ]; then
                     echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
                 fi
