@@ -241,7 +241,7 @@ configure_backup_sources() {
             counter=$((counter+1))
         else
             log_warning "Path does not exist: $source"
-            read -p "Add anyway? [y/N]: " add_anyway
+            read -p "Add anyway? [y/N] (直接回车跳过): " add_anyway
             if [[ $add_anyway =~ ^[Yy]$ ]]; then
                 new_sources+=("$source")
                 log_info "Added: $source"
@@ -281,7 +281,7 @@ setup_rclone() {
 
     if ! command -v rclone &> /dev/null; then
         log_error "rclone is not installed"
-        read -p "Install rclone now? [Y/n]: " install
+        read -p "Install rclone now? [Y/n] (直接回车确认): " install
         if [[ ! $install =~ ^[Nn]$ ]]; then
             install_rclone || return 1
         else
@@ -353,7 +353,7 @@ configure_backup() {
             echo -e "${GREEN}Found existing rclone remotes:${NC}"
             echo "$existing_remotes" | nl
             echo ""
-            read -p "Use existing remote? [Y/n]: " use_existing
+            read -p "Use existing remote? [Y/n] (直接回车确认): " use_existing
 
             if [[ ! $use_existing =~ ^[Nn]$ ]]; then
                 # Let user select from existing remotes
@@ -414,14 +414,14 @@ configure_backup() {
             log_success "Rclone remote '$remote_name' already configured ✓"
         else
             log_warning "Rclone remote '$remote_name' not found"
-            read -p "Configure rclone now? [Y/n]: " setup
+            read -p "Configure rclone now? [Y/n] (直接回车确认): " setup
             if [[ ! $setup =~ ^[Nn]$ ]]; then
                 setup_rclone
             fi
         fi
     else
         log_warning "rclone is not installed"
-        read -p "Install and configure rclone now? [Y/n]: " install
+        read -p "Install and configure rclone now? [Y/n] (直接回车确认): " install
         if [[ ! $install =~ ^[Nn]$ ]]; then
             install_rclone && setup_rclone
         fi
@@ -433,7 +433,7 @@ configure_backup() {
     echo ""
     if [ -n "$BACKUP_PASSWORD" ]; then
         echo -e "Current password: ${CYAN}${BACKUP_PASSWORD:0:3}***${NC}"
-        read -p "Change password? [y/N]: " change_pass
+        read -p "Change password? [y/N] (直接回车跳过): " change_pass
         if [[ ! $change_pass =~ ^[Yy]$ ]]; then
             log_info "Keeping existing password"
         else
@@ -461,7 +461,7 @@ configure_backup() {
     echo ""
     log_info "Step 5/6: Configure Telegram Notifications (Optional)"
     echo ""
-    read -p "Enable Telegram notifications? [y/N]: " enable_tg
+    read -p "Enable Telegram notifications? [y/N] (直接回车跳过): " enable_tg
     if [[ $enable_tg =~ ^[Yy]$ ]]; then
         read -p "Telegram Bot Token [${TG_BOT_TOKEN}]: " bot_token
         TG_BOT_TOKEN="${bot_token:-$TG_BOT_TOKEN}"
@@ -507,13 +507,13 @@ configure_backup() {
     echo -e "  Max backups:       ${CYAN}$BACKUP_MAX_KEEP${NC}"
 
     echo ""
-    read -p "Test backup configuration now? [Y/n]: " test
+    read -p "Test backup configuration now? [Y/n] (直接回车确认): " test
     if [[ ! $test =~ ^[Nn]$ ]]; then
         test_configuration
 
         # After testing, offer to run backup immediately
         echo ""
-        read -p "Run backup now to verify everything works? [Y/n]: " run_now
+        read -p "Run backup now to verify everything works? [Y/n] (直接回车确认): " run_now
         if [[ ! $run_now =~ ^[Nn]$ ]]; then
             echo ""
             run_backup
@@ -521,7 +521,7 @@ configure_backup() {
     else
         # If user skipped test, still offer to run backup
         echo ""
-        read -p "Run backup now? [y/N]: " run_now
+        read -p "Run backup now? [y/N] (直接回车跳过): " run_now
         if [[ $run_now =~ ^[Yy]$ ]]; then
             echo ""
             run_backup
@@ -840,7 +840,7 @@ test_configuration() {
     log_info "Test 4: Testing Telegram notifications..."
     if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
         echo -e "  ${GREEN}✓${NC} Telegram credentials configured"
-        read -p "Send test message? [y/N]: " send_test
+        read -p "Send test message? [y/N] (直接回车跳过): " send_test
         if [[ $send_test =~ ^[Yy]$ ]]; then
             local test_msg="🖥️ <b>$(hostname) - 测试消息</b>
 ✅ Telegram 通知配置正常"
@@ -903,7 +903,7 @@ run_backup() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Proceed with backup? [Y/n]: " proceed
+    read -p "Proceed with backup? [Y/n] (直接回车确认): " proceed
     if [[ $proceed =~ ^[Nn]$ ]]; then
         log_info "Backup cancelled"
         return 0
@@ -1110,7 +1110,7 @@ edit_configuration() {
                             log_success "Added: $new_src"
                         else
                             log_warning "Path does not exist: $new_src"
-                            read -p "Add anyway? [y/N]: " add_anyway
+                            read -p "Add anyway? [y/N] (直接回车跳过): " add_anyway
                             if [[ $add_anyway =~ ^[Yy]$ ]]; then
                                 SOURCES+=("$new_src")
                                 BACKUP_SRCS=$(IFS='|'; echo "${SOURCES[*]}")
@@ -1183,7 +1183,7 @@ edit_configuration() {
                     echo -e "Current Bot Token: ${CYAN}${TG_BOT_TOKEN:0:10}...${NC}"
                     echo -e "Current Chat ID:   ${CYAN}${TG_CHAT_ID}${NC}"
                     echo ""
-                    read -p "Disable Telegram notifications? [y/N]: " disable
+                    read -p "Disable Telegram notifications? [y/N] (直接回车跳过): " disable
                     if [[ $disable =~ ^[Yy]$ ]]; then
                         TG_BOT_TOKEN=""
                         TG_CHAT_ID=""
@@ -1205,7 +1205,7 @@ edit_configuration() {
                     fi
                 else
                     log_info "Telegram notifications are disabled"
-                    read -p "Enable Telegram notifications? [y/N]: " enable
+                    read -p "Enable Telegram notifications? [y/N] (直接回车跳过): " enable
                     if [[ $enable =~ ^[Yy]$ ]]; then
                         read -p "Bot Token: " TG_BOT_TOKEN
                         read -p "Chat ID: " TG_CHAT_ID
@@ -1362,7 +1362,7 @@ main() {
                 esac
             else
                 echo ""
-                read -p "Backup is not configured. Configure now? [Y/n]: " config
+                read -p "Backup is not configured. Configure now? [Y/n] (直接回车确认): " config
                 if [[ ! $config =~ ^[Nn]$ ]]; then
                     configure_backup
                 fi
