@@ -350,58 +350,83 @@ configure_backup() {
     if command -v rclone &> /dev/null; then
         local existing_remotes=$(rclone listremotes 2>/dev/null)
         if [ -n "$existing_remotes" ]; then
-            echo -e "${GREEN}Found existing rclone remotes:${NC}"
+            echo -e "${GREEN}发现已配置的 rclone 远程存储：${NC}"
             echo "$existing_remotes" | nl
             echo ""
-            read -p "Use existing remote? [Y/n] (直接回车确认): " use_existing
 
-            if [[ ! $use_existing =~ ^[Nn]$ ]]; then
-                # Let user select from existing remotes
-                local remote_count=$(echo "$existing_remotes" | wc -l)
-                read -p "Select remote number (1-$remote_count) or Enter to input manually: " remote_choice
+            local remote_count=$(echo "$existing_remotes" | wc -l)
 
-                if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
-                    local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
-                    read -p "Path in remote (e.g., vps-backup) [vps-backup]: " remote_path
-                    remote_path="${remote_path:-vps-backup}"
-                    BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
-                    log_success "Using remote: $BACKUP_REMOTE_DIR"
-                else
-                    # Manual input
-                    if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
-                    fi
-                    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-                    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
-                    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
-                fi
+            # Unified prompt for both single and multiple remotes
+            if [ $remote_count -eq 1 ]; then
+                # Single remote: default to use it (most common case)
+                local remote_name=$(echo "$existing_remotes" | head -1 | tr -d ':')
+                echo -e "${CYAN}选项：${NC}"
+                echo -e "  ${GREEN}1.${NC} 使用现有的 ${CYAN}${remote_name}${NC}"
+                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
+                echo ""
+                read -p "请选择 [1 或 0] (直接回车使用现有配置): " remote_choice
+                remote_choice="${remote_choice:-1}"
             else
-                # User wants to configure new remote
+                # Multiple remotes: require explicit choice (no default)
+                echo -e "${CYAN}选项：${NC}"
+                echo "$existing_remotes" | nl | sed 's/^/  /'
+                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
+                echo ""
+
+                # Loop until valid input
+                while true; do
+                    read -p "请选择 [1-${remote_count} 或 0]: " remote_choice
+
+                    if [[ -z "$remote_choice" ]]; then
+                        log_warning "请明确选择一个选项"
+                        continue
+                    fi
+
+                    if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 0 ] && [ $remote_choice -le $remote_count ]; then
+                        break
+                    else
+                        log_error "无效的选择，请输入 0-${remote_count}"
+                    fi
+                done
+            fi
+
+            # Process user choice
+            if [[ $remote_choice =~ ^[1-9][0-9]*$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
+                # User selected an existing remote
+                local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
+                log_success "已选择远程存储: ${selected_remote}"
+                echo ""
+                read -p "远程目录路径 (例如: vps-backup) [vps-backup] (直接回车使用默认): " remote_path
+                remote_path="${remote_path:-vps-backup}"
+                BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
+                log_success "完整路径: $BACKUP_REMOTE_DIR"
+            else
+                # Manual input - user chose 0 or pressed Enter (for multiple) or chose 2 (for single)
                 if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                    echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                    echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
                 fi
-                log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-                read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+                log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
+                read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
                 BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
             fi
         else
             # No existing remotes
-            log_info "No existing rclone remotes found"
+            log_info "未找到已配置的 rclone 远程存储"
             if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
             fi
-            log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-            read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+            log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
+            read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
             BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
         fi
     else
         # rclone not installed
-        log_warning "rclone is not installed"
+        log_warning "rclone 未安装"
         if [ -n "$BACKUP_REMOTE_DIR" ]; then
-            echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+            echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
         fi
-        log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-        read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+        log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
+        read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
         BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
     fi
 
