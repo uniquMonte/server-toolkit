@@ -837,9 +837,15 @@ test_configuration() {
 
         # Test connection
         if rclone lsd "${BACKUP_REMOTE_DIR}" &> /dev/null; then
-            echo -e "  ${GREEN}✓${NC} Remote is accessible"
+            echo -e "  ${GREEN}✓${NC} Remote is accessible and working"
         else
-            echo -e "  ${YELLOW}⚠${NC} Remote exists but may not be accessible"
+            echo -e "  ${YELLOW}⚠${NC} Remote '$remote_name' is configured but cannot access '${BACKUP_REMOTE_DIR}'"
+            echo -e "      ${CYAN}Possible reasons:${NC}"
+            echo -e "      • Network connectivity issues"
+            echo -e "      • Authentication token expired (may need to re-authorize)"
+            echo -e "      • Remote path does not exist yet (will be created on first backup)"
+            echo -e "      • Insufficient permissions"
+            echo -e "      ${CYAN}Note:${NC} This may be normal if it's a new setup. Try running a backup to test."
         fi
     else
         echo -e "  ${RED}✗${NC} Remote '$remote_name' not found"
@@ -873,19 +879,21 @@ test_configuration() {
     log_info "Test 4: Testing Telegram notifications..."
     if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
         echo -e "  ${GREEN}✓${NC} Telegram credentials configured"
-        read -p "Send test message? [y/N] (press Enter to skip): " send_test
-        if [[ $send_test =~ ^[Yy]$ ]]; then
-            local test_msg="🖥️ <b>$(hostname) - 测试消息</b>
-✅ Telegram 通知配置正常"
+        read -p "Send test message? [Y/n] (press Enter to send): " send_test
+        if [[ ! $send_test =~ ^[Nn]$ ]]; then
+            local test_msg="🖥️ <b>$(hostname) - Test Message</b>
+✅ Telegram notification configured successfully"
             curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
                 --data-urlencode "chat_id=${TG_CHAT_ID}" \
                 --data-urlencode "text=${test_msg}" \
                 --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
             if [ $? -eq 0 ]; then
-                echo -e "  ${GREEN}✓${NC} Test message sent"
+                echo -e "  ${GREEN}✓${NC} Test message sent successfully"
             else
-                echo -e "  ${RED}✗${NC} Failed to send message"
+                echo -e "  ${RED}✗${NC} Failed to send test message"
             fi
+        else
+            log_info "Test message skipped"
         fi
     else
         echo -e "  ${YELLOW}⚠${NC} Telegram notifications disabled"
