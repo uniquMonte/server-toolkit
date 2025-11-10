@@ -202,7 +202,7 @@ configure_notifier() {
     if ! check_installed; then
         log_error "SSH Login Notifier is not installed"
         echo ""
-        read -p "Do you want to install it now? [Y/n]: " install
+        read -p "Do you want to install it now? [Y/n] (press Enter to install): " install
         if [[ ! $install =~ ^[Nn]$ ]]; then
             install_notifier
         fi
@@ -381,7 +381,7 @@ main() {
                 esac
             else
                 echo ""
-                read -p "SSH Login Notifier is not installed. Install now? [Y/n]: " install
+                read -p "SSH Login Notifier is not installed. Install now? [Y/n] (press Enter to install): " install
                 if [[ ! $install =~ ^[Nn]$ ]]; then
                     install_notifier
                 fi
