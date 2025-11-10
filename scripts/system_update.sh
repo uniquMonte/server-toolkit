@@ -163,82 +163,6 @@ update_system() {
     log_success "System update complete!"
 }
 
-# Install rclone
-install_rclone() {
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}rclone - Cloud Storage Sync Tool${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ☁️  Supports 40+ cloud storage services"
-    echo -e "  📦 Google Drive, Dropbox, OneDrive, S3, etc"
-    echo -e "  🔄 File sync, backup, and mount features"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-
-    log_info "Checking rclone installation status..."
-
-    if command -v rclone &> /dev/null; then
-        log_success "rclone is already installed"
-        rclone version | head -n 1
-        return
-    fi
-
-    log_info "Installing rclone (using official installation script)..."
-
-    # Download and verify the installation script
-    local install_script="/tmp/rclone-install-$$.sh"
-    log_info "Downloading rclone installation script..."
-
-    if ! curl -fsSL --proto '=https' --tlsv1.2 https://rclone.org/install.sh -o "$install_script"; then
-        log_error "Failed to download rclone installation script"
-        rm -f "$install_script"
-        return 1
-    fi
-
-    # Basic verification - check if it looks like a valid script
-    if ! head -n1 "$install_script" | grep -q "^#!/"; then
-        log_error "Downloaded file doesn't appear to be a valid script"
-        rm -f "$install_script"
-        return 1
-    fi
-
-    log_info "Executing installation script..."
-    if bash "$install_script"; then
-        rm -f "$install_script"
-        echo ""
-        log_success "rclone installed successfully!"
-        rclone version | head -n 1
-        echo ""
-        log_info "Usage tips:"
-        echo -e "  ${GREEN}Configure rclone${NC}: rclone config"
-        echo -e "  ${GREEN}View help${NC}      : rclone --help"
-        echo -e "  ${GREEN}Documentation${NC}  : https://rclone.org/docs/"
-    else
-        rm -f "$install_script"
-        log_error "Official script installation failed, trying repository installation..."
-
-        # Manual installation method
-        detect_os
-        case $OS in
-            ubuntu|debian)
-                apt-get install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                ;;
-            centos|rhel|rocky|almalinux|fedora)
-                if command -v dnf &> /dev/null; then
-                    dnf install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                else
-                    yum install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                fi
-                ;;
-        esac
-
-        if command -v rclone &> /dev/null; then
-            log_success "rclone installed from system repository"
-            rclone version | head -n 1
-        fi
-    fi
-}
-
 # Main function
 main() {
     if [ "$EUID" -ne 0 ]; then
@@ -247,13 +171,6 @@ main() {
     fi
 
     update_system
-
-    # Install rclone
-    echo ""
-    read -p "Would you like to install rclone (cloud storage sync tool)? (Y/n): " install_rclone_choice
-    if [[ ! $install_rclone_choice =~ ^[Nn]$ ]]; then
-        install_rclone
-    fi
 
     # Ask about reboot
     echo ""
