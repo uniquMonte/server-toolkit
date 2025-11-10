@@ -453,7 +453,7 @@ main_menu() {
         echo ""
         echo -e "${CYAN}┌─ Basic System Setup ─────────────────┐${NC}"
         echo -e "${GREEN}1.${NC} System update"
-        echo -e "${GREEN}2.${NC} Complete essential setup (System/UFW/Docker/Nginx)"
+        echo -e "${GREEN}2.${NC} Quick VPS initialization (all-in-one)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Service Management ─────────────────┐${NC}"
