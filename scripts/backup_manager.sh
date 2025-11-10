@@ -345,12 +345,65 @@ configure_backup() {
     echo ""
     log_info "Step 2/6: Configure Remote Storage"
     echo ""
-    if [ -n "$BACKUP_REMOTE_DIR" ]; then
-        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+
+    # Check for existing rclone remotes
+    if command -v rclone &> /dev/null; then
+        local existing_remotes=$(rclone listremotes 2>/dev/null)
+        if [ -n "$existing_remotes" ]; then
+            echo -e "${GREEN}Found existing rclone remotes:${NC}"
+            echo "$existing_remotes" | nl
+            echo ""
+            read -p "Use existing remote? [Y/n]: " use_existing
+
+            if [[ ! $use_existing =~ ^[Nn]$ ]]; then
+                # Let user select from existing remotes
+                local remote_count=$(echo "$existing_remotes" | wc -l)
+                read -p "Select remote number (1-$remote_count) or Enter to input manually: " remote_choice
+
+                if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
+                    local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
+                    read -p "Path in remote (e.g., vps-backup) [vps-backup]: " remote_path
+                    remote_path="${remote_path:-vps-backup}"
+                    BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
+                    log_success "Using remote: $BACKUP_REMOTE_DIR"
+                else
+                    # Manual input
+                    if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                    fi
+                    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+                    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+                    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+                fi
+            else
+                # User wants to configure new remote
+                if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                    echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                fi
+                log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+                read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+                BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+            fi
+        else
+            # No existing remotes
+            log_info "No existing rclone remotes found"
+            if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+            fi
+            log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+            read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+            BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+        fi
+    else
+        # rclone not installed
+        log_warning "rclone is not installed"
+        if [ -n "$BACKUP_REMOTE_DIR" ]; then
+            echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+        fi
+        log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+        read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+        BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
     fi
-    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
-    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
 
     # Step 3: Setup rclone if needed
     echo ""
@@ -358,7 +411,7 @@ configure_backup() {
     local remote_name=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
     if command -v rclone &> /dev/null; then
         if rclone listremotes | grep -q "^${remote_name}:$"; then
-            log_success "Rclone remote '$remote_name' already configured"
+            log_success "Rclone remote '$remote_name' already configured ✓"
         else
             log_warning "Rclone remote '$remote_name' not found"
             read -p "Configure rclone now? [Y/n]: " setup
@@ -526,6 +579,20 @@ DATE=$(date +"%Y%m%d-%H%M%S")
 HOSTNAME=$(hostname)
 BACKUP_FILE="backup-${HOSTNAME}-${DATE}.tar.gz"
 ENCRYPTED_BACKUP_FILE="${BACKUP_FILE}.enc"
+CHECKSUM_FILE="${ENCRYPTED_BACKUP_FILE}.sha256"
+LOCK_FILE="/var/lock/vps-backup.lock"
+
+# Cleanup function
+cleanup() {
+    local exit_code=$?
+    rm -f "$LOCK_FILE"
+    if [ -d "${BACKUP_TMP_DIR}" ]; then
+        rm -rf "${BACKUP_TMP_DIR}"
+    fi
+    exit $exit_code
+}
+
+trap cleanup EXIT INT TERM
 
 # Functions
 send_telegram_message() {
@@ -555,6 +622,29 @@ ${message}"
         return 0
     fi
 }
+
+# Check if another backup is running
+if [ -f "$LOCK_FILE" ]; then
+    if kill -0 $(cat "$LOCK_FILE") 2>/dev/null; then
+        log_and_notify "另一个备份进程正在运行 (PID: $(cat "$LOCK_FILE"))" true
+        exit 1
+    else
+        # Stale lock file
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# Create lock file
+echo $$ > "$LOCK_FILE"
+
+# Check disk space (need at least 1GB free)
+AVAILABLE_SPACE=$(df "${BACKUP_TMP_DIR%/*}" | tail -1 | awk '{print $4}')
+REQUIRED_SPACE=$((1024 * 1024))  # 1GB in KB
+
+if [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE" ]; then
+    log_and_notify "磁盘空间不足 (可用: $((AVAILABLE_SPACE/1024))MB, 需要: $((REQUIRED_SPACE/1024))MB)" true
+    exit 1
+fi
 
 # Start backup
 log_and_notify "开始备份过程 - ${DATE}"
@@ -601,39 +691,77 @@ fi
 
 rm -f "${BACKUP_TMP_DIR}/${BACKUP_FILE}"
 
+# Generate SHA256 checksum
+log_and_notify "生成校验和..."
+sha256sum "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" | awk '{print $1}' > "${BACKUP_TMP_DIR}/${CHECKSUM_FILE}"
+
 # Get file size
 BACKUP_SIZE=$(du -h "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" | cut -f1)
 
-# Upload
+# Upload with retry (max 3 attempts)
 log_and_notify "正在上传到 ${BACKUP_REMOTE_DIR}..."
-rclone copy "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" "${BACKUP_REMOTE_DIR}" >> "$BACKUP_LOG_FILE" 2>&1
+UPLOAD_ATTEMPTS=0
+MAX_ATTEMPTS=3
 
-if [ $? -ne 0 ]; then
-    log_and_notify "上传失败" true
+while [ $UPLOAD_ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+    rclone copy "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" "${BACKUP_REMOTE_DIR}" \
+        --log-file="$BACKUP_LOG_FILE" \
+        --log-level INFO \
+        --retries 3 \
+        --low-level-retries 10
+
+    if [ $? -eq 0 ]; then
+        # Verify upload
+        REMOTE_SIZE=$(rclone size "${BACKUP_REMOTE_DIR}/${ENCRYPTED_BACKUP_FILE}" --json 2>/dev/null | grep -o '"bytes":[0-9]*' | grep -o '[0-9]*')
+        LOCAL_SIZE=$(stat -f%z "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}" 2>/dev/null || stat -c%s "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}")
+
+        if [ "$REMOTE_SIZE" = "$LOCAL_SIZE" ]; then
+            log_and_notify "上传成功，大小验证通过"
+            break
+        else
+            log_and_notify "警告: 文件大小不匹配 (本地: $LOCAL_SIZE, 远程: $REMOTE_SIZE)"
+        fi
+    fi
+
+    UPLOAD_ATTEMPTS=$((UPLOAD_ATTEMPTS + 1))
+    if [ $UPLOAD_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+        log_and_notify "上传失败，重试 $UPLOAD_ATTEMPTS/$MAX_ATTEMPTS..."
+        sleep 5
+    fi
+done
+
+if [ $UPLOAD_ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+    log_and_notify "上传失败，已达最大重试次数" true
     exit 1
 fi
 
-# Cleanup local file
+# Upload checksum file
+rclone copy "${BACKUP_TMP_DIR}/${CHECKSUM_FILE}" "${BACKUP_REMOTE_DIR}" >> "$BACKUP_LOG_FILE" 2>&1
+
+# Cleanup local files
 rm -f "${BACKUP_TMP_DIR}/${ENCRYPTED_BACKUP_FILE}"
+rm -f "${BACKUP_TMP_DIR}/${CHECKSUM_FILE}"
 
 # Remove old backups
 log_and_notify "正在清理旧备份..."
-OLD_BACKUPS=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-" | sort -r | tail -n +$((BACKUP_MAX_KEEP + 1)))
+OLD_BACKUPS=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-.*\.tar\.gz\.enc$" | sort -r | tail -n +$((BACKUP_MAX_KEEP + 1)))
 
 for file in $OLD_BACKUPS; do
     rclone delete "${BACKUP_REMOTE_DIR}/${file}" --drive-use-trash=false >> "$BACKUP_LOG_FILE" 2>&1
+    rclone delete "${BACKUP_REMOTE_DIR}/${file}.sha256" --drive-use-trash=false >> "$BACKUP_LOG_FILE" 2>&1
     log_and_notify "已删除旧备份: $file"
 done
 
 # Get backup stats
-BACKUP_COUNT=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-" | wc -l)
+BACKUP_COUNT=$(rclone lsf "${BACKUP_REMOTE_DIR}" | grep "^backup-${HOSTNAME}-" | grep "\.tar\.gz\.enc$" | wc -l)
 
 # Success notification
 send_telegram_message "🖥️ <b>$HOSTNAME 备份完成</b>
 ✅ 备份成功
 📦 文件大小: ${BACKUP_SIZE}
 🔢 保留备份数: ${BACKUP_COUNT}
-📅 备份文件: ${ENCRYPTED_BACKUP_FILE}"
+📅 备份文件: ${ENCRYPTED_BACKUP_FILE}
+✓ 已生成 SHA256 校验和"
 
 log_and_notify "备份过程完成! 文件: ${ENCRYPTED_BACKUP_FILE} (${BACKUP_SIZE})"
 
@@ -1180,6 +1308,17 @@ main() {
         install-deps)
             install_rclone
             ;;
+        restore)
+            # Launch restore tool
+            if [ -f "${SCRIPTS_PATH}/backup_restore.sh" ]; then
+                bash "${SCRIPTS_PATH}/backup_restore.sh" menu
+            elif [ -f "$(dirname "$0")/backup_restore.sh" ]; then
+                bash "$(dirname "$0")/backup_restore.sh" menu
+            else
+                log_error "Restore script not found"
+                return 1
+            fi
+            ;;
         menu)
             show_status
             echo ""
@@ -1188,26 +1327,36 @@ main() {
                 echo -e "${GREEN}Available actions:${NC}"
                 echo -e "  ${GREEN}1.${NC} ${GREEN}⚡ 立即运行备份 (Run backup now)${NC}"
                 echo -e "  ${CYAN}2.${NC} List remote backups"
-                echo -e "  ${CYAN}3.${NC} View logs"
-                echo -e "  ${CYAN}4.${NC} Test configuration"
-                echo -e "  ${YELLOW}5.${NC} ${YELLOW}📝 Edit configuration (modify settings)${NC}"
-                echo -e "  ${CYAN}6.${NC} Reconfigure backup (full setup)"
-                echo -e "  ${CYAN}7.${NC} Setup automatic backup (cron)"
-                echo -e "  ${CYAN}8.${NC} Install dependencies"
+                echo -e "  ${MAGENTA}3.${NC} ${MAGENTA}🔓 Restore backup (decrypt & restore)${NC}"
+                echo -e "  ${CYAN}4.${NC} View logs"
+                echo -e "  ${CYAN}5.${NC} Test configuration"
+                echo -e "  ${YELLOW}6.${NC} ${YELLOW}📝 Edit configuration (modify settings)${NC}"
+                echo -e "  ${CYAN}7.${NC} Reconfigure backup (full setup)"
+                echo -e "  ${CYAN}8.${NC} Setup automatic backup (cron)"
+                echo -e "  ${CYAN}9.${NC} Install dependencies"
                 echo -e "  ${CYAN}0.${NC} Exit"
                 echo ""
-                read -p "Select action [0-8, default: 1]: " action
+                read -p "Select action [0-9, default: 1]: " action
                 action="${action:-1}"  # Default to option 1 (run backup)
 
                 case $action in
                     1) run_backup ;;
                     2) list_backups ;;
-                    3) view_logs ;;
-                    4) test_configuration ;;
-                    5) edit_configuration ;;
-                    6) configure_backup ;;
-                    7) setup_cron ;;
-                    8) install_rclone ;;
+                    3)
+                        if [ -f "${SCRIPTS_PATH}/backup_restore.sh" ]; then
+                            bash "${SCRIPTS_PATH}/backup_restore.sh" menu
+                        elif [ -f "$(dirname "$0")/backup_restore.sh" ]; then
+                            bash "$(dirname "$0")/backup_restore.sh" menu
+                        else
+                            log_error "Restore script not found"
+                        fi
+                        ;;
+                    4) view_logs ;;
+                    5) test_configuration ;;
+                    6) edit_configuration ;;
+                    7) configure_backup ;;
+                    8) setup_cron ;;
+                    9) install_rclone ;;
                     0) log_info "Exiting" ;;
                     *) log_error "Invalid selection" ;;
                 esac
@@ -1221,13 +1370,14 @@ main() {
             ;;
         *)
             log_error "Unknown command: $1"
-            echo "Usage: $0 {status|configure|edit|run|list|logs|test|cron|menu}"
+            echo "Usage: $0 {status|configure|edit|run|restore|list|logs|test|cron|menu}"
             echo ""
             echo "Commands:"
             echo "  status     - Show backup configuration status"
             echo "  configure  - Run full configuration wizard"
             echo "  edit       - Edit specific configuration items"
             echo "  run        - Run backup now"
+            echo "  restore    - Restore from backup (decrypt & extract)"
             echo "  list       - List remote backups"
             echo "  logs       - View backup logs"
             echo "  test       - Test backup configuration"
