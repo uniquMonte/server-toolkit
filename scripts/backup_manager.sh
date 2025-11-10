@@ -348,21 +348,37 @@ configure_backup() {
 
     # First, configure hostname identifier for this VPS
     local current_hostname=$(hostname)
-    echo -e "${CYAN}Configure VPS identifier (for distinguishing multiple VPS backups):${NC}"
-    echo -e "This will be used in the backup path: ${CYAN}vps-{identifier}-backup${NC}"
-    echo ""
-    if [ -n "$BACKUP_HOSTNAME" ]; then
-        echo -e "Current identifier: ${CYAN}${BACKUP_HOSTNAME}${NC}"
-        read -p "VPS identifier [${BACKUP_HOSTNAME}] (press Enter to keep current): " hostname_input
-        BACKUP_HOSTNAME="${hostname_input:-$BACKUP_HOSTNAME}"
-    else
-        echo -e "System hostname: ${CYAN}${current_hostname}${NC}"
-        read -p "VPS identifier [${current_hostname}] (press Enter for hostname): " hostname_input
-        BACKUP_HOSTNAME="${hostname_input:-$current_hostname}"
-    fi
-    # Sanitize hostname (remove special characters, convert to lowercase)
-    BACKUP_HOSTNAME=$(echo "$BACKUP_HOSTNAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
-    log_success "VPS identifier set to: ${BACKUP_HOSTNAME}"
+
+    # Loop to allow re-entering hostname if remote path exists
+    while true; do
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Configure VPS Identifier${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "Each VPS should have a unique identifier to avoid backup conflicts."
+        echo -e "This will be used in the backup path: ${CYAN}vps-{identifier}-backup${NC}"
+        echo ""
+
+        if [ -n "$BACKUP_HOSTNAME" ]; then
+            echo -e "Current identifier: ${CYAN}${BACKUP_HOSTNAME}${NC}"
+            echo -e "System hostname: ${CYAN}${current_hostname}${NC}"
+            echo ""
+            read -p "VPS identifier [${BACKUP_HOSTNAME}] (press Enter to keep current): " hostname_input
+            BACKUP_HOSTNAME="${hostname_input:-$BACKUP_HOSTNAME}"
+        else
+            echo -e "Detected system hostname: ${GREEN}${current_hostname}${NC}"
+            echo ""
+            read -p "VPS identifier [${current_hostname}] (press Enter to use system hostname): " hostname_input
+            BACKUP_HOSTNAME="${hostname_input:-$current_hostname}"
+        fi
+
+        # Sanitize hostname (remove special characters, convert to lowercase)
+        BACKUP_HOSTNAME=$(echo "$BACKUP_HOSTNAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+        log_success "VPS identifier set to: ${BACKUP_HOSTNAME}"
+
+        # Break from loop - will check remote path later after full path is constructed
+        break
+    done
     echo ""
 
     # Now configure the remote
@@ -455,6 +471,93 @@ configure_backup() {
         log_info "Format: remote_name:path (e.g. gdrive:vps-${BACKUP_HOSTNAME}-backup)"
         read -p "Remote directory [${default_full_path}] (press Enter for default): " remote_dir
         BACKUP_REMOTE_DIR="${remote_dir:-${default_full_path}}"
+    fi
+
+    # Check if remote path already exists
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Checking Remote Path${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log_info "Remote path: ${BACKUP_REMOTE_DIR}"
+
+    if command -v rclone &> /dev/null; then
+        local remote_name_check=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
+        if rclone listremotes 2>/dev/null | grep -q "^${remote_name_check}:$"; then
+            log_info "Checking if path exists on remote..."
+            if rclone lsd "${BACKUP_REMOTE_DIR}" &> /dev/null 2>&1; then
+                echo ""
+                echo -e "${YELLOW}⚠️  WARNING: Remote path already exists!${NC}"
+                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                echo -e "${RED}Path:${NC} ${CYAN}${BACKUP_REMOTE_DIR}${NC}"
+                echo ""
+                echo -e "${YELLOW}Possible consequences if you continue:${NC}"
+                echo -e "  • ${RED}Existing backups may be overwritten${NC}"
+                echo -e "  • ${RED}Backups from different servers may be mixed${NC}"
+                echo -e "  • ${RED}Old backups may be deleted (based on retention policy)${NC}"
+                echo ""
+                echo -e "${GREEN}Recommendations:${NC}"
+                echo -e "  1. Use a different VPS identifier (e.g., csthk, tokyo, uswest)"
+                echo -e "  2. Manually specify a different remote path"
+                echo -e "  3. Only continue if you're SURE this is correct"
+                echo ""
+
+                while true; do
+                    echo -e "${CYAN}What would you like to do?${NC}"
+                    echo -e "  ${GREEN}1.${NC} Continue with existing path (may overwrite!)"
+                    echo -e "  ${GREEN}2.${NC} Change VPS identifier and regenerate path"
+                    echo -e "  ${GREEN}3.${NC} Manually enter a different path"
+                    echo ""
+                    read -p "Select [1-3]: " path_choice
+
+                    case $path_choice in
+                        1)
+                            log_warning "Continuing with existing path: ${BACKUP_REMOTE_DIR}"
+                            break
+                            ;;
+                        2)
+                            echo ""
+                            echo -e "Current identifier: ${CYAN}${BACKUP_HOSTNAME}${NC}"
+                            read -p "Enter new VPS identifier: " new_id
+                            if [ -n "$new_id" ]; then
+                                BACKUP_HOSTNAME=$(echo "$new_id" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+                                local new_path="vps-${BACKUP_HOSTNAME}-backup"
+                                BACKUP_REMOTE_DIR="${remote_name_check}:${new_path}"
+                                log_success "New path: ${BACKUP_REMOTE_DIR}"
+                                # Re-check if new path exists (recursive check would go here, but keep it simple)
+                                if rclone lsd "${BACKUP_REMOTE_DIR}" &> /dev/null 2>&1; then
+                                    log_warning "New path also exists. Continuing anyway..."
+                                else
+                                    log_success "New path is available ✓"
+                                fi
+                                break
+                            else
+                                log_error "No identifier entered, keeping current"
+                            fi
+                            ;;
+                        3)
+                            echo ""
+                            read -p "Enter full remote path (e.g., gdrive:vps-myserver-backup): " manual_path
+                            if [ -n "$manual_path" ]; then
+                                BACKUP_REMOTE_DIR="$manual_path"
+                                log_success "Path set to: ${BACKUP_REMOTE_DIR}"
+                                break
+                            fi
+                            ;;
+                        *)
+                            log_error "Invalid choice, please select 1-3"
+                            ;;
+                    esac
+                done
+                echo ""
+            else
+                echo -e "  ${GREEN}✓${NC} Path is available (does not exist yet)"
+            fi
+        else
+            log_info "Remote not configured yet, will check after rclone setup"
+        fi
+    else
+        log_info "rclone not installed yet, will check after installation"
     fi
 
     # Step 3: Setup rclone if needed
