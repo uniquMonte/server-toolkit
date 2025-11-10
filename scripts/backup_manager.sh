@@ -358,20 +358,36 @@ configure_backup() {
 
             # Unified prompt for both single and multiple remotes
             if [ $remote_count -eq 1 ]; then
+                # Single remote: default to use it (most common case)
                 local remote_name=$(echo "$existing_remotes" | head -1 | tr -d ':')
                 echo -e "${CYAN}选项：${NC}"
                 echo -e "  ${GREEN}1.${NC} 使用现有的 ${CYAN}${remote_name}${NC}"
-                echo -e "  ${GREEN}2.${NC} 手动输入其它配置"
+                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
                 echo ""
-                read -p "请选择 [1-2] (直接回车选择1): " remote_choice
+                read -p "请选择 [1 或 0] (直接回车使用现有配置): " remote_choice
                 remote_choice="${remote_choice:-1}"
             else
+                # Multiple remotes: require explicit choice (no default)
                 echo -e "${CYAN}选项：${NC}"
                 echo "$existing_remotes" | nl | sed 's/^/  /'
                 echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
                 echo ""
-                read -p "请选择 [1-${remote_count}或0] (直接回车选择0): " remote_choice
-                remote_choice="${remote_choice:-0}"
+
+                # Loop until valid input
+                while true; do
+                    read -p "请选择 [1-${remote_count} 或 0]: " remote_choice
+
+                    if [[ -z "$remote_choice" ]]; then
+                        log_warning "请明确选择一个选项"
+                        continue
+                    fi
+
+                    if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 0 ] && [ $remote_choice -le $remote_count ]; then
+                        break
+                    else
+                        log_error "无效的选择，请输入 0-${remote_count}"
+                    fi
+                done
             fi
 
             # Process user choice
