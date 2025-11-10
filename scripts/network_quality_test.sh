@@ -90,14 +90,15 @@ run_dual_stack_test() {
     echo -e "${PURPLE}Estimated time: 2-5 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
+    log_warning "⚠️  This test will download and execute external scripts from Net.Check.Place"
+    echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
 
-    log_warning "⚠️  This test will download and execute external scripts from Net.Check.Place"
     echo ""
 
     if run_netquality_safely ""; then
@@ -119,8 +120,8 @@ run_ipv4_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -145,8 +146,8 @@ run_ipv6_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -234,7 +235,8 @@ test_menu() {
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select test type [0-4]: " choice
+        read -p "Please select test type [0-4] (press Enter for 1): " choice
+        choice="${choice:-1}"
 
         case $choice in
             1)
