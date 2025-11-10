@@ -58,14 +58,20 @@ get_current_time() {
 check_ntp_status() {
     if command -v timedatectl &> /dev/null; then
         local ntp_status=$(timedatectl show --property=NTP --value 2>/dev/null)
-        echo "$ntp_status"
-    else
-        # Check if systemd-timesyncd is running
-        if systemctl is-active --quiet systemd-timesyncd 2>/dev/null; then
+        if [ "$ntp_status" = "yes" ]; then
             echo "yes"
-        else
-            echo "no"
+            return
         fi
+    fi
+
+    # Check if any NTP service is running
+    if systemctl is-active --quiet systemd-timesyncd 2>/dev/null || \
+       systemctl is-active --quiet chronyd 2>/dev/null || \
+       systemctl is-active --quiet chrony 2>/dev/null || \
+       systemctl is-active --quiet ntpd 2>/dev/null; then
+        echo "yes"
+    else
+        echo "no"
     fi
 }
 
