@@ -55,49 +55,12 @@ update_system() {
             log_info "Performing full upgrade..."
             apt-get full-upgrade -y
 
-            log_info "Preparing to install common tools..."
-            echo ""
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${BLUE}Installing the following tools:${NC}"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "  📥 ${GREEN}Network Tools${NC}  : curl, wget"
-            echo -e "  📝 ${GREEN}Version Control${NC}: git"
-            echo -e "  ✏️  ${GREEN}Text Editors${NC}   : vim, nano"
-            echo -e "  📊 ${GREEN}System Monitor${NC} : htop, net-tools"
-            echo -e "  📦 ${GREEN}Compression${NC}    : unzip, zip, tar, gzip, bzip2"
-            echo -e "  🔒 ${GREEN}Security Certs${NC} : ca-certificates, gnupg"
-            echo -e "  ⚙️  ${GREEN}System Tools${NC}   : lsb-release, software-properties-common"
-            echo -e "  🌐 ${GREEN}Transport${NC}      : apt-transport-https"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo ""
-
-            log_info "Starting tool installation..."
-            apt-get install -y \
-                curl \
-                wget \
-                git \
-                vim \
-                nano \
-                htop \
-                net-tools \
-                ca-certificates \
-                gnupg \
-                lsb-release \
-                software-properties-common \
-                apt-transport-https \
-                unzip \
-                zip \
-                tar \
-                gzip \
-                bzip2
-
             log_info "Cleaning up unused packages..."
             apt-get autoremove -y
             apt-get autoclean -y
 
             echo ""
             log_success "Ubuntu/Debian system update complete"
-            log_success "Common tools installed successfully!"
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
@@ -113,45 +76,11 @@ update_system() {
             log_info "Updating system packages..."
             $PKG_MANAGER update -y
 
-            log_info "Preparing to install common tools..."
-            echo ""
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${BLUE}Installing the following tools:${NC}"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "  📥 ${GREEN}Network Tools${NC}  : curl, wget"
-            echo -e "  📝 ${GREEN}Version Control${NC}: git"
-            echo -e "  ✏️  ${GREEN}Text Editors${NC}   : vim, nano"
-            echo -e "  📊 ${GREEN}System Monitor${NC} : htop, net-tools"
-            echo -e "  📦 ${GREEN}Compression${NC}    : unzip, zip, tar, gzip, bzip2"
-            echo -e "  🔒 ${GREEN}Security Certs${NC} : ca-certificates, gnupg"
-            echo -e "  ⚙️  ${GREEN}Package Tools${NC}  : yum-utils"
-            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo ""
-
-            log_info "Starting tool installation..."
-            $PKG_MANAGER install -y \
-                curl \
-                wget \
-                git \
-                vim \
-                nano \
-                htop \
-                net-tools \
-                ca-certificates \
-                gnupg \
-                yum-utils \
-                unzip \
-                zip \
-                tar \
-                gzip \
-                bzip2
-
             log_info "Cleaning cache..."
             $PKG_MANAGER clean all
 
             echo ""
             log_success "CentOS/RHEL/Rocky/AlmaLinux/Fedora system update complete"
-            log_success "Common tools installed successfully!"
             ;;
 
         *)
@@ -163,82 +92,6 @@ update_system() {
     log_success "System update complete!"
 }
 
-# Install rclone
-install_rclone() {
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}rclone - Cloud Storage Sync Tool${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "  ☁️  Supports 40+ cloud storage services"
-    echo -e "  📦 Google Drive, Dropbox, OneDrive, S3, etc"
-    echo -e "  🔄 File sync, backup, and mount features"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-
-    log_info "Checking rclone installation status..."
-
-    if command -v rclone &> /dev/null; then
-        log_success "rclone is already installed"
-        rclone version | head -n 1
-        return
-    fi
-
-    log_info "Installing rclone (using official installation script)..."
-
-    # Download and verify the installation script
-    local install_script="/tmp/rclone-install-$$.sh"
-    log_info "Downloading rclone installation script..."
-
-    if ! curl -fsSL --proto '=https' --tlsv1.2 https://rclone.org/install.sh -o "$install_script"; then
-        log_error "Failed to download rclone installation script"
-        rm -f "$install_script"
-        return 1
-    fi
-
-    # Basic verification - check if it looks like a valid script
-    if ! head -n1 "$install_script" | grep -q "^#!/"; then
-        log_error "Downloaded file doesn't appear to be a valid script"
-        rm -f "$install_script"
-        return 1
-    fi
-
-    log_info "Executing installation script..."
-    if bash "$install_script"; then
-        rm -f "$install_script"
-        echo ""
-        log_success "rclone installed successfully!"
-        rclone version | head -n 1
-        echo ""
-        log_info "Usage tips:"
-        echo -e "  ${GREEN}Configure rclone${NC}: rclone config"
-        echo -e "  ${GREEN}View help${NC}      : rclone --help"
-        echo -e "  ${GREEN}Documentation${NC}  : https://rclone.org/docs/"
-    else
-        rm -f "$install_script"
-        log_error "Official script installation failed, trying repository installation..."
-
-        # Manual installation method
-        detect_os
-        case $OS in
-            ubuntu|debian)
-                apt-get install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                ;;
-            centos|rhel|rocky|almalinux|fedora)
-                if command -v dnf &> /dev/null; then
-                    dnf install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                else
-                    yum install -y rclone 2>/dev/null || log_warning "Repository installation failed, please visit https://rclone.org to install manually"
-                fi
-                ;;
-        esac
-
-        if command -v rclone &> /dev/null; then
-            log_success "rclone installed from system repository"
-            rclone version | head -n 1
-        fi
-    fi
-}
-
 # Main function
 main() {
     if [ "$EUID" -ne 0 ]; then
@@ -247,13 +100,6 @@ main() {
     fi
 
     update_system
-
-    # Install rclone
-    echo ""
-    read -p "Would you like to install rclone (cloud storage sync tool)? (Y/n): " install_rclone_choice
-    if [[ ! $install_rclone_choice =~ ^[Nn]$ ]]; then
-        install_rclone
-    fi
 
     # Ask about reboot
     echo ""

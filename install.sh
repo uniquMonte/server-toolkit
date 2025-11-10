@@ -189,6 +189,16 @@ system_update() {
     fi
 }
 
+# Basic tools installation
+basic_tools() {
+    log_step "Installing basic tools..."
+    if download_script_if_needed "basic_tools.sh"; then
+        bash "${SCRIPTS_PATH}/basic_tools.sh"
+    else
+        log_error "Failed to load basic tools script"
+    fi
+}
+
 # UFW management menu
 ufw_menu() {
     if ! download_script_if_needed "ufw_manager.sh"; then
@@ -300,10 +310,10 @@ nginx_menu() {
 
 # One-click install all components
 install_all() {
-    log_step "Starting one-click installation of all components..."
+    log_step "Starting complete setup (all-in-one)..."
 
     # Download all required scripts first
-    local required_scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
+    local required_scripts=("system_update.sh" "basic_tools.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
     for script in "${required_scripts[@]}"; do
         if ! download_script_if_needed "$script"; then
             log_error "Failed to load $script, aborting installation"
@@ -311,19 +321,151 @@ install_all() {
         fi
     done
 
+    # Pre-installation detection
+    echo ""
+    log_info "Checking current installation status..."
+    echo ""
+
+    local ufw_before=$(command -v ufw &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_before=$(command -v docker &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_compose_before=$(command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1 && echo "installed" || echo "not_installed")
+    local nginx_before=$(command -v nginx &> /dev/null && echo "installed" || echo "not_installed")
+    local certbot_before=$(command -v certbot &> /dev/null && echo "installed" || echo "not_installed")
+
+    # Display pre-installation status
+    echo -e "${CYAN}Current Status:${NC}"
+    echo -e "  UFW Firewall      : $([ "$ufw_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Docker Engine     : $([ "$docker_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Docker Compose    : $([ "$docker_compose_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Nginx             : $([ "$nginx_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo -e "  Certbot           : $([ "$certbot_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
+    echo ""
+
     # System update
     system_update
 
+    # Install basic tools
+    basic_tools
+
     # Install UFW and configure common ports
-    bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+    if [ "$ufw_before" = "not_installed" ]; then
+        log_step "Installing UFW firewall..."
+        bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+    else
+        log_info "UFW already installed, skipping..."
+    fi
 
     # Install Docker and Docker Compose
-    bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+    if [ "$docker_before" = "not_installed" ]; then
+        log_step "Installing Docker and Docker Compose..."
+        bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+    else
+        log_info "Docker already installed, skipping..."
+    fi
 
     # Install Nginx and Certbot
-    bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+    if [ "$nginx_before" = "not_installed" ]; then
+        log_step "Installing Nginx and Certbot..."
+        bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+    else
+        log_info "Nginx already installed, skipping..."
+    fi
 
-    log_success "All components installed successfully!"
+    # Post-installation detection
+    local ufw_after=$(command -v ufw &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_after=$(command -v docker &> /dev/null && echo "installed" || echo "not_installed")
+    local docker_compose_after=$(command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1 && echo "installed" || echo "not_installed")
+    local nginx_after=$(command -v nginx &> /dev/null && echo "installed" || echo "not_installed")
+    local certbot_after=$(command -v certbot &> /dev/null && echo "installed" || echo "not_installed")
+
+    # Categorize components
+    local newly_installed=()
+    local already_latest=()
+
+    [ "$ufw_before" = "not_installed" ] && [ "$ufw_after" = "installed" ] && newly_installed+=("UFW Firewall")
+    [ "$ufw_before" = "installed" ] && already_latest+=("UFW Firewall")
+
+    [ "$docker_before" = "not_installed" ] && [ "$docker_after" = "installed" ] && newly_installed+=("Docker Engine")
+    [ "$docker_before" = "installed" ] && already_latest+=("Docker Engine")
+
+    [ "$docker_compose_before" = "not_installed" ] && [ "$docker_compose_after" = "installed" ] && newly_installed+=("Docker Compose")
+    [ "$docker_compose_before" = "installed" ] && already_latest+=("Docker Compose")
+
+    [ "$nginx_before" = "not_installed" ] && [ "$nginx_after" = "installed" ] && newly_installed+=("Nginx")
+    [ "$nginx_before" = "installed" ] && already_latest+=("Nginx")
+
+    [ "$certbot_before" = "not_installed" ] && [ "$certbot_after" = "installed" ] && newly_installed+=("Certbot")
+    [ "$certbot_before" = "installed" ] && already_latest+=("Certbot")
+
+    # Display comprehensive summary
+    echo ""
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}         ${GREEN}Complete Setup Summary${NC}                        ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${YELLOW}System Updates:${NC}"
+    echo -e "  ${GREEN}✓${NC} System packages updated"
+    echo ""
+
+    echo -e "${YELLOW}Basic Tools:${NC}"
+    echo -e "  ${CYAN}Note:${NC} See basic tools installation output above for details"
+    echo ""
+
+    if [ ${#newly_installed[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Newly Installed Services:${NC}"
+        for service in "${newly_installed[@]}"; do
+            echo -e "  ${GREEN}✓${NC} $service"
+        done
+        echo ""
+    fi
+
+    if [ ${#already_latest[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Already Installed (Skipped):${NC}"
+        for service in "${already_latest[@]}"; do
+            echo -e "  ${BLUE}○${NC} $service - already installed"
+        done
+        echo ""
+    fi
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Installed Services Status:${NC}"
+    if command -v ufw &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} UFW Firewall - $(ufw version | head -n1)"
+    fi
+    if command -v docker &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Docker - $(docker --version 2>/dev/null | cut -d',' -f1)"
+    fi
+    if command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1; then
+        local dc_version=$(docker-compose --version 2>/dev/null || docker compose version 2>/dev/null | head -n1)
+        echo -e "  ${GREEN}✓${NC} Docker Compose - $dc_version"
+    fi
+    if command -v nginx &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Nginx - $(nginx -v 2>&1 | cut -d'/' -f2)"
+    fi
+    if command -v certbot &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Certbot - $(certbot --version 2>&1 | cut -d' ' -f2)"
+    fi
+    echo ""
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Next Steps:${NC}"
+    if command -v ufw &> /dev/null; then
+        echo -e "  • Check UFW status: ${CYAN}ufw status${NC}"
+    fi
+    if command -v docker &> /dev/null; then
+        echo -e "  • Check Docker: ${CYAN}docker ps${NC}"
+    fi
+    if command -v nginx &> /dev/null; then
+        echo -e "  • Check Nginx: ${CYAN}systemctl status nginx${NC}"
+    fi
+    if command -v certbot &> /dev/null; then
+        echo -e "  • Configure SSL: ${CYAN}certbot --nginx -d yourdomain.com${NC}"
+    fi
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    log_success "Complete setup finished successfully!"
 }
 
 # YABS performance test menu
@@ -453,59 +595,63 @@ main_menu() {
         echo ""
         echo -e "${CYAN}┌─ Basic System Setup ─────────────────┐${NC}"
         echo -e "${GREEN}1.${NC} System update"
-        echo -e "${GREEN}2.${NC} Install common tools (one-click)"
+        echo -e "${GREEN}2.${NC} Install basic tools"
+        echo -e "${GREEN}3.${NC} Complete setup (all-in-one)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Service Management ─────────────────┐${NC}"
-        echo -e "${GREEN}3.${NC} UFW Firewall management"
-        echo -e "${GREEN}4.${NC} Docker management"
-        echo -e "${GREEN}5.${NC} Nginx management"
+        echo -e "${GREEN}4.${NC} UFW Firewall management"
+        echo -e "${GREEN}5.${NC} Docker management"
+        echo -e "${GREEN}6.${NC} Nginx management"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Security Configuration ─────────────┐${NC}"
-        echo -e "${YELLOW}6.${NC} Fail2ban brute force protection"
-        echo -e "${YELLOW}7.${NC} SSH security configuration"
+        echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
+        echo -e "${YELLOW}8.${NC} SSH security configuration"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}8.${NC} YABS performance test"
-        echo -e "${PURPLE}9.${NC} IP quality check"
-        echo -e "${PURPLE}10.${NC} Network quality check"
+        echo -e "${PURPLE}9.${NC} YABS performance test"
+        echo -e "${PURPLE}10.${NC} IP quality check"
+        echo -e "${PURPLE}11.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-10, or press Enter to exit]: " choice
+        read -p "Please select an action [0-11, or press Enter to exit]: " choice
 
         case $choice in
             1)
                 system_update
                 ;;
             2)
-                install_all
+                basic_tools
                 ;;
             3)
-                ufw_menu
+                install_all
                 ;;
             4)
-                docker_menu
+                ufw_menu
                 ;;
             5)
-                nginx_menu
+                docker_menu
                 ;;
             6)
-                fail2ban_menu
+                nginx_menu
                 ;;
             7)
-                ssh_security_menu
+                fail2ban_menu
                 ;;
             8)
-                yabs_test_menu
+                ssh_security_menu
                 ;;
             9)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             10)
+                ip_quality_menu
+                ;;
+            11)
                 network_quality_menu
                 ;;
             0|"")
