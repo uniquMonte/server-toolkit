@@ -802,16 +802,23 @@ ssh_login_notifier_menu() {
 
 # Backup management menu
 backup_manager_menu() {
-    if ! download_script_if_needed "server_backup_manager.sh"; then
-        log_error "Failed to load server backup manager script"
-        return 1
-    fi
-
     echo ""
     log_step "Server Backup Manager"
+    echo ""
+    log_info "Launching Server Backup..."
+    echo ""
 
-    # Launch the server backup manager (integrates uniquMonte/server-backup)
-    bash "${SCRIPTS_PATH}/server_backup_manager.sh" menu
+    # Directly run the server-backup project's installation script
+    # This will use their own menu system
+    if command -v curl &> /dev/null; then
+        bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-backup/main/install.sh)
+    elif command -v wget &> /dev/null; then
+        bash <(wget -qO- https://raw.githubusercontent.com/uniquMonte/server-backup/main/install.sh)
+    else
+        log_error "Neither curl nor wget is available"
+        log_error "Please install curl or wget first"
+        return 1
+    fi
 }
 
 # DD system reinstallation menu
