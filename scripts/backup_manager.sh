@@ -488,10 +488,18 @@ configure_backup() {
     echo ""
     read -p "启用 Telegram 通知? [Y/n] (直接回车启用): " enable_tg
     if [[ ! $enable_tg =~ ^[Nn]$ ]]; then
-        read -p "Telegram Bot Token [${TG_BOT_TOKEN}]: " bot_token
+        if [ -n "$TG_BOT_TOKEN" ]; then
+            read -p "Telegram Bot Token [${TG_BOT_TOKEN}] (直接回车保持当前): " bot_token
+        else
+            read -p "Telegram Bot Token: " bot_token
+        fi
         TG_BOT_TOKEN="${bot_token:-$TG_BOT_TOKEN}"
 
-        read -p "Telegram Chat ID [${TG_CHAT_ID}]: " chat_id
+        if [ -n "$TG_CHAT_ID" ]; then
+            read -p "Telegram Chat ID [${TG_CHAT_ID}] (直接回车保持当前): " chat_id
+        else
+            read -p "Telegram Chat ID: " chat_id
+        fi
         TG_CHAT_ID="${chat_id:-$TG_CHAT_ID}"
     else
         log_info "Telegram 通知已禁用"
@@ -504,13 +512,13 @@ configure_backup() {
     log_info "Step 6/6: Additional Settings"
     echo ""
 
-    read -p "Max backups to keep [${BACKUP_MAX_KEEP:-2}]: " max_keep
+    read -p "Max backups to keep [${BACKUP_MAX_KEEP:-2}] (直接回车使用默认): " max_keep
     BACKUP_MAX_KEEP="${max_keep:-${BACKUP_MAX_KEEP:-2}}"
 
-    read -p "Log file path [${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}]: " log_file
+    read -p "Log file path [${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}] (直接回车使用默认): " log_file
     BACKUP_LOG_FILE="${log_file:-${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}}"
 
-    read -p "Temp directory [${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}]: " tmp_dir
+    read -p "Temp directory [${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}] (直接回车使用默认): " tmp_dir
     BACKUP_TMP_DIR="${tmp_dir:-${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}}"
 
     # Save configuration
@@ -1361,7 +1369,7 @@ main() {
                 echo -e "  ${CYAN}9.${NC} Install dependencies"
                 echo -e "  ${CYAN}0.${NC} Exit"
                 echo ""
-                read -p "Select action [0-9, default: 1]: " action
+                read -p "Select action [0-9] (直接回车运行备份): " action
                 action="${action:-1}"  # Default to option 1 (run backup)
 
                 case $action in
