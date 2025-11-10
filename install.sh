@@ -133,26 +133,32 @@ download_scripts() {
     if [ ! -d "$SCRIPTS_PATH" ]; then
         log_info "Remote execution detected, downloading script files..."
 
-        REPO_URL="https://raw.githubusercontent.com/uniquMonte/server-toolkit/main"
+        # Allow specifying branch via environment variable, default to main
+        BRANCH="${VPS_SETUP_BRANCH:-main}"
+        REPO_URL="https://raw.githubusercontent.com/uniquMonte/server-toolkit/${BRANCH}"
         TEMP_DIR="/tmp/vps-setup-$$"
         mkdir -p "$TEMP_DIR/scripts"
 
         SCRIPT_DIR="$TEMP_DIR"
         SCRIPTS_PATH="${SCRIPT_DIR}/scripts"
 
+        log_info "Using branch: ${BRANCH}"
+
         # Download all script files
         scripts=("system_update.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh" "yabs_test.sh" "fail2ban_manager.sh" "ssh_security.sh" "ip_quality_test.sh" "network_quality_test.sh")
 
         for script in "${scripts[@]}"; do
             log_info "Downloading ${script}..."
-            if ! curl -fsSL "${REPO_URL}/scripts/${script}" -o "${SCRIPTS_PATH}/${script}"; then
+            if ! curl -fsSL --proto '=https' --tlsv1.2 "${REPO_URL}/scripts/${script}" -o "${SCRIPTS_PATH}/${script}"; then
                 log_error "Failed to download ${script}"
+                log_error "URL: ${REPO_URL}/scripts/${script}"
+                log_info "Tip: Make sure the branch '${BRANCH}' exists and contains the scripts"
                 exit 1
             fi
             chmod +x "${SCRIPTS_PATH}/${script}"
         done
 
-        log_success "Script files downloaded successfully"
+        log_success "Script files downloaded successfully from branch: ${BRANCH}"
     fi
 }
 
