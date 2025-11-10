@@ -162,12 +162,15 @@ select_system() {
     show_available_systems
 
     while true; do
-        read -p "Select operating system [0-18]: " choice
+        read -p "Select operating system [0-18, default: 8 (Debian)]: " choice
+        # Set default to 8 (Debian) if empty
+        choice=${choice:-8}
 
         case $choice in
             1)
                 os_name="anolis"
-                read -p "Select version [7/8/23]: " os_version
+                read -p "Select version [7/8/23, default: 8]: " os_version
+                os_version=${os_version:-8}
                 if [[ ! "$os_version" =~ ^(7|8|23)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -175,7 +178,8 @@ select_system() {
                 ;;
             2)
                 os_name="rocky"
-                read -p "Select version [8/9/10]: " os_version
+                read -p "Select version [8/9/10, default: 9]: " os_version
+                os_version=${os_version:-9}
                 if [[ ! "$os_version" =~ ^(8|9|10)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -183,7 +187,8 @@ select_system() {
                 ;;
             3)
                 os_name="oracle"
-                read -p "Select version [8/9/10]: " os_version
+                read -p "Select version [8/9/10, default: 9]: " os_version
+                os_version=${os_version:-9}
                 if [[ ! "$os_version" =~ ^(8|9|10)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -191,7 +196,8 @@ select_system() {
                 ;;
             4)
                 os_name="almalinux"
-                read -p "Select version [8/9/10]: " os_version
+                read -p "Select version [8/9/10, default: 9]: " os_version
+                os_version=${os_version:-9}
                 if [[ ! "$os_version" =~ ^(8|9|10)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -199,7 +205,8 @@ select_system() {
                 ;;
             5)
                 os_name="opencloudos"
-                read -p "Select version [8/9/23]: " os_version
+                read -p "Select version [8/9/23, default: 9]: " os_version
+                os_version=${os_version:-9}
                 if [[ ! "$os_version" =~ ^(8|9|23)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -207,7 +214,8 @@ select_system() {
                 ;;
             6)
                 os_name="centos"
-                read -p "Select version [9/10]: " os_version
+                read -p "Select version [9/10, default: 9]: " os_version
+                os_version=${os_version:-9}
                 if [[ ! "$os_version" =~ ^(9|10)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -215,7 +223,8 @@ select_system() {
                 ;;
             7)
                 os_name="openeuler"
-                read -p "Select version [20.03/22.03/24.03/25.09]: " os_version
+                read -p "Select version [20.03/22.03/24.03/25.09, default: 24.03]: " os_version
+                os_version=${os_version:-24.03}
                 if [[ ! "$os_version" =~ ^(20\.03|22\.03|24\.03|25\.09)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -223,7 +232,8 @@ select_system() {
                 ;;
             8)
                 os_name="debian"
-                read -p "Select version [9/10/11/12/13]: " os_version
+                read -p "Select version [9/10/11/12/13, default: 12]: " os_version
+                os_version=${os_version:-12}
                 if [[ ! "$os_version" =~ ^(9|10|11|12|13)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -231,7 +241,8 @@ select_system() {
                 ;;
             9)
                 os_name="ubuntu"
-                read -p "Select version [16.04/18.04/20.04/22.04/24.04/25.10]: " os_version
+                read -p "Select version [16.04/18.04/20.04/22.04/24.04/25.10, default: 24.04]: " os_version
+                os_version=${os_version:-24.04}
                 if [[ ! "$os_version" =~ ^(16\.04|18\.04|20\.04|22\.04|24\.04|25\.10)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -243,7 +254,8 @@ select_system() {
                 ;;
             10)
                 os_name="fedora"
-                read -p "Select version [42/43]: " os_version
+                read -p "Select version [42/43, default: 43]: " os_version
+                os_version=${os_version:-43}
                 if [[ ! "$os_version" =~ ^(42|43)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -251,7 +263,8 @@ select_system() {
                 ;;
             11)
                 os_name="alpine"
-                read -p "Select version [3.19/3.20/3.21/3.22]: " os_version
+                read -p "Select version [3.19/3.20/3.21/3.22, default: 3.22]: " os_version
+                os_version=${os_version:-3.22}
                 if [[ ! "$os_version" =~ ^(3\.19|3\.20|3\.21|3\.22)$ ]]; then
                     log_error "Invalid version"
                     continue
@@ -259,7 +272,8 @@ select_system() {
                 ;;
             12)
                 os_name="opensuse"
-                read -p "Select version [15.6/16.0/tumbleweed]: " os_version
+                read -p "Select version [15.6/16.0/tumbleweed, default: 16.0]: " os_version
+                os_version=${os_version:-16.0}
                 if [[ ! "$os_version" =~ ^(15\.6|16\.0|tumbleweed)$ ]]; then
                     log_error "Invalid version"
                     continue
