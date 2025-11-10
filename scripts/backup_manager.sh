@@ -346,7 +346,26 @@ configure_backup() {
     log_info "Step 2/6: Configure Remote Storage"
     echo ""
 
-    # Check for existing rclone remotes
+    # First, configure hostname identifier for this VPS
+    local current_hostname=$(hostname)
+    echo -e "${CYAN}Configure VPS identifier (for distinguishing multiple VPS backups):${NC}"
+    echo -e "This will be used in the backup path: ${CYAN}vps-{identifier}-backup${NC}"
+    echo ""
+    if [ -n "$BACKUP_HOSTNAME" ]; then
+        echo -e "Current identifier: ${CYAN}${BACKUP_HOSTNAME}${NC}"
+        read -p "VPS identifier [${BACKUP_HOSTNAME}] (press Enter to keep current): " hostname_input
+        BACKUP_HOSTNAME="${hostname_input:-$BACKUP_HOSTNAME}"
+    else
+        echo -e "System hostname: ${CYAN}${current_hostname}${NC}"
+        read -p "VPS identifier [${current_hostname}] (press Enter for hostname): " hostname_input
+        BACKUP_HOSTNAME="${hostname_input:-$current_hostname}"
+    fi
+    # Sanitize hostname (remove special characters, convert to lowercase)
+    BACKUP_HOSTNAME=$(echo "$BACKUP_HOSTNAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+    log_success "VPS identifier set to: ${BACKUP_HOSTNAME}"
+    echo ""
+
+    # Now configure the remote
     if command -v rclone &> /dev/null; then
         local existing_remotes=$(rclone listremotes 2>/dev/null)
         if [ -n "$existing_remotes" ]; then
@@ -396,38 +415,46 @@ configure_backup() {
                 local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
                 log_success "Selected remote: ${selected_remote}"
                 echo ""
-                read -p "Remote directory path (e.g. vps-backup) [vps-backup] (press Enter for default): " remote_path
-                remote_path="${remote_path:-vps-backup}"
+                local default_path="vps-${BACKUP_HOSTNAME}-backup"
+                echo -e "${CYAN}Suggested path: ${default_path}${NC}"
+                read -p "Remote directory path [${default_path}] (press Enter for default): " remote_path
+                remote_path="${remote_path:-$default_path}"
                 BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
                 log_success "Full path: $BACKUP_REMOTE_DIR"
             else
                 # Manual input - user chose 0 or pressed Enter (for multiple) or chose 2 (for single)
+                local default_full_path="gdrive:vps-${BACKUP_HOSTNAME}-backup"
                 if [ -n "$BACKUP_REMOTE_DIR" ]; then
                     echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                    default_full_path="$BACKUP_REMOTE_DIR"
                 fi
-                log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
-                read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
-                BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+                log_info "Format: remote_name:path (e.g. gdrive:vps-${BACKUP_HOSTNAME}-backup)"
+                read -p "Remote directory [${default_full_path}] (press Enter for default): " remote_dir
+                BACKUP_REMOTE_DIR="${remote_dir:-${default_full_path}}"
             fi
         else
             # No existing remotes
             log_info "No existing rclone remotes found"
+            local default_full_path="gdrive:vps-${BACKUP_HOSTNAME}-backup"
             if [ -n "$BACKUP_REMOTE_DIR" ]; then
                 echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                default_full_path="$BACKUP_REMOTE_DIR"
             fi
-            log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
-            read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
-            BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+            log_info "Format: remote_name:path (e.g. gdrive:vps-${BACKUP_HOSTNAME}-backup)"
+            read -p "Remote directory [${default_full_path}] (press Enter for default): " remote_dir
+            BACKUP_REMOTE_DIR="${remote_dir:-${default_full_path}}"
         fi
     else
         # rclone not installed
         log_warning "rclone is not installed"
+        local default_full_path="gdrive:vps-${BACKUP_HOSTNAME}-backup"
         if [ -n "$BACKUP_REMOTE_DIR" ]; then
             echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+            default_full_path="$BACKUP_REMOTE_DIR"
         fi
-        log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
-        read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
-        BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+        log_info "Format: remote_name:path (e.g. gdrive:vps-${BACKUP_HOSTNAME}-backup)"
+        read -p "Remote directory [${default_full_path}] (press Enter for default): " remote_dir
+        BACKUP_REMOTE_DIR="${remote_dir:-${default_full_path}}"
     fi
 
     # Step 3: Setup rclone if needed
@@ -533,6 +560,7 @@ configure_backup() {
     log_success "Configuration saved successfully!"
     echo ""
     echo -e "${GREEN}Configuration Summary:${NC}"
+    echo -e "  VPS identifier:    ${CYAN}$BACKUP_HOSTNAME${NC}"
     echo -e "  Config file:       ${CYAN}$BACKUP_ENV${NC}"
     echo -e "  Backup script:     ${CYAN}$BACKUP_SCRIPT${NC}"
     echo -e "  Log file:          ${CYAN}$BACKUP_LOG_FILE${NC}"
@@ -567,6 +595,9 @@ save_config() {
     cat > "$BACKUP_ENV" << EOF
 # VPS Backup Configuration
 # Generated on $(date)
+
+# VPS identifier (hostname/label for this server)
+BACKUP_HOSTNAME="$BACKUP_HOSTNAME"
 
 # Backup sources (separated by |)
 BACKUP_SRCS="$BACKUP_SRCS"
@@ -1107,20 +1138,41 @@ edit_configuration() {
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "${GREEN}What do you want to modify?${NC}"
-        echo -e "  ${CYAN}1.${NC} Backup sources (add/remove directories)"
-        echo -e "  ${CYAN}2.${NC} Remote storage directory"
-        echo -e "  ${CYAN}3.${NC} Encryption password"
-        echo -e "  ${CYAN}4.${NC} Telegram notifications"
-        echo -e "  ${CYAN}5.${NC} Backup retention (max backups)"
-        echo -e "  ${CYAN}6.${NC} Log and temp paths"
-        echo -e "  ${CYAN}7.${NC} View current configuration"
-        echo -e "  ${CYAN}8.${NC} Setup/modify backup schedule (cron)"
+        echo -e "  ${CYAN}1.${NC} VPS identifier (hostname/label)"
+        echo -e "  ${CYAN}2.${NC} Backup sources (add/remove directories)"
+        echo -e "  ${CYAN}3.${NC} Remote storage directory"
+        echo -e "  ${CYAN}4.${NC} Encryption password"
+        echo -e "  ${CYAN}5.${NC} Telegram notifications"
+        echo -e "  ${CYAN}6.${NC} Backup retention (max backups)"
+        echo -e "  ${CYAN}7.${NC} Log and temp paths"
+        echo -e "  ${CYAN}8.${NC} View current configuration"
+        echo -e "  ${CYAN}9.${NC} Setup/modify backup schedule (cron)"
         echo -e "  ${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Select option [0-8]: " edit_choice
+        read -p "Select option [0-9]: " edit_choice
 
         case $edit_choice in
             1)
+                # Edit VPS identifier
+                echo ""
+                echo -e "Current VPS identifier: ${CYAN}$BACKUP_HOSTNAME${NC}"
+                echo -e "This is used in the backup path: ${CYAN}vps-${BACKUP_HOSTNAME}-backup${NC}"
+                echo ""
+                local current_hostname=$(hostname)
+                echo -e "System hostname: ${CYAN}${current_hostname}${NC}"
+                read -p "New VPS identifier [${BACKUP_HOSTNAME}] (press Enter to keep current): " new_hostname
+                if [ -n "$new_hostname" ]; then
+                    # Sanitize hostname
+                    new_hostname=$(echo "$new_hostname" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+                    BACKUP_HOSTNAME="$new_hostname"
+                    save_config
+                    log_success "VPS identifier updated to: $BACKUP_HOSTNAME"
+                    log_warning "Note: This does NOT change the remote path automatically"
+                    log_warning "If you want to use a new remote path, please update option 3 (Remote storage directory)"
+                fi
+                ;;
+
+            2)
                 # Edit backup sources
                 echo ""
                 log_info "Current backup sources:"
@@ -1186,7 +1238,7 @@ edit_configuration() {
                 esac
                 ;;
 
-            2)
+            3)
                 # Edit remote directory
                 echo ""
                 echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
@@ -1199,7 +1251,7 @@ edit_configuration() {
                 fi
                 ;;
 
-            3)
+            4)
                 # Change encryption password
                 echo ""
                 log_warning "Changing password will not re-encrypt existing backups"
@@ -1217,7 +1269,7 @@ edit_configuration() {
                 fi
                 ;;
 
-            4)
+            5)
                 # Edit Telegram settings
                 echo ""
                 if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
