@@ -345,12 +345,65 @@ configure_backup() {
     echo ""
     log_info "Step 2/6: Configure Remote Storage"
     echo ""
-    if [ -n "$BACKUP_REMOTE_DIR" ]; then
-        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+
+    # Check for existing rclone remotes
+    if command -v rclone &> /dev/null; then
+        local existing_remotes=$(rclone listremotes 2>/dev/null)
+        if [ -n "$existing_remotes" ]; then
+            echo -e "${GREEN}Found existing rclone remotes:${NC}"
+            echo "$existing_remotes" | nl
+            echo ""
+            read -p "Use existing remote? [Y/n]: " use_existing
+
+            if [[ ! $use_existing =~ ^[Nn]$ ]]; then
+                # Let user select from existing remotes
+                local remote_count=$(echo "$existing_remotes" | wc -l)
+                read -p "Select remote number (1-$remote_count) or Enter to input manually: " remote_choice
+
+                if [[ $remote_choice =~ ^[0-9]+$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
+                    local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
+                    read -p "Path in remote (e.g., vps-backup) [vps-backup]: " remote_path
+                    remote_path="${remote_path:-vps-backup}"
+                    BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
+                    log_success "Using remote: $BACKUP_REMOTE_DIR"
+                else
+                    # Manual input
+                    if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                        echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                    fi
+                    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+                    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+                    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+                fi
+            else
+                # User wants to configure new remote
+                if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                    echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                fi
+                log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+                read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+                BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+            fi
+        else
+            # No existing remotes
+            log_info "No existing rclone remotes found"
+            if [ -n "$BACKUP_REMOTE_DIR" ]; then
+                echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+            fi
+            log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+            read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+            BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
+        fi
+    else
+        # rclone not installed
+        log_warning "rclone is not installed"
+        if [ -n "$BACKUP_REMOTE_DIR" ]; then
+            echo -e "Current remote: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+        fi
+        log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
+        read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
+        BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
     fi
-    log_info "Format: remote_name:path (e.g., gdrive:vps-backup)"
-    read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}]: " remote_dir
-    BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
 
     # Step 3: Setup rclone if needed
     echo ""
@@ -358,7 +411,7 @@ configure_backup() {
     local remote_name=$(echo "$BACKUP_REMOTE_DIR" | cut -d':' -f1)
     if command -v rclone &> /dev/null; then
         if rclone listremotes | grep -q "^${remote_name}:$"; then
-            log_success "Rclone remote '$remote_name' already configured"
+            log_success "Rclone remote '$remote_name' already configured ✓"
         else
             log_warning "Rclone remote '$remote_name' not found"
             read -p "Configure rclone now? [Y/n]: " setup
