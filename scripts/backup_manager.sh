@@ -482,19 +482,19 @@ configure_backup() {
         fi
     fi
 
-    # Step 5: Configure Telegram notifications (optional)
+    # Step 5: Configure Telegram notifications (recommended)
     echo ""
-    log_info "Step 5/6: Configure Telegram Notifications (Optional)"
+    log_info "Step 5/6: Configure Telegram Notifications (推荐)"
     echo ""
-    read -p "Enable Telegram notifications? [y/N] (直接回车跳过): " enable_tg
-    if [[ $enable_tg =~ ^[Yy]$ ]]; then
+    read -p "启用 Telegram 通知? [Y/n] (直接回车启用): " enable_tg
+    if [[ ! $enable_tg =~ ^[Nn]$ ]]; then
         read -p "Telegram Bot Token [${TG_BOT_TOKEN}]: " bot_token
         TG_BOT_TOKEN="${bot_token:-$TG_BOT_TOKEN}"
 
         read -p "Telegram Chat ID [${TG_CHAT_ID}]: " chat_id
         TG_CHAT_ID="${chat_id:-$TG_CHAT_ID}"
     else
-        log_info "Telegram notifications disabled"
+        log_info "Telegram 通知已禁用"
         TG_BOT_TOKEN=""
         TG_CHAT_ID=""
     fi
@@ -1229,14 +1229,14 @@ edit_configuration() {
                         log_success "Telegram settings updated"
                     fi
                 else
-                    log_info "Telegram notifications are disabled"
-                    read -p "Enable Telegram notifications? [y/N] (直接回车跳过): " enable
-                    if [[ $enable =~ ^[Yy]$ ]]; then
+                    log_info "Telegram 通知当前已禁用"
+                    read -p "启用 Telegram 通知? [Y/n] (直接回车启用): " enable
+                    if [[ ! $enable =~ ^[Nn]$ ]]; then
                         read -p "Bot Token: " TG_BOT_TOKEN
                         read -p "Chat ID: " TG_CHAT_ID
                         save_config
                         create_backup_script
-                        log_success "Telegram notifications enabled"
+                        log_success "Telegram 通知已启用"
                     fi
                 fi
                 ;;
