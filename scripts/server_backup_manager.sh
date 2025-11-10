@@ -557,6 +557,32 @@ main() {
                 read -p "Server Backup is not installed. Install now? [Y/n] (press Enter to install): " install
                 if [[ ! $install =~ ^[Nn]$ ]]; then
                     install_server_backup
+
+                    # After installation, show the menu again
+                    if check_installed; then
+                        echo ""
+                        echo -e "${GREEN}Available actions:${NC}"
+                        echo -e "  ${CYAN}1.${NC} Configure backup settings"
+                        echo -e "  ${CYAN}2.${NC} View status"
+                        echo -e "  ${CYAN}0.${NC} Exit"
+                        echo ""
+                        read -p "Select action [0-2]: " action
+
+                        case $action in
+                            1)
+                                configure_server_backup
+                                ;;
+                            2)
+                                show_status
+                                ;;
+                            0)
+                                log_info "Exiting"
+                                ;;
+                            *)
+                                log_error "Invalid selection"
+                                ;;
+                        esac
+                    fi
                 fi
             fi
             ;;
