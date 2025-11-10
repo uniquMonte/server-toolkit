@@ -453,7 +453,7 @@ configure_docker_logs() {
     fi
 
     # Ask for confirmation
-    read -p "Apply recommended Docker log configuration? (Y/n) (直接回车确认): " confirm
+    read -p "Apply recommended Docker log configuration? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Docker log configuration cancelled"
         return 0
@@ -558,7 +558,7 @@ configure_journald_logs() {
     fi
 
     # Ask for confirmation
-    read -p "Apply recommended journal configuration? (Y/n) (直接回车确认): " confirm
+    read -p "Apply recommended journal configuration? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Journal configuration cancelled"
         return 0
@@ -680,7 +680,7 @@ configure_all() {
 
     echo ""
     log_info "This will configure both Docker and system journal logs"
-    read -p "Proceed with configuration? (Y/n) (直接回车确认): " confirm
+    read -p "Proceed with configuration? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Configuration cancelled"
         return 0

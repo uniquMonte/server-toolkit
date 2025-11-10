@@ -241,7 +241,7 @@ configure_backup_sources() {
             counter=$((counter+1))
         else
             log_warning "Path does not exist: $source"
-            read -p "Add anyway? [y/N] (直接回车跳过): " add_anyway
+            read -p "Add anyway? [y/N] (press Enter to skip): " add_anyway
             if [[ $add_anyway =~ ^[Yy]$ ]]; then
                 new_sources+=("$source")
                 log_info "Added: $source"
@@ -281,7 +281,7 @@ setup_rclone() {
 
     if ! command -v rclone &> /dev/null; then
         log_error "rclone is not installed"
-        read -p "Install rclone now? [Y/n] (直接回车确认): " install
+        read -p "Install rclone now? [Y/n] (press Enter to confirm): " install
         if [[ ! $install =~ ^[Nn]$ ]]; then
             install_rclone || return 1
         else
@@ -350,7 +350,7 @@ configure_backup() {
     if command -v rclone &> /dev/null; then
         local existing_remotes=$(rclone listremotes 2>/dev/null)
         if [ -n "$existing_remotes" ]; then
-            echo -e "${GREEN}发现已配置的 rclone 远程存储：${NC}"
+            echo -e "${GREEN}Found existing rclone remotes:${NC}"
             echo "$existing_remotes" | nl
             echo ""
 
@@ -360,25 +360,25 @@ configure_backup() {
             if [ $remote_count -eq 1 ]; then
                 # Single remote: default to use it (most common case)
                 local remote_name=$(echo "$existing_remotes" | head -1 | tr -d ':')
-                echo -e "${CYAN}选项：${NC}"
-                echo -e "  ${GREEN}1.${NC} 使用现有的 ${CYAN}${remote_name}${NC}"
-                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
+                echo -e "${CYAN}Options:${NC}"
+                echo -e "  ${GREEN}1.${NC} Use existing ${CYAN}${remote_name}${NC}"
+                echo -e "  ${GREEN}0.${NC} Manual input (other config)"
                 echo ""
-                read -p "请选择 [1 或 0] (直接回车使用现有配置): " remote_choice
+                read -p "Select [1 or 0] (press Enter to use existing): " remote_choice
                 remote_choice="${remote_choice:-1}"
             else
                 # Multiple remotes: require explicit choice (no default)
-                echo -e "${CYAN}选项：${NC}"
+                echo -e "${CYAN}Options:${NC}"
                 echo "$existing_remotes" | nl | sed 's/^/  /'
-                echo -e "  ${GREEN}0.${NC} 手动输入其它配置"
+                echo -e "  ${GREEN}0.${NC} Manual input (other config)"
                 echo ""
 
                 # Loop until valid input
                 while true; do
-                    read -p "请选择 [1-${remote_count} 或 0]: " remote_choice
+                    read -p "Select [1-${remote_count} or 0]: " remote_choice
 
                     if [[ -z "$remote_choice" ]]; then
-                        log_warning "请明确选择一个选项"
+                        log_warning "Please select an option"
                         continue
                     fi
 
@@ -394,39 +394,39 @@ configure_backup() {
             if [[ $remote_choice =~ ^[1-9][0-9]*$ ]] && [ $remote_choice -ge 1 ] && [ $remote_choice -le $remote_count ]; then
                 # User selected an existing remote
                 local selected_remote=$(echo "$existing_remotes" | sed -n "${remote_choice}p" | tr -d ':')
-                log_success "已选择远程存储: ${selected_remote}"
+                log_success "Selected remote: ${selected_remote}"
                 echo ""
-                read -p "远程目录路径 (例如: vps-backup) [vps-backup] (直接回车使用默认): " remote_path
+                read -p "Remote directory path (e.g. vps-backup) [vps-backup] (press Enter for default): " remote_path
                 remote_path="${remote_path:-vps-backup}"
                 BACKUP_REMOTE_DIR="${selected_remote}:${remote_path}"
-                log_success "完整路径: $BACKUP_REMOTE_DIR"
+                log_success "Full path: $BACKUP_REMOTE_DIR"
             else
                 # Manual input - user chose 0 or pressed Enter (for multiple) or chose 2 (for single)
                 if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                    echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                    echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
                 fi
-                log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
-                read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
+                log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
+                read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
                 BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
             fi
         else
             # No existing remotes
-            log_info "未找到已配置的 rclone 远程存储"
+            log_info "No existing rclone remotes found"
             if [ -n "$BACKUP_REMOTE_DIR" ]; then
-                echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+                echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
             fi
-            log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
-            read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
+            log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
+            read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
             BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
         fi
     else
         # rclone not installed
-        log_warning "rclone 未安装"
+        log_warning "rclone is not installed"
         if [ -n "$BACKUP_REMOTE_DIR" ]; then
-            echo -e "当前配置: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
+            echo -e "Current config: ${CYAN}$BACKUP_REMOTE_DIR${NC}"
         fi
-        log_info "格式: 远程名称:路径 (例如: gdrive:vps-backup)"
-        read -p "远程目录 [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (直接回车使用默认): " remote_dir
+        log_info "Format: remote_name:path (e.g. gdrive:vps-backup)"
+        read -p "Remote directory [${BACKUP_REMOTE_DIR:-gdrive:vps-backup}] (press Enter for default): " remote_dir
         BACKUP_REMOTE_DIR="${remote_dir:-${BACKUP_REMOTE_DIR:-gdrive:vps-backup}}"
     fi
 
@@ -439,14 +439,14 @@ configure_backup() {
             log_success "Rclone remote '$remote_name' already configured ✓"
         else
             log_warning "Rclone remote '$remote_name' not found"
-            read -p "Configure rclone now? [Y/n] (直接回车确认): " setup
+            read -p "Configure rclone now? [Y/n] (press Enter to confirm): " setup
             if [[ ! $setup =~ ^[Nn]$ ]]; then
                 setup_rclone
             fi
         fi
     else
         log_warning "rclone is not installed"
-        read -p "Install and configure rclone now? [Y/n] (直接回车确认): " install
+        read -p "Install and configure rclone now? [Y/n] (press Enter to confirm): " install
         if [[ ! $install =~ ^[Nn]$ ]]; then
             install_rclone && setup_rclone
         fi
@@ -458,7 +458,7 @@ configure_backup() {
     echo ""
     if [ -n "$BACKUP_PASSWORD" ]; then
         echo -e "Current password: ${CYAN}${BACKUP_PASSWORD:0:3}***${NC}"
-        read -p "Change password? [y/N] (直接回车跳过): " change_pass
+        read -p "Change password? [y/N] (press Enter to skip): " change_pass
         if [[ ! $change_pass =~ ^[Yy]$ ]]; then
             log_info "Keeping existing password"
         else
@@ -484,25 +484,25 @@ configure_backup() {
 
     # Step 5: Configure Telegram notifications (recommended)
     echo ""
-    log_info "Step 5/6: Configure Telegram Notifications (推荐)"
+    log_info "Step 5/6: Configure Telegram Notifications (Recommended)"
     echo ""
-    read -p "启用 Telegram 通知? [Y/n] (直接回车启用): " enable_tg
+    read -p "Enable Telegram notifications? [Y/n] (press Enter to enable): " enable_tg
     if [[ ! $enable_tg =~ ^[Nn]$ ]]; then
         if [ -n "$TG_BOT_TOKEN" ]; then
-            read -p "Telegram Bot Token [${TG_BOT_TOKEN}] (直接回车保持当前): " bot_token
+            read -p "Telegram Bot Token [${TG_BOT_TOKEN}] (press Enter to keep current): " bot_token
         else
             read -p "Telegram Bot Token: " bot_token
         fi
         TG_BOT_TOKEN="${bot_token:-$TG_BOT_TOKEN}"
 
         if [ -n "$TG_CHAT_ID" ]; then
-            read -p "Telegram Chat ID [${TG_CHAT_ID}] (直接回车保持当前): " chat_id
+            read -p "Telegram Chat ID [${TG_CHAT_ID}] (press Enter to keep current): " chat_id
         else
             read -p "Telegram Chat ID: " chat_id
         fi
         TG_CHAT_ID="${chat_id:-$TG_CHAT_ID}"
     else
-        log_info "Telegram 通知已禁用"
+        log_info "Telegram notifications disabled"
         TG_BOT_TOKEN=""
         TG_CHAT_ID=""
     fi
@@ -512,13 +512,13 @@ configure_backup() {
     log_info "Step 6/6: Additional Settings"
     echo ""
 
-    read -p "Max backups to keep [${BACKUP_MAX_KEEP:-2}] (直接回车使用默认): " max_keep
+    read -p "Max backups to keep [${BACKUP_MAX_KEEP:-2}] (press Enter for default): " max_keep
     BACKUP_MAX_KEEP="${max_keep:-${BACKUP_MAX_KEEP:-2}}"
 
-    read -p "Log file path [${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}] (直接回车使用默认): " log_file
+    read -p "Log file path [${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}] (press Enter for default): " log_file
     BACKUP_LOG_FILE="${log_file:-${BACKUP_LOG_FILE:-$DEFAULT_LOG_FILE}}"
 
-    read -p "Temp directory [${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}] (直接回车使用默认): " tmp_dir
+    read -p "Temp directory [${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}] (press Enter for default): " tmp_dir
     BACKUP_TMP_DIR="${tmp_dir:-${BACKUP_TMP_DIR:-$DEFAULT_TMP_DIR}}"
 
     # Save configuration
@@ -540,13 +540,13 @@ configure_backup() {
     echo -e "  Max backups:       ${CYAN}$BACKUP_MAX_KEEP${NC}"
 
     echo ""
-    read -p "Test backup configuration now? [Y/n] (直接回车确认): " test
+    read -p "Test backup configuration now? [Y/n] (press Enter to confirm): " test
     if [[ ! $test =~ ^[Nn]$ ]]; then
         test_configuration
 
         # After testing, offer to run backup immediately
         echo ""
-        read -p "Run backup now to verify everything works? [Y/n] (直接回车确认): " run_now
+        read -p "Run backup now to verify everything works? [Y/n] (press Enter to confirm): " run_now
         if [[ ! $run_now =~ ^[Nn]$ ]]; then
             echo ""
             run_backup
@@ -554,7 +554,7 @@ configure_backup() {
     else
         # If user skipped test, still offer to run backup
         echo ""
-        read -p "Run backup now? [y/N] (直接回车跳过): " run_now
+        read -p "Run backup now? [y/N] (press Enter to skip): " run_now
         if [[ $run_now =~ ^[Yy]$ ]]; then
             echo ""
             run_backup
@@ -873,7 +873,7 @@ test_configuration() {
     log_info "Test 4: Testing Telegram notifications..."
     if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
         echo -e "  ${GREEN}✓${NC} Telegram credentials configured"
-        read -p "Send test message? [y/N] (直接回车跳过): " send_test
+        read -p "Send test message? [y/N] (press Enter to skip): " send_test
         if [[ $send_test =~ ^[Yy]$ ]]; then
             local test_msg="🖥️ <b>$(hostname) - 测试消息</b>
 ✅ Telegram 通知配置正常"
@@ -936,7 +936,7 @@ run_backup() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Proceed with backup? [Y/n] (直接回车确认): " proceed
+    read -p "Proceed with backup? [Y/n] (press Enter to confirm): " proceed
     if [[ $proceed =~ ^[Nn]$ ]]; then
         log_info "Backup cancelled"
         return 0
@@ -1143,7 +1143,7 @@ edit_configuration() {
                             log_success "Added: $new_src"
                         else
                             log_warning "Path does not exist: $new_src"
-                            read -p "Add anyway? [y/N] (直接回车跳过): " add_anyway
+                            read -p "Add anyway? [y/N] (press Enter to skip): " add_anyway
                             if [[ $add_anyway =~ ^[Yy]$ ]]; then
                                 SOURCES+=("$new_src")
                                 BACKUP_SRCS=$(IFS='|'; echo "${SOURCES[*]}")
@@ -1216,7 +1216,7 @@ edit_configuration() {
                     echo -e "Current Bot Token: ${CYAN}${TG_BOT_TOKEN:0:10}...${NC}"
                     echo -e "Current Chat ID:   ${CYAN}${TG_CHAT_ID}${NC}"
                     echo ""
-                    read -p "Disable Telegram notifications? [y/N] (直接回车跳过): " disable
+                    read -p "Disable Telegram notifications? [y/N] (press Enter to skip): " disable
                     if [[ $disable =~ ^[Yy]$ ]]; then
                         TG_BOT_TOKEN=""
                         TG_CHAT_ID=""
@@ -1237,14 +1237,14 @@ edit_configuration() {
                         log_success "Telegram settings updated"
                     fi
                 else
-                    log_info "Telegram 通知当前已禁用"
-                    read -p "启用 Telegram 通知? [Y/n] (直接回车启用): " enable
+                    log_info "Telegram notifications are currently disabled"
+                    read -p "Enable Telegram notifications? [Y/n] (press Enter to enable): " enable
                     if [[ ! $enable =~ ^[Nn]$ ]]; then
                         read -p "Bot Token: " TG_BOT_TOKEN
                         read -p "Chat ID: " TG_CHAT_ID
                         save_config
                         create_backup_script
-                        log_success "Telegram 通知已启用"
+                        log_success "Telegram notifications enabled"
                     fi
                 fi
                 ;;
@@ -1369,7 +1369,7 @@ main() {
                 echo -e "  ${CYAN}9.${NC} Install dependencies"
                 echo -e "  ${CYAN}0.${NC} Exit"
                 echo ""
-                read -p "Select action [0-9] (直接回车运行备份): " action
+                read -p "Select action [0-9] (press Enter to run backup): " action
                 action="${action:-1}"  # Default to option 1 (run backup)
 
                 case $action in
@@ -1395,7 +1395,7 @@ main() {
                 esac
             else
                 echo ""
-                read -p "Backup is not configured. Configure now? [Y/n] (直接回车确认): " config
+                read -p "Backup is not configured. Configure now? [Y/n] (press Enter to confirm): " config
                 if [[ ! $config =~ ^[Nn]$ ]]; then
                     configure_backup
                 fi

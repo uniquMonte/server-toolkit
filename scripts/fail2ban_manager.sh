@@ -117,21 +117,21 @@ configure_fail2ban() {
     log_info "Creating local configuration file..."
 
     # Ask for SSH port
-    read -p "Enter SSH port (default: 22) (直接回车使用默认): " ssh_port
+    read -p "Enter SSH port (default: 22) (press Enter for default): " ssh_port
     ssh_port=${ssh_port:-22}
 
     # Ask for ban time
-    read -p "Ban time in minutes (default: 60) (直接回车使用默认): " ban_time
+    read -p "Ban time in minutes (default: 60) (press Enter for default): " ban_time
     ban_time=${ban_time:-60}
     ban_time=$((ban_time * 60))  # Convert to seconds
 
     # Ask for find time
-    read -p "Find time window in minutes (default: 10) (直接回车使用默认): " find_time
+    read -p "Find time window in minutes (default: 10) (press Enter for default): " find_time
     find_time=${find_time:-10}
     find_time=$((find_time * 60))  # Convert to seconds
 
     # Ask for max retry
-    read -p "Maximum failed attempts (default: 5) (直接回车使用默认): " max_retry
+    read -p "Maximum failed attempts (default: 5) (press Enter for default): " max_retry
     max_retry=${max_retry:-5}
 
     # Detect if systemd journal is available
@@ -316,7 +316,7 @@ uninstall_fail2ban() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Fail2ban? (y/N) (直接回车取消): " confirm
+    read -p "Are you sure you want to uninstall Fail2ban? (y/N) (press Enter to cancel): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         log_info "Uninstallation cancelled"
         return
@@ -353,7 +353,7 @@ uninstall_fail2ban() {
     esac
 
     # Delete configuration files
-    read -p "Delete configuration files? (y/N) (直接回车跳过): " delete_config
+    read -p "Delete configuration files? (y/N) (press Enter to skip): " delete_config
     if [[ $delete_config =~ ^[Yy]$ ]]; then
         log_info "Deleting configuration files..."
         rm -rf /etc/fail2ban
