@@ -31,6 +31,30 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Helper function to safely run external network quality test
+run_netquality_safely() {
+    local params="$1"
+    local script_file="/tmp/netquality-$$.sh"
+
+    log_info "Downloading network quality test script..."
+    if ! curl -fsSL --proto '=https' --tlsv1.2 https://Net.Check.Place -o "$script_file"; then
+        log_error "Failed to download test script"
+        rm -f "$script_file"
+        return 1
+    fi
+
+    log_info "Running test..."
+    if [ -n "$params" ]; then
+        bash "$script_file" $params
+    else
+        bash "$script_file"
+    fi
+    local result=$?
+
+    rm -f "$script_file"
+    return $result
+}
+
 # Display network quality test introduction
 show_network_quality_info() {
     echo ""
@@ -73,10 +97,10 @@ run_dual_stack_test() {
         return
     fi
 
-    log_info "Running test..."
+    log_warning "⚠️  This test will download and execute external scripts from Net.Check.Place"
     echo ""
 
-    if bash <(curl -Ls https://Net.Check.Place); then
+    if run_netquality_safely ""; then
         echo ""
         log_success "Test complete!"
     else
@@ -101,10 +125,8 @@ run_ipv4_test() {
         return
     fi
 
-    log_info "Running test..."
     echo ""
-
-    if bash <(curl -Ls https://Net.Check.Place) -4; then
+    if run_netquality_safely "-4"; then
         echo ""
         log_success "Test complete!"
     else
@@ -129,10 +151,8 @@ run_ipv6_test() {
         return
     fi
 
-    log_info "Running test..."
     echo ""
-
-    if bash <(curl -Ls https://Net.Check.Place) -6; then
+    if run_netquality_safely "-6"; then
         echo ""
         log_success "Test complete!"
     else

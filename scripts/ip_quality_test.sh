@@ -31,6 +31,30 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Helper function to safely run external IP quality test
+run_ipquality_safely() {
+    local params="$1"
+    local script_file="/tmp/ipquality-$$.sh"
+
+    log_info "Downloading IP quality test script..."
+    if ! curl -fsSL --proto '=https' --tlsv1.2 https://IP.Check.Place -o "$script_file"; then
+        log_error "Failed to download test script"
+        rm -f "$script_file"
+        return 1
+    fi
+
+    log_info "Running test..."
+    if [ -n "$params" ]; then
+        bash "$script_file" $params
+    else
+        bash "$script_file"
+    fi
+    local result=$?
+
+    rm -f "$script_file"
+    return $result
+}
+
 # Display IP quality test introduction
 show_ip_quality_info() {
     echo ""
@@ -66,6 +90,8 @@ run_dual_stack_test() {
     echo -e "${PURPLE}Estimated time: 1-3 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
+    log_warning "⚠️  This test will download and execute external scripts from IP.Check.Place"
+    echo ""
 
     read -p "Confirm to start test? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
@@ -73,10 +99,8 @@ run_dual_stack_test() {
         return
     fi
 
-    log_info "Running test..."
     echo ""
-
-    if bash <(curl -Ls https://IP.Check.Place); then
+    if run_ipquality_safely ""; then
         echo ""
         log_success "Test complete!"
     else
@@ -101,10 +125,8 @@ run_ipv4_test() {
         return
     fi
 
-    log_info "Running test..."
     echo ""
-
-    if bash <(curl -Ls https://IP.Check.Place) -4; then
+    if run_ipquality_safely "-4"; then
         echo ""
         log_success "Test complete!"
     else
@@ -129,10 +151,8 @@ run_ipv6_test() {
         return
     fi
 
-    log_info "Running test..."
     echo ""
-
-    if bash <(curl -Ls https://IP.Check.Place) -6; then
+    if run_ipquality_safely "-6"; then
         echo ""
         log_success "Test complete!"
     else
