@@ -133,8 +133,9 @@ download_scripts() {
     if [ ! -d "$SCRIPTS_PATH" ]; then
         log_info "Remote execution detected, downloading script files..."
 
-        # Allow specifying branch via environment variable, default to main
-        BRANCH="${VPS_SETUP_BRANCH:-main}"
+        # Priority: CLI arg > env var > default (main)
+        # SETUP_BRANCH is set in main() from command line args
+        BRANCH="${SETUP_BRANCH:-${VPS_SETUP_BRANCH:-main}}"
         REPO_URL="https://raw.githubusercontent.com/uniquMonte/server-toolkit/${BRANCH}"
         TEMP_DIR="/tmp/vps-setup-$$"
         mkdir -p "$TEMP_DIR/scripts"
@@ -456,8 +457,49 @@ main_menu() {
     done
 }
 
+# Parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --branch)
+                SETUP_BRANCH="$2"
+                shift 2
+                ;;
+            --help|-h)
+                echo "VPS Quick Setup Script"
+                echo ""
+                echo "Usage: $0 [options]"
+                echo ""
+                echo "Options:"
+                echo "  --branch <name>    Specify git branch for remote script downloads"
+                echo "  --help, -h         Show this help message"
+                echo ""
+                echo "Examples:"
+                echo "  # Use default (main) branch"
+                echo "  bash install.sh"
+                echo ""
+                echo "  # Use specific branch for testing"
+                echo "  bash install.sh --branch claude/review-script-optimization-011CUySPawcwxfwf39n9MnYv"
+                echo ""
+                echo "  # Remote execution with branch"
+                echo "  curl -Ls https://raw.githubusercontent.com/.../install.sh | bash -s -- --branch dev"
+                echo ""
+                exit 0
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+}
+
 # Main function
 main() {
+    # Parse command line arguments
+    parse_args "$@"
+
     # Clear screen
     clear
 
