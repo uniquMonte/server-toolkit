@@ -239,6 +239,46 @@ bbr_menu() {
     esac
 }
 
+# Timezone and NTP management menu
+timezone_ntp_menu() {
+    if ! download_script_if_needed "timezone_ntp.sh"; then
+        log_error "Failed to load timezone/NTP script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Timezone and NTP Time Synchronization"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/timezone_ntp.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Set timezone to Asia/Shanghai"
+    echo -e "${CYAN}2.${NC} Enable NTP time synchronization"
+    echo -e "${CYAN}3.${NC} Configure both (recommended)"
+    echo -e "${CYAN}4.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-4]: " tz_choice
+
+    case $tz_choice in
+        1)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" timezone
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" ntp
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" all
+            ;;
+        4)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
 # UFW management menu
 ufw_menu() {
     if ! download_script_if_needed "ufw_manager.sh"; then
@@ -668,17 +708,18 @@ main_menu() {
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
         echo -e "${YELLOW}9.${NC} BBR TCP optimization"
+        echo -e "${YELLOW}10.${NC} Timezone and NTP sync"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}10.${NC} YABS performance test"
-        echo -e "${PURPLE}11.${NC} IP quality check"
-        echo -e "${PURPLE}12.${NC} Network quality check"
+        echo -e "${PURPLE}11.${NC} YABS performance test"
+        echo -e "${PURPLE}12.${NC} IP quality check"
+        echo -e "${PURPLE}13.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-12, or press Enter to exit]: " choice
+        read -p "Please select an action [0-13, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -709,12 +750,15 @@ main_menu() {
                 bbr_menu
                 ;;
             10)
-                yabs_test_menu
+                timezone_ntp_menu
                 ;;
             11)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             12)
+                ip_quality_menu
+                ;;
+            13)
                 network_quality_menu
                 ;;
             0|"")
