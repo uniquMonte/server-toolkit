@@ -90,8 +90,8 @@ run_full_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -116,8 +116,8 @@ run_basic_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -140,8 +140,8 @@ run_geekbench_only() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -164,8 +164,8 @@ run_disk_network_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -189,8 +189,8 @@ run_disk_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -214,8 +214,8 @@ run_network_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -238,8 +238,8 @@ run_quick_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Test cancelled"
         return
     fi
@@ -270,7 +270,8 @@ test_menu() {
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select test type [0-7]: " choice
+        read -p "Please select test type [0-7] (press Enter for 1): " choice
+        choice="${choice:-1}"
 
         case $choice in
             1)
