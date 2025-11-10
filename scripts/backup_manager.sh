@@ -166,6 +166,10 @@ show_status() {
             fi
         fi
 
+        # Quick action hint
+        echo ""
+        echo -e "${BLUE}💡 Tip:${NC} Press Enter in the menu to run backup immediately"
+
     else
         echo -e "${YELLOW}Configuration Status:${NC}  ${YELLOW}Not configured${NC}"
         echo ""
@@ -453,6 +457,22 @@ configure_backup() {
     read -p "Test backup configuration now? [Y/n]: " test
     if [[ ! $test =~ ^[Nn]$ ]]; then
         test_configuration
+
+        # After testing, offer to run backup immediately
+        echo ""
+        read -p "Run backup now to verify everything works? [Y/n]: " run_now
+        if [[ ! $run_now =~ ^[Nn]$ ]]; then
+            echo ""
+            run_backup
+        fi
+    else
+        # If user skipped test, still offer to run backup
+        echo ""
+        read -p "Run backup now? [y/N]: " run_now
+        if [[ $run_now =~ ^[Yy]$ ]]; then
+            echo ""
+            run_backup
+        fi
     fi
 }
 
@@ -727,6 +747,40 @@ run_backup() {
         return 1
     fi
 
+    load_config
+
+    # Show backup summary before execution
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Backup Summary${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}What will be backed up:${NC}"
+    IFS='|' read -ra SOURCES <<< "$BACKUP_SRCS"
+    for src in "${SOURCES[@]}"; do
+        if [ -e "$src" ]; then
+            local size=$(du -sh "$src" 2>/dev/null | cut -f1)
+            echo -e "  ${GREEN}✓${NC} $src ${CYAN}(${size})${NC}"
+        else
+            echo -e "  ${YELLOW}⚠${NC} $src ${YELLOW}(not found)${NC}"
+        fi
+    done
+    echo ""
+    echo -e "${GREEN}Backup destination:${NC}    ${CYAN}${BACKUP_REMOTE_DIR}${NC}"
+    echo -e "${GREEN}Encryption:${NC}            ${CYAN}Enabled (AES-256-CBC)${NC}"
+    echo -e "${GREEN}Max backups to keep:${NC}   ${CYAN}${BACKUP_MAX_KEEP}${NC}"
+    if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+        echo -e "${GREEN}Telegram notify:${NC}       ${CYAN}Enabled${NC}"
+    fi
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    read -p "Proceed with backup? [Y/n]: " proceed
+    if [[ $proceed =~ ^[Nn]$ ]]; then
+        log_info "Backup cancelled"
+        return 0
+    fi
+
     echo ""
     log_info "Starting backup process..."
     echo ""
@@ -736,9 +790,13 @@ run_backup() {
     local exit_code=$?
     echo ""
     if [ $exit_code -eq 0 ]; then
-        log_success "Backup completed successfully"
+        log_success "Backup completed successfully!"
+        echo ""
+        log_info "Check logs for details: ${BACKUP_LOG_FILE}"
     else
         log_error "Backup failed with exit code: $exit_code"
+        echo ""
+        log_info "Check logs for details: ${BACKUP_LOG_FILE}"
     fi
 
     return $exit_code
@@ -901,7 +959,7 @@ main() {
 
             if is_configured; then
                 echo -e "${GREEN}Available actions:${NC}"
-                echo -e "  ${CYAN}1.${NC} Run backup now"
+                echo -e "  ${GREEN}1.${NC} ${GREEN}⚡ 立即运行备份 (Run backup now)${NC}"
                 echo -e "  ${CYAN}2.${NC} List remote backups"
                 echo -e "  ${CYAN}3.${NC} View logs"
                 echo -e "  ${CYAN}4.${NC} Test configuration"
@@ -910,7 +968,8 @@ main() {
                 echo -e "  ${CYAN}7.${NC} Install dependencies"
                 echo -e "  ${CYAN}0.${NC} Exit"
                 echo ""
-                read -p "Select action [0-7]: " action
+                read -p "Select action [0-7, default: 1]: " action
+                action="${action:-1}"  # Default to option 1 (run backup)
 
                 case $action in
                     1) run_backup ;;
