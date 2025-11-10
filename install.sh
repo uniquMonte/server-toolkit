@@ -328,13 +328,64 @@ install_all() {
     basic_tools
 
     # Install UFW and configure common ports
+    log_step "Installing UFW firewall..."
     bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
 
     # Install Docker and Docker Compose
+    log_step "Installing Docker and Docker Compose..."
     bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
 
     # Install Nginx and Certbot
+    log_step "Installing Nginx and Certbot..."
     bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+
+    # Display comprehensive summary
+    echo ""
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}         ${GREEN}Complete Setup Summary${NC}                        ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check what was installed
+    echo -e "${YELLOW}System Components:${NC}"
+    echo -e "  ${GREEN}✓${NC} System packages updated"
+    echo ""
+
+    echo -e "${YELLOW}Basic Tools:${NC}"
+    local basic_tools_list="curl wget git vim nano htop net-tools unzip zip tar gzip bzip2"
+    for tool in $basic_tools_list; do
+        if command -v "$tool" &> /dev/null; then
+            echo -e "  ${GREEN}✓${NC} $tool"
+        fi
+    done
+    echo ""
+
+    echo -e "${YELLOW}Services Installed:${NC}"
+    if command -v ufw &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} UFW Firewall (ports 22, 80, 443 opened)"
+    fi
+    if command -v docker &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Docker Engine"
+        if command -v docker-compose &> /dev/null || docker compose version &> /dev/null; then
+            echo -e "  ${GREEN}✓${NC} Docker Compose"
+        fi
+    fi
+    if command -v nginx &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Nginx Web Server"
+    fi
+    if command -v certbot &> /dev/null; then
+        echo -e "  ${GREEN}✓${NC} Certbot SSL Tool"
+    fi
+    echo ""
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Next Steps:${NC}"
+    echo -e "  • Check UFW status: ${CYAN}ufw status${NC}"
+    echo -e "  • Check Docker: ${CYAN}docker --version${NC}"
+    echo -e "  • Check Nginx: ${CYAN}nginx -v${NC}"
+    echo -e "  • Configure SSL: ${CYAN}certbot --nginx${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     log_success "Complete setup finished successfully!"
 }
