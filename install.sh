@@ -63,15 +63,12 @@ print_banner() {
 ║           VPS Quick Setup Script v1.0                     ║
 ║                                                           ║
 ║           Supported Components:                           ║
-║           - System Update                                 ║
-║           - UFW Firewall                                  ║
-║           - Docker Container Engine                       ║
-║           - Nginx + Certbot SSL Tool                      ║
-║           - YABS Performance Test                         ║
-║           - Fail2ban Brute Force Protection               ║
-║           - SSH Security Configuration                    ║
-║           - IP Quality Test                               ║
-║           - Network Quality Test                          ║
+║           - System Update & Basic Tools                   ║
+║           - UFW Firewall / Docker / Nginx + Certbot       ║
+║           - Fail2ban / SSH Security / BBR Optimization    ║
+║           - Timezone & NTP / Hostname / Log Management    ║
+║           - YABS / IP Quality / Network Quality Tests     ║
+║           - System Reinstallation (DD)                    ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -187,7 +184,7 @@ download_script_if_needed() {
 system_update() {
     log_step "Performing system update..."
     if download_script_if_needed "system_update.sh"; then
-        bash "${SCRIPTS_PATH}/system_update.sh"
+        bash "${SCRIPTS_PATH}/system_update.sh" "$@"
     else
         log_error "Failed to load system update script"
     fi
@@ -201,6 +198,158 @@ basic_tools() {
     else
         log_error "Failed to load basic tools script"
     fi
+}
+
+# BBR management menu
+bbr_menu() {
+    if ! download_script_if_needed "bbr_manager.sh"; then
+        log_error "Failed to load BBR manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "BBR TCP Congestion Control"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/bbr_manager.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Enable BBR"
+    echo -e "${CYAN}2.${NC} Disable BBR"
+    echo -e "${CYAN}3.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-3]: " bbr_choice
+
+    case $bbr_choice in
+        1)
+            bash "${SCRIPTS_PATH}/bbr_manager.sh" enable
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/bbr_manager.sh" disable
+            ;;
+        3)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
+# Timezone and NTP management menu
+timezone_ntp_menu() {
+    if ! download_script_if_needed "timezone_ntp.sh"; then
+        log_error "Failed to load timezone/NTP script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Timezone and NTP Time Synchronization"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/timezone_ntp.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Set timezone to Asia/Shanghai"
+    echo -e "${CYAN}2.${NC} Enable NTP time synchronization"
+    echo -e "${CYAN}3.${NC} Configure both (recommended)"
+    echo -e "${CYAN}4.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-4]: " tz_choice
+
+    case $tz_choice in
+        1)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" timezone
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" ntp
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/timezone_ntp.sh" all
+            ;;
+        4)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
+# Hostname management menu
+hostname_menu() {
+    if ! download_script_if_needed "hostname_manager.sh"; then
+        log_error "Failed to load hostname manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "Hostname Modification"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/hostname_manager.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Change hostname (interactive)"
+    echo -e "${CYAN}2.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-2]: " hostname_choice
+
+    case $hostname_choice in
+        1)
+            bash "${SCRIPTS_PATH}/hostname_manager.sh" interactive
+            ;;
+        2)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
+# Log management menu
+log_management_menu() {
+    if ! download_script_if_needed "log_manager.sh"; then
+        log_error "Failed to load log manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "System and Docker Log Management"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/log_manager.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Apply intelligent log configuration (recommended)"
+    echo -e "${CYAN}2.${NC} Configure Docker logs only"
+    echo -e "${CYAN}3.${NC} Configure system journal only"
+    echo -e "${CYAN}4.${NC} Clean old logs"
+    echo -e "${CYAN}5.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-5]: " log_choice
+
+    case $log_choice in
+        1)
+            bash "${SCRIPTS_PATH}/log_manager.sh" configure
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/log_manager.sh" docker
+            ;;
+        3)
+            bash "${SCRIPTS_PATH}/log_manager.sh" journald
+            ;;
+        4)
+            bash "${SCRIPTS_PATH}/log_manager.sh" clean
+            ;;
+        5)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
 }
 
 # UFW management menu
@@ -345,8 +494,8 @@ install_all() {
     echo -e "  Certbot           : $([ "$certbot_before" = "installed" ] && echo -e "${GREEN}Installed${NC}" || echo -e "${YELLOW}Not installed${NC}")"
     echo ""
 
-    # System update
-    system_update
+    # System update (skip reboot prompt in complete setup)
+    system_update --no-reboot-prompt
 
     # Install basic tools
     basic_tools
@@ -436,20 +585,27 @@ install_all() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}Installed Services Status:${NC}"
     if command -v ufw &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} UFW Firewall - $(ufw version | head -n1)"
+        local ufw_ver=$(ufw version 2>/dev/null | head -n1 | grep -o '[0-9.]*' | head -n1)
+        [ -n "$ufw_ver" ] && echo -e "  ${GREEN}✓${NC} UFW Firewall - v${ufw_ver}" || echo -e "  ${GREEN}✓${NC} UFW Firewall - installed"
     fi
     if command -v docker &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Docker - $(docker --version 2>/dev/null | cut -d',' -f1)"
+        local docker_ver=$(docker --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        [ -n "$docker_ver" ] && echo -e "  ${GREEN}✓${NC} Docker - v${docker_ver}" || echo -e "  ${GREEN}✓${NC} Docker - installed"
     fi
     if command -v docker-compose &> /dev/null || docker compose version &> /dev/null 2>&1; then
-        local dc_version=$(docker-compose --version 2>/dev/null || docker compose version 2>/dev/null | head -n1)
-        echo -e "  ${GREEN}✓${NC} Docker Compose - $dc_version"
+        local dc_ver=$(docker-compose --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        if [ -z "$dc_ver" ]; then
+            dc_ver=$(docker compose version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        fi
+        [ -n "$dc_ver" ] && echo -e "  ${GREEN}✓${NC} Docker Compose - v${dc_ver}" || echo -e "  ${GREEN}✓${NC} Docker Compose - installed"
     fi
     if command -v nginx &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Nginx - $(nginx -v 2>&1 | cut -d'/' -f2)"
+        local nginx_ver=$(nginx -v 2>&1 | grep -o '[0-9.]*' | head -n1)
+        [ -n "$nginx_ver" ] && echo -e "  ${GREEN}✓${NC} Nginx - v${nginx_ver}" || echo -e "  ${GREEN}✓${NC} Nginx - installed"
     fi
     if command -v certbot &> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Certbot - $(certbot --version 2>&1 | cut -d' ' -f2)"
+        local certbot_ver=$(certbot --version 2>/dev/null | grep -o '[0-9.]*' | head -n1)
+        [ -n "$certbot_ver" ] && echo -e "  ${GREEN}✓${NC} Certbot - v${certbot_ver}" || echo -e "  ${GREEN}✓${NC} Certbot - installed"
     fi
     echo ""
 
@@ -470,6 +626,18 @@ install_all() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     log_success "Complete setup finished successfully!"
+
+    # Ask about reboot at the end
+    echo ""
+    log_info "It is recommended to reboot the system to apply all updates"
+    read -p "Would you like to reboot now? [Y/n, or press Enter to reboot]: " restart_choice
+    if [[ ! $restart_choice =~ ^[Nn]$ ]]; then
+        log_info "System will reboot in 5 seconds..."
+        sleep 5
+        reboot
+    else
+        log_info "Skipping reboot. You can reboot later by running: reboot"
+    fi
 }
 
 # YABS performance test menu
@@ -589,6 +757,38 @@ network_quality_menu() {
     fi
 }
 
+# DD system reinstallation menu
+dd_system_menu() {
+    if ! download_script_if_needed "dd_system.sh"; then
+        log_error "Failed to load DD system script"
+        return 1
+    fi
+
+    echo ""
+    log_step "System Reinstallation (DD)"
+
+    # Show current system info
+    bash "${SCRIPTS_PATH}/dd_system.sh" info
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Reinstall operating system"
+    echo -e "${CYAN}2.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-2]: " dd_choice
+
+    case $dd_choice in
+        1)
+            bash "${SCRIPTS_PATH}/dd_system.sh" reinstall
+            ;;
+        2)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
 # Main menu
 main_menu() {
     while true; do
@@ -609,20 +809,28 @@ main_menu() {
         echo -e "${GREEN}6.${NC} Nginx management"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
-        echo -e "${CYAN}┌─ Security Configuration ─────────────┐${NC}"
+        echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
+        echo -e "${YELLOW}9.${NC} BBR TCP optimization"
+        echo -e "${YELLOW}10.${NC} Timezone and NTP sync"
+        echo -e "${YELLOW}11.${NC} Hostname modification"
+        echo -e "${YELLOW}12.${NC} Log management (system & Docker)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}9.${NC} YABS performance test"
-        echo -e "${PURPLE}10.${NC} IP quality check"
-        echo -e "${PURPLE}11.${NC} Network quality check"
+        echo -e "${PURPLE}13.${NC} YABS performance test"
+        echo -e "${PURPLE}14.${NC} IP quality check"
+        echo -e "${PURPLE}15.${NC} Network quality check"
+        echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
+        echo ""
+        echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
+        echo -e "${RED}16.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-11, or press Enter to exit]: " choice
+        read -p "Please select an action [0-16, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -650,13 +858,28 @@ main_menu() {
                 ssh_security_menu
                 ;;
             9)
-                yabs_test_menu
+                bbr_menu
                 ;;
             10)
-                ip_quality_menu
+                timezone_ntp_menu
                 ;;
             11)
+                hostname_menu
+                ;;
+            12)
+                log_management_menu
+                ;;
+            13)
+                yabs_test_menu
+                ;;
+            14)
+                ip_quality_menu
+                ;;
+            15)
                 network_quality_menu
+                ;;
+            16)
+                dd_system_menu
                 ;;
             0|"")
                 log_info "Thank you for using!"

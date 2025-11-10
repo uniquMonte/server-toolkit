@@ -77,12 +77,11 @@ install_basic_tools() {
 
     echo ""
 
-    # If nothing to install
-    if [ ${#packages_to_install[@]} -eq 0 ] && [ ${#system_packages[@]} -eq 0 ]; then
-        log_success "All basic tools are already installed!"
+    # If nothing to install, still check system packages
+    if [ ${#packages_to_install[@]} -eq 0 ]; then
+        log_info "All command-line tools are already installed"
+        log_info "Checking system packages..."
         echo ""
-        echo -e "${CYAN}Already installed:${NC} ${already_installed[*]}"
-        return 0
     fi
 
     # Install packages
@@ -99,14 +98,24 @@ install_basic_tools() {
                 # Combine all packages
                 local all_packages=("${packages_to_install[@]}" "${system_packages[@]}")
 
-                # Install/upgrade packages and capture output
+                # Install/upgrade packages with proper detection
                 for pkg in "${all_packages[@]}"; do
-                    if apt-get install -y "$pkg" 2>&1 | grep -q "is already the newest version"; then
-                        : # Package already up to date
-                    elif dpkg -l | grep -q "^ii  $pkg "; then
-                        upgraded+=("$pkg")
+                    # Check if package is already installed
+                    if dpkg -l | grep -q "^ii  $pkg "; then
+                        # Package is installed, try to upgrade
+                        local before_version=$(dpkg -l | grep "^ii  $pkg " | awk '{print $3}')
+                        apt-get install -y "$pkg" > /dev/null 2>&1
+                        local after_version=$(dpkg -l | grep "^ii  $pkg " | awk '{print $3}')
+
+                        if [ "$before_version" != "$after_version" ]; then
+                            upgraded+=("$pkg")
+                        fi
+                        # If versions are same, it's already latest (don't add to any list)
                     else
-                        newly_installed+=("$pkg")
+                        # Package not installed, install it
+                        if apt-get install -y "$pkg" > /dev/null 2>&1; then
+                            newly_installed+=("$pkg")
+                        fi
                     fi
                 done
             fi
@@ -128,15 +137,19 @@ install_basic_tools() {
 
                 for pkg in "${all_packages[@]}"; do
                     if $PKG_MANAGER list installed "$pkg" &> /dev/null; then
-                        # Try to upgrade
-                        if $PKG_MANAGER upgrade -y "$pkg" 2>&1 | grep -q "Nothing to do"; then
-                            : # Package already up to date
-                        else
+                        # Package is installed, check for updates
+                        local update_info=$($PKG_MANAGER check-update "$pkg" 2>&1)
+                        if echo "$update_info" | grep -q "$pkg"; then
+                            # Update available, upgrade it
+                            $PKG_MANAGER upgrade -y "$pkg" > /dev/null 2>&1
                             upgraded+=("$pkg")
                         fi
+                        # If no update, it's already latest (don't add to any list)
                     else
-                        $PKG_MANAGER install -y "$pkg" &> /dev/null
-                        newly_installed+=("$pkg")
+                        # Package not installed, install it
+                        if $PKG_MANAGER install -y "$pkg" > /dev/null 2>&1; then
+                            newly_installed+=("$pkg")
+                        fi
                     fi
                 done
             fi

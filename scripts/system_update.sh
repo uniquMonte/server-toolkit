@@ -101,6 +101,11 @@ main() {
 
     update_system
 
+    # Skip reboot prompt if --no-reboot-prompt is passed
+    if [ "$1" = "--no-reboot-prompt" ]; then
+        return 0
+    fi
+
     # Ask about reboot
     echo ""
     log_info "All updates completed!"
