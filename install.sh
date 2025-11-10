@@ -68,6 +68,7 @@ print_banner() {
 ║           - Fail2ban / SSH Security / BBR Optimization    ║
 ║           - Timezone & NTP / Hostname / Log Management    ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
+║           - System Reinstallation (DD)                    ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
@@ -756,6 +757,38 @@ network_quality_menu() {
     fi
 }
 
+# DD system reinstallation menu
+dd_system_menu() {
+    if ! download_script_if_needed "dd_system.sh"; then
+        log_error "Failed to load DD system script"
+        return 1
+    fi
+
+    echo ""
+    log_step "System Reinstallation (DD)"
+
+    # Show current system info
+    bash "${SCRIPTS_PATH}/dd_system.sh" info
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Reinstall operating system"
+    echo -e "${CYAN}2.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-2]: " dd_choice
+
+    case $dd_choice in
+        1)
+            bash "${SCRIPTS_PATH}/dd_system.sh" reinstall
+            ;;
+        2)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
 # Main menu
 main_menu() {
     while true; do
@@ -791,9 +824,13 @@ main_menu() {
         echo -e "${PURPLE}15.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
+        echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
+        echo -e "${RED}16.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
+        echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-15, or press Enter to exit]: " choice
+        read -p "Please select an action [0-16, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -840,6 +877,9 @@ main_menu() {
                 ;;
             15)
                 network_quality_menu
+                ;;
+            16)
+                dd_system_menu
                 ;;
             0|"")
                 log_info "Thank you for using!"
