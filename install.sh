@@ -203,6 +203,42 @@ basic_tools() {
     fi
 }
 
+# BBR management menu
+bbr_menu() {
+    if ! download_script_if_needed "bbr_manager.sh"; then
+        log_error "Failed to load BBR manager script"
+        return 1
+    fi
+
+    echo ""
+    log_step "BBR TCP Congestion Control"
+
+    # Show current status first
+    bash "${SCRIPTS_PATH}/bbr_manager.sh" status
+
+    echo ""
+    echo -e "${CYAN}1.${NC} Enable BBR"
+    echo -e "${CYAN}2.${NC} Disable BBR"
+    echo -e "${CYAN}3.${NC} Return to main menu"
+    echo ""
+    read -p "Please select an action [1-3]: " bbr_choice
+
+    case $bbr_choice in
+        1)
+            bash "${SCRIPTS_PATH}/bbr_manager.sh" enable
+            ;;
+        2)
+            bash "${SCRIPTS_PATH}/bbr_manager.sh" disable
+            ;;
+        3)
+            return
+            ;;
+        *)
+            log_error "Invalid selection"
+            ;;
+    esac
+}
+
 # UFW management menu
 ufw_menu() {
     if ! download_script_if_needed "ufw_manager.sh"; then
@@ -628,20 +664,21 @@ main_menu() {
         echo -e "${GREEN}6.${NC} Nginx management"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
-        echo -e "${CYAN}┌─ Security Configuration ─────────────┐${NC}"
+        echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
         echo -e "${YELLOW}7.${NC} Fail2ban brute force protection"
         echo -e "${YELLOW}8.${NC} SSH security configuration"
+        echo -e "${YELLOW}9.${NC} Enable BBR (TCP optimization)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}9.${NC} YABS performance test"
-        echo -e "${PURPLE}10.${NC} IP quality check"
-        echo -e "${PURPLE}11.${NC} Network quality check"
+        echo -e "${PURPLE}10.${NC} YABS performance test"
+        echo -e "${PURPLE}11.${NC} IP quality check"
+        echo -e "${PURPLE}12.${NC} Network quality check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED}0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-11, or press Enter to exit]: " choice
+        read -p "Please select an action [0-12, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -669,12 +706,15 @@ main_menu() {
                 ssh_security_menu
                 ;;
             9)
-                yabs_test_menu
+                bbr_menu
                 ;;
             10)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             11)
+                ip_quality_menu
+                ;;
+            12)
                 network_quality_menu
                 ;;
             0|"")
