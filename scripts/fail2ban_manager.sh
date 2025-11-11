@@ -316,8 +316,17 @@ uninstall_fail2ban() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Fail2ban? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Fail2ban package and service"
+    echo -e "  ${RED}•${NC} All firewall rules created by Fail2ban"
+    echo -e "  ${RED}•${NC} All banned IPs will be unbanned"
+    echo -e "  ${RED}•${NC} Configuration files (/etc/fail2ban)"
+    echo ""
+
+    read -p "Are you sure you want to uninstall Fail2ban? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return
     fi
@@ -352,12 +361,9 @@ uninstall_fail2ban() {
             ;;
     esac
 
-    # Delete configuration files
-    read -p "Delete configuration files? (y/N) (press Enter to skip): " delete_config
-    if [[ $delete_config =~ ^[Yy]$ ]]; then
-        log_info "Deleting configuration files..."
-        rm -rf /etc/fail2ban
-    fi
+    # Delete configuration files automatically (user already confirmed uninstall)
+    log_info "Deleting configuration files..."
+    rm -rf /etc/fail2ban
 
     if check_fail2ban_installed; then
         log_error "Fail2ban uninstallation failed"
