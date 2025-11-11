@@ -110,34 +110,19 @@ check_root() {
 
 # Check dependencies
 check_dependencies() {
-    # Check if curl or wget is available
-    if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
-        log_warning "Neither curl nor wget is installed"
-        log_info "Attempting to install curl..."
+    local deps=("curl" "bash")
+    local missing=()
 
-        # Try to install curl based on OS
-        if command -v apt-get &>/dev/null; then
-            apt-get update -qq && apt-get install -y curl
-        elif command -v yum &>/dev/null; then
-            yum install -y curl
-        elif command -v dnf &>/dev/null; then
-            dnf install -y curl
-        else
-            log_error "Cannot automatically install curl"
-            log_info "Please install curl or wget manually:"
-            log_info "  Debian/Ubuntu: apt update && apt install -y curl"
-            log_info "  CentOS/RHEL:   yum install -y curl"
-            log_info "  Fedora:        dnf install -y curl"
-            exit 1
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing+=("$dep")
         fi
+    done
 
-        # Verify installation
-        if command -v curl &>/dev/null; then
-            log_success "curl installed successfully"
-        else
-            log_error "Failed to install curl"
-            exit 1
-        fi
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_error "Missing required dependencies: ${missing[*]}"
+        log_info "Please install them first and try again"
+        exit 1
     fi
 }
 
