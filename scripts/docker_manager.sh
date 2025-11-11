@@ -154,7 +154,12 @@ configure_docker() {
     systemctl enable docker
 
     # Configure Docker mirror acceleration (optional)
-    read -p "Would you like to configure Docker mirror acceleration? (y/N) (press Enter to skip): " mirror_choice
+    if [ "$AUTO_INSTALL" = "true" ]; then
+        mirror_choice="n"
+        log_info "Auto-install mode: Skipping Docker mirror acceleration configuration..."
+    else
+        read -p "Would you like to configure Docker mirror acceleration? (y/N) (press Enter to skip): " mirror_choice
+    fi
     if [[ $mirror_choice =~ ^[Yy]$ ]]; then
         log_info "Configuring Docker mirror acceleration..."
 
