@@ -4,50 +4,13 @@ Quickly install and configure common tools on newly purchased VPS servers.
 
 ## Quick Start
 
-### One-line Installation (Recommended)
-
-**Smart installer (works on fresh systems):**
-```bash
-command -v curl >/dev/null 2>&1 || { command -v apt-get >/dev/null 2>&1 && apt-get update -qq && apt-get install -y curl || yum install -y curl || dnf install -y curl; } && bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-This command will:
-1. Check if curl is installed
-2. Auto-install curl if missing (based on your OS)
-3. Download and run the installation script
-
-### Alternative Methods
-
-**If you have curl already installed:**
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
 ```
 
-**Using wget instead:**
+Or using wget:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-### Manual Installation (If automatic fails)
-
-If the smart installer doesn't work, manually install curl first:
-
-**For Debian/Ubuntu:**
-```bash
-apt update && apt install -y curl
-bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-**For CentOS/Rocky Linux/AlmaLinux:**
-```bash
-yum install -y curl
-bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-**For Fedora:**
-```bash
-dnf install -y curl
-bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
 ```
 
 ## Menu Options
