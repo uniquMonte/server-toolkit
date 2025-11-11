@@ -579,11 +579,12 @@ nginx_menu() {
 
         echo -e "${CYAN}1.${NC} Install Nginx"
         echo -e "${CYAN}2.${NC} Install Nginx + Certbot"
-        echo -e "${CYAN}3.${NC} Uninstall Nginx"
-        echo -e "${CYAN}4.${NC} Uninstall Certbot"
+        echo -e "${CYAN}3.${NC} Uninstall Nginx + Certbot"
+        echo -e "${CYAN}4.${NC} Uninstall Nginx only"
+        echo -e "${CYAN}5.${NC} Uninstall Certbot only"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-4, or press Enter to return]: " nginx_choice
+        read -p "Please select an action [0-5, or press Enter to return]: " nginx_choice
 
         case $nginx_choice in
             1)
@@ -597,11 +598,16 @@ nginx_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             3)
-                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall-all
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             4)
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            5)
                 bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall-certbot
                 echo ""
                 read -p "Press Enter to continue..."
