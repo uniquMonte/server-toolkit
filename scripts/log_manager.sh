@@ -412,6 +412,8 @@ show_comparison() {
 
 # Configure Docker log rotation
 configure_docker_logs() {
+    local skip_confirm="$1"  # If set to "auto", skip confirmation
+
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
         log_warning "Docker is not installed, skipping Docker log configuration"
@@ -452,11 +454,13 @@ configure_docker_logs() {
         return 0
     fi
 
-    # Ask for confirmation
-    read -p "Apply recommended Docker log configuration? (Y/n) (press Enter to confirm): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Docker log configuration cancelled"
-        return 0
+    # Ask for confirmation only if not in auto mode
+    if [ "$skip_confirm" != "auto" ]; then
+        read -p "Apply recommended Docker log configuration? (Y/n) (press Enter to confirm): " confirm
+        if [[ $confirm =~ ^[Nn]$ ]]; then
+            log_info "Docker log configuration cancelled"
+            return 0
+        fi
     fi
 
     echo ""
@@ -522,6 +526,8 @@ EOF
 
 # Configure journald log rotation
 configure_journald_logs() {
+    local skip_confirm="$1"  # If set to "auto", skip confirmation
+
     log_info "Checking system journal configuration..."
     echo ""
 
@@ -557,11 +563,13 @@ configure_journald_logs() {
         return 0
     fi
 
-    # Ask for confirmation
-    read -p "Apply recommended journal configuration? (Y/n) (press Enter to confirm): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Journal configuration cancelled"
-        return 0
+    # Ask for confirmation only if not in auto mode
+    if [ "$skip_confirm" != "auto" ]; then
+        read -p "Apply recommended journal configuration? (Y/n) (press Enter to confirm): " confirm
+        if [[ $confirm =~ ^[Nn]$ ]]; then
+            log_info "Journal configuration cancelled"
+            return 0
+        fi
     fi
 
     echo ""
@@ -689,17 +697,17 @@ configure_all() {
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    # Configure Docker logs (with internal confirmation)
+    # Configure Docker logs (automatically, no confirmation)
     if command -v docker &> /dev/null; then
         echo ""
-        configure_docker_logs
+        configure_docker_logs "auto"
         echo ""
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     fi
 
-    # Configure journald logs (with internal confirmation)
+    # Configure journald logs (automatically, no confirmation)
     echo ""
-    configure_journald_logs
+    configure_journald_logs "auto"
 
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
