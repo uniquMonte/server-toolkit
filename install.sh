@@ -356,10 +356,11 @@ log_management_menu() {
         echo -e "${CYAN}1.${NC} Apply intelligent log configuration (recommended)"
         echo -e "${CYAN}2.${NC} Configure Docker logs only"
         echo -e "${CYAN}3.${NC} Configure system journal only"
-        echo -e "${CYAN}4.${NC} Clean old logs"
+        echo -e "${CYAN}4.${NC} Configure Nginx logs only"
+        echo -e "${CYAN}5.${NC} Clean old logs"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-4, or press Enter to return]: " log_choice
+        read -p "Please select an action [0-5, or press Enter to return]: " log_choice
 
         case $log_choice in
             1)
@@ -378,6 +379,11 @@ log_management_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             4)
+                bash "${SCRIPTS_PATH}/log_manager.sh" nginx
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            5)
                 bash "${SCRIPTS_PATH}/log_manager.sh" clean
                 echo ""
                 read -p "Press Enter to continue..."
