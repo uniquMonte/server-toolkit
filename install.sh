@@ -208,33 +208,42 @@ bbr_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "BBR TCP Congestion Control"
+    while true; do
+        echo ""
+        log_step "BBR TCP Congestion Control"
 
-    # Show current status first
-    bash "${SCRIPTS_PATH}/bbr_manager.sh" status
+        # Show current status
+        echo ""
+        bash "${SCRIPTS_PATH}/bbr_manager.sh" status
 
-    echo ""
-    echo -e "${CYAN}1.${NC} Enable BBR"
-    echo -e "${CYAN}2.${NC} Disable BBR"
-    echo -e "${CYAN}3.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-3]: " bbr_choice
+        echo ""
+        echo -e "${CYAN}1.${NC} Enable BBR"
+        echo -e "${CYAN}2.${NC} Disable BBR"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-2, or press Enter to return]: " bbr_choice
 
-    case $bbr_choice in
-        1)
-            bash "${SCRIPTS_PATH}/bbr_manager.sh" enable
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/bbr_manager.sh" disable
-            ;;
-        3)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        case $bbr_choice in
+            1)
+                bash "${SCRIPTS_PATH}/bbr_manager.sh" enable
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/bbr_manager.sh" disable
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # Timezone and NTP management menu
@@ -244,38 +253,49 @@ timezone_ntp_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Timezone and NTP Time Synchronization"
+    while true; do
+        echo ""
+        log_step "Timezone and NTP Time Synchronization"
 
-    # Show current status first
-    bash "${SCRIPTS_PATH}/timezone_ntp.sh" status
+        # Show current status
+        echo ""
+        bash "${SCRIPTS_PATH}/timezone_ntp.sh" status
 
-    echo ""
-    echo -e "${CYAN}1.${NC} Set timezone to Asia/Shanghai"
-    echo -e "${CYAN}2.${NC} Enable NTP time synchronization"
-    echo -e "${CYAN}3.${NC} Configure both (recommended)"
-    echo -e "${CYAN}4.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-4] (press Enter for 3): " tz_choice
-    tz_choice="${tz_choice:-3}"
+        echo ""
+        echo -e "${CYAN}1.${NC} Set timezone to Asia/Shanghai"
+        echo -e "${CYAN}2.${NC} Enable NTP time synchronization"
+        echo -e "${CYAN}3.${NC} Configure both (recommended)"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-3, or press Enter for option 3]: " tz_choice
+        tz_choice="${tz_choice:-3}"
 
-    case $tz_choice in
-        1)
-            bash "${SCRIPTS_PATH}/timezone_ntp.sh" timezone
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/timezone_ntp.sh" ntp
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/timezone_ntp.sh" all
-            ;;
-        4)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        case $tz_choice in
+            1)
+                bash "${SCRIPTS_PATH}/timezone_ntp.sh" timezone
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/timezone_ntp.sh" ntp
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/timezone_ntp.sh" all
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0)
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # Hostname management menu
@@ -285,29 +305,36 @@ hostname_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Hostname Modification"
+    while true; do
+        echo ""
+        log_step "Hostname Modification"
 
-    # Show current status first
-    bash "${SCRIPTS_PATH}/hostname_manager.sh" status
+        # Show current status
+        echo ""
+        bash "${SCRIPTS_PATH}/hostname_manager.sh" status
 
-    echo ""
-    echo -e "${CYAN}1.${NC} Change hostname (interactive)"
-    echo -e "${CYAN}2.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-2, or press Enter to return to main menu]: " hostname_choice
+        echo ""
+        echo -e "${CYAN}1.${NC} Change hostname (interactive)"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-1, or press Enter to return]: " hostname_choice
 
-    case $hostname_choice in
-        1)
-            bash "${SCRIPTS_PATH}/hostname_manager.sh" interactive
-            ;;
-        2|"")
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        case $hostname_choice in
+            1)
+                bash "${SCRIPTS_PATH}/hostname_manager.sh" interactive
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # Log management menu
@@ -317,41 +344,54 @@ log_management_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "System and Docker Log Management"
+    while true; do
+        echo ""
+        log_step "System and Docker Log Management"
 
-    # Show current status first
-    bash "${SCRIPTS_PATH}/log_manager.sh" status
+        # Show current status
+        echo ""
+        bash "${SCRIPTS_PATH}/log_manager.sh" status
 
-    echo ""
-    echo -e "${CYAN}1.${NC} Apply intelligent log configuration (recommended)"
-    echo -e "${CYAN}2.${NC} Configure Docker logs only"
-    echo -e "${CYAN}3.${NC} Configure system journal only"
-    echo -e "${CYAN}4.${NC} Clean old logs"
-    echo -e "${CYAN}5.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-5]: " log_choice
+        echo ""
+        echo -e "${CYAN}1.${NC} Apply intelligent log configuration (recommended)"
+        echo -e "${CYAN}2.${NC} Configure Docker logs only"
+        echo -e "${CYAN}3.${NC} Configure system journal only"
+        echo -e "${CYAN}4.${NC} Clean old logs"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-4, or press Enter to return]: " log_choice
 
-    case $log_choice in
-        1)
-            bash "${SCRIPTS_PATH}/log_manager.sh" configure
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/log_manager.sh" docker
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/log_manager.sh" journald
-            ;;
-        4)
-            bash "${SCRIPTS_PATH}/log_manager.sh" clean
-            ;;
-        5)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        case $log_choice in
+            1)
+                bash "${SCRIPTS_PATH}/log_manager.sh" configure
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/log_manager.sh" docker
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/log_manager.sh" journald
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                bash "${SCRIPTS_PATH}/log_manager.sh" clean
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # UFW management menu
@@ -822,40 +862,89 @@ fail2ban_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Fail2ban Intrusion Prevention Management"
-    echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
-    echo -e "${CYAN}2.${NC} View Fail2ban status"
-    echo -e "${CYAN}3.${NC} View banned IPs"
-    echo -e "${CYAN}4.${NC} Unban specific IP"
-    echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
-    echo -e "${CYAN}6.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-6]: " fail2ban_choice
+    while true; do
+        # Clear command cache to ensure accurate status detection
+        hash -r 2>/dev/null || true
 
-    case $fail2ban_choice in
-        1)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" install
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" status
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
-            ;;
-        4)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
-            ;;
-        5)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
-            ;;
-        6)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        echo ""
+        log_step "Fail2ban Intrusion Prevention Management"
+
+        # Show Fail2ban status
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Fail2ban Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+        if command -v fail2ban-client &> /dev/null; then
+            echo -e "${GREEN}Fail2ban:${NC}            ${GREEN}Installed ✓${NC}"
+            fail2ban-client version 2>/dev/null | head -n1 | sed 's/^/                       /'
+
+            # Check if Fail2ban service is running
+            if systemctl is-active --quiet fail2ban 2>/dev/null; then
+                echo -e "${GREEN}Service Status:${NC}      ${GREEN}Running ✓${NC}"
+            else
+                echo -e "${YELLOW}Service Status:${NC}      ${YELLOW}Stopped${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Fail2ban:${NC}            ${YELLOW}Not installed${NC}"
+        fi
+
+        if ! command -v fail2ban-client &> /dev/null; then
+            echo ""
+            echo -e "${CYAN}Fail2ban provides:${NC}"
+            echo -e "  ${GREEN}•${NC} Prevents SSH brute force attacks"
+            echo -e "  ${GREEN}•${NC} Automatically bans malicious IPs"
+            echo -e "  ${GREEN}•${NC} Protection for multiple services"
+        fi
+
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
+        echo -e "${CYAN}2.${NC} View Fail2ban status"
+        echo -e "${CYAN}3.${NC} View banned IPs"
+        echo -e "${CYAN}4.${NC} Unban specific IP"
+        echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-5, or press Enter to return]: " fail2ban_choice
+
+        case $fail2ban_choice in
+            1)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" install
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # SSH security configuration menu
@@ -865,44 +954,60 @@ ssh_security_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "SSH Security Configuration"
-    echo -e "${CYAN}1.${NC} Configure SSH key login"
-    echo -e "${CYAN}2.${NC} Disable root password login"
-    echo -e "${CYAN}3.${NC} Change SSH port"
-    echo -e "${CYAN}4.${NC} Configure connection timeout"
-    echo -e "${CYAN}5.${NC} Full security configuration (recommended)"
-    echo -e "${CYAN}6.${NC} View current configuration"
-    echo -e "${CYAN}7.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-7]: " ssh_choice
+    while true; do
+        echo ""
+        log_step "SSH Security Configuration"
 
-    case $ssh_choice in
-        1)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" setup-key
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" disable-password
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" change-port
-            ;;
-        4)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" timeout
-            ;;
-        5)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" full
-            ;;
-        6)
-            bash "${SCRIPTS_PATH}/ssh_security.sh" show
-            ;;
-        7)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        # Show current status
+        echo ""
+        bash "${SCRIPTS_PATH}/ssh_security.sh" show
+
+        echo ""
+        echo -e "${CYAN}1.${NC} Configure SSH key login"
+        echo -e "${CYAN}2.${NC} Disable root password login"
+        echo -e "${CYAN}3.${NC} Change SSH port"
+        echo -e "${CYAN}4.${NC} Configure connection timeout"
+        echo -e "${CYAN}5.${NC} Full security configuration (recommended)"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-5, or press Enter to return]: " ssh_choice
+
+        case $ssh_choice in
+            1)
+                bash "${SCRIPTS_PATH}/ssh_security.sh" setup-key
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/ssh_security.sh" disable-password
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/ssh_security.sh" change-port
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                bash "${SCRIPTS_PATH}/ssh_security.sh" timeout
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                bash "${SCRIPTS_PATH}/ssh_security.sh" full
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # IP quality test menu
