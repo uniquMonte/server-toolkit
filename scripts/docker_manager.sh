@@ -153,54 +153,7 @@ configure_docker() {
     systemctl start docker
     systemctl enable docker
 
-    # Configure Docker mirror acceleration (optional)
-    if [ "$AUTO_INSTALL" = "true" ]; then
-        mirror_choice="n"
-        log_info "Auto-install mode: Skipping Docker mirror acceleration configuration..."
-    else
-        read -p "Would you like to configure Docker mirror acceleration? (y/N) (press Enter to skip): " mirror_choice
-    fi
-    if [[ $mirror_choice =~ ^[Yy]$ ]]; then
-        log_info "Configuring Docker mirror acceleration..."
-
-        mkdir -p /etc/docker
-
-        # Detect region and suggest appropriate mirrors
-        local region=$(detect_region)
-        if [ "$region" = "CN" ]; then
-            log_info "Detected China region, using China mirrors"
-            cat > /etc/docker/daemon.json <<EOF
-{
-  "registry-mirrors": [
-    "https://docker.mirrors.ustc.edu.cn",
-    "https://hub-mirror.c.163.com"
-  ],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m",
-    "max-file": "3"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
-        else
-            log_info "Using default Docker Hub (fastest for most regions)"
-            cat > /etc/docker/daemon.json <<EOF
-{
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m",
-    "max-file": "3"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
-        fi
-
-        systemctl daemon-reload
-        systemctl restart docker
-        log_success "Docker configuration optimized"
-    fi
+    log_info "Using Docker default configuration"
 
     # Add current user to docker group (if not root)
     if [ "$SUDO_USER" ]; then
