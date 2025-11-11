@@ -531,32 +531,85 @@ nginx_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Nginx + Certbot Management"
-    echo -e "${CYAN}1.${NC} Install Nginx"
-    echo -e "${CYAN}2.${NC} Install Nginx + Certbot"
-    echo -e "${CYAN}3.${NC} Uninstall Nginx"
-    echo -e "${CYAN}4.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-4]: " nginx_choice
+    while true; do
+        # Clear command cache to ensure accurate status detection
+        hash -r 2>/dev/null || true
 
-    case $nginx_choice in
-        1)
-            bash "${SCRIPTS_PATH}/nginx_manager.sh" install
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
-            ;;
-        4)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        echo ""
+        log_step "Nginx + Certbot Management"
+
+        # Show Nginx status
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Nginx Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+        if command -v nginx &> /dev/null; then
+            echo -e "${GREEN}Nginx:${NC}               ${GREEN}Installed ✓${NC}"
+            nginx -v 2>&1 | sed 's/^/                       /'
+
+            # Check if Nginx service is running
+            if systemctl is-active --quiet nginx 2>/dev/null; then
+                echo -e "${GREEN}Service Status:${NC}      ${GREEN}Running ✓${NC}"
+            else
+                echo -e "${YELLOW}Service Status:${NC}      ${YELLOW}Stopped${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Nginx:${NC}               ${YELLOW}Not installed${NC}"
+        fi
+
+        # Check Certbot
+        if command -v certbot &> /dev/null; then
+            echo -e "${GREEN}Certbot:${NC}             ${GREEN}Installed ✓${NC}"
+            certbot --version 2>&1 | head -n1 | sed 's/^/                       /'
+        else
+            echo -e "${YELLOW}Certbot:${NC}             ${YELLOW}Not installed${NC}"
+        fi
+
+        if ! command -v nginx &> /dev/null; then
+            echo ""
+            echo -e "${CYAN}Nginx provides:${NC}"
+            echo -e "  ${GREEN}•${NC} High-performance web server"
+            echo -e "  ${GREEN}•${NC} Reverse proxy and load balancing"
+            echo -e "  ${GREEN}•${NC} SSL/TLS certificate management with Certbot"
+        fi
+
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        echo -e "${CYAN}1.${NC} Install Nginx"
+        echo -e "${CYAN}2.${NC} Install Nginx + Certbot"
+        echo -e "${CYAN}3.${NC} Uninstall Nginx"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-3, or press Enter to return]: " nginx_choice
+
+        case $nginx_choice in
+            1)
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" install
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # One-click install all components
