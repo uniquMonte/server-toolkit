@@ -13,6 +13,12 @@ Or using wget:
 bash <(wget -qO- https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
 ```
 
+> **Note for Fresh VPS Systems:**
+> If you get `curl: command not found`, install curl first:
+> - Debian/Ubuntu: `apt update && apt install -y curl`
+> - CentOS/Rocky/AlmaLinux: `yum install -y curl`
+> - Fedora: `dnf install -y curl`
+
 ## Menu Options
 
 ```
