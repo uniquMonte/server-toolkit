@@ -264,8 +264,8 @@ uninstall_nginx() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Nginx? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Are you sure you want to uninstall Nginx? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return
     fi
