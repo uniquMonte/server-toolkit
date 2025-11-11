@@ -902,12 +902,13 @@ fail2ban_menu() {
 
         echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
         echo -e "${CYAN}2.${NC} View Fail2ban status"
-        echo -e "${CYAN}3.${NC} View banned IPs"
-        echo -e "${CYAN}4.${NC} Unban specific IP"
-        echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
+        echo -e "${CYAN}3.${NC} View configuration"
+        echo -e "${CYAN}4.${NC} View banned IPs"
+        echo -e "${CYAN}5.${NC} Unban specific IP"
+        echo -e "${CYAN}6.${NC} Uninstall Fail2ban"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-5, or press Enter to return]: " fail2ban_choice
+        read -p "Please select an action [0-6, or press Enter to return]: " fail2ban_choice
 
         case $fail2ban_choice in
             1)
@@ -921,16 +922,21 @@ fail2ban_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             3)
-                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-config
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             4)
-                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             5)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            6)
                 bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
                 echo ""
                 read -p "Press Enter to continue..."
