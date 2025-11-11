@@ -443,35 +443,85 @@ docker_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Docker Container Engine Management"
-    echo -e "${CYAN}1.${NC} Install Docker + Docker Compose"
-    echo -e "${CYAN}2.${NC} Install Docker"
-    echo -e "${CYAN}3.${NC} Uninstall Docker"
-    echo -e "${CYAN}4.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-4] (press Enter for option 1): " docker_choice
+    while true; do
+        echo ""
+        log_step "Docker Container Engine Management"
 
-    # Set default to option 1 if Enter is pressed
-    docker_choice=${docker_choice:-1}
+        # Show Docker status
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Docker Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    case $docker_choice in
-        1)
-            bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/docker_manager.sh" install
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/docker_manager.sh" uninstall
-            ;;
-        4)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        if command -v docker &> /dev/null; then
+            echo -e "${GREEN}Docker Engine:${NC}       ${GREEN}Installed ✓${NC}"
+            docker --version 2>/dev/null | sed 's/^/                       /'
+
+            # Check if Docker service is running
+            if systemctl is-active --quiet docker 2>/dev/null; then
+                echo -e "${GREEN}Service Status:${NC}      ${GREEN}Running ✓${NC}"
+            else
+                echo -e "${YELLOW}Service Status:${NC}      ${YELLOW}Stopped${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Docker Engine:${NC}       ${YELLOW}Not installed${NC}"
+        fi
+
+        # Check Docker Compose
+        if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+            echo -e "${GREEN}Docker Compose:${NC}      ${GREEN}Installed ✓${NC}"
+            docker compose version 2>/dev/null | sed 's/^/                       /'
+        else
+            echo -e "${YELLOW}Docker Compose:${NC}      ${YELLOW}Not installed${NC}"
+        fi
+
+        if ! command -v docker &> /dev/null; then
+            echo ""
+            echo -e "${CYAN}Docker provides:${NC}"
+            echo -e "  ${GREEN}•${NC} Container isolation and management"
+            echo -e "  ${GREEN}•${NC} Lightweight virtualization"
+            echo -e "  ${GREEN}•${NC} Easy application deployment"
+        fi
+
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        echo -e "${CYAN}1.${NC} Install Docker + Docker Compose"
+        echo -e "${CYAN}2.${NC} Install Docker"
+        echo -e "${CYAN}3.${NC} Uninstall Docker"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-3, or press Enter for option 1]: " docker_choice
+
+        # Set default to option 1 if Enter is pressed
+        docker_choice=${docker_choice:-1}
+
+        case $docker_choice in
+            1)
+                bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/docker_manager.sh" install
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/docker_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0)
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # Nginx management menu
