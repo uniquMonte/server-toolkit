@@ -372,46 +372,69 @@ main() {
             uninstall_notifier
             ;;
         menu)
-            show_status
-            echo ""
-
-            if check_installed; then
-                echo -e "${GREEN}Available actions:${NC}"
-                echo -e "  ${CYAN}1.${NC} Configure notification settings"
-                echo -e "  ${CYAN}2.${NC} Test notifications"
-                echo -e "  ${CYAN}3.${NC} View recent SSH activity"
-                echo -e "  ${CYAN}4.${NC} Uninstall SSH Login Notifier"
-                echo -e "  ${CYAN}0.${NC} Exit"
+            while true; do
+                show_status
                 echo ""
-                read -p "Select action [0-4]: " action
 
-                case $action in
-                    1)
-                        configure_notifier
-                        ;;
-                    2)
-                        test_notifier
-                        ;;
-                    3)
-                        show_status
-                        ;;
-                    4)
-                        uninstall_notifier
-                        ;;
-                    0)
-                        log_info "Exiting"
-                        ;;
-                    *)
-                        log_error "Invalid selection"
-                        ;;
-                esac
-            else
-                echo ""
-                read -p "SSH Login Notifier is not installed. Install now? [Y/n] (press Enter to install): " install
-                if [[ ! $install =~ ^[Nn]$ ]]; then
-                    install_notifier
+                if check_installed; then
+                    echo -e "${GREEN}Available actions:${NC}"
+                    echo -e "  ${CYAN}1.${NC} Configure notification settings"
+                    echo -e "  ${CYAN}2.${NC} Test notifications"
+                    echo -e "  ${CYAN}3.${NC} View recent SSH activity"
+                    echo -e "  ${CYAN}4.${NC} Uninstall SSH Login Notifier"
+                    echo -e "  ${CYAN}0.${NC} Return to main menu"
+                    echo ""
+                    read -p "Select action [0-4, or press Enter to return]: " action
+
+                    case $action in
+                        1)
+                            configure_notifier
+                            echo ""
+                            read -p "Press Enter to continue..."
+                            ;;
+                        2)
+                            test_notifier
+                            echo ""
+                            read -p "Press Enter to continue..."
+                            ;;
+                        3)
+                            # Status will be shown at the start of next loop
+                            echo ""
+                            read -p "Press Enter to continue..."
+                            ;;
+                        4)
+                            uninstall_notifier
+                            if ! check_installed; then
+                                # If uninstalled successfully, exit the menu
+                                echo ""
+                                log_info "Returning to main menu"
+                                break
+                            fi
+                            echo ""
+                            read -p "Press Enter to continue..."
+                            ;;
+                        0|"")
+                            log_info "Returning to main menu"
+                            break
+                            ;;
+                        *)
+                            log_error "Invalid selection"
+                            sleep 1
+                            ;;
+                    esac
+                else
+                    echo ""
+                    read -p "SSH Login Notifier is not installed. Install now? [Y/n] (press Enter to install): " install
+                    if [[ ! $install =~ ^[Nn]$ ]]; then
+                        install_notifier
+                        echo ""
+                        read -p "Press Enter to continue..."
+                    else
+                        log_info "Returning to main menu"
+                        break
+                    fi
                 fi
-            fi
+            done
             ;;
         *)
             log_error "Unknown command: $1"
