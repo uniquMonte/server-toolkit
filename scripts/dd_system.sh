@@ -354,7 +354,7 @@ dd_system_main() {
 
     # First confirmation
     echo ""
-    read -p "Do you understand the risks and want to continue? [yes/NO]: " confirm1
+    read -p "Do you understand the risks and want to continue? [yes/NO, or press Enter to cancel]: " confirm1
     if [ "$confirm1" != "yes" ]; then
         log_info "Operation cancelled by user"
         return 0
