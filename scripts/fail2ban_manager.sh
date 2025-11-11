@@ -307,6 +307,70 @@ show_banned_ips() {
     fi
 }
 
+# Show Fail2ban configuration
+show_config() {
+    if ! check_fail2ban_installed; then
+        log_error "Fail2ban is not installed"
+        return
+    fi
+
+    if [ ! -f /etc/fail2ban/jail.local ]; then
+        log_warning "No custom configuration found (/etc/fail2ban/jail.local does not exist)"
+        log_info "Using default Fail2ban settings"
+        return
+    fi
+
+    echo ""
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${PURPLE}Fail2ban Configuration${NC}"
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Parse configuration from jail.local
+    local config_file="/etc/fail2ban/jail.local"
+
+    # Get ban time
+    local bantime=$(grep -E "^bantime\s*=" "$config_file" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$bantime" ]; then
+        local bantime_min=$((bantime / 60))
+        echo -e "${GREEN}Ban Time:${NC}            ${YELLOW}${bantime_min} minutes${NC} (${bantime} seconds)"
+    fi
+
+    # Get find time
+    local findtime=$(grep -E "^findtime\s*=" "$config_file" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$findtime" ]; then
+        local findtime_min=$((findtime / 60))
+        echo -e "${GREEN}Find Time Window:${NC}    ${YELLOW}${findtime_min} minutes${NC} (${findtime} seconds)"
+    fi
+
+    # Get max retry
+    local maxretry=$(grep -E "^maxretry\s*=" "$config_file" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$maxretry" ]; then
+        echo -e "${GREEN}Max Retry Attempts:${NC}  ${YELLOW}${maxretry} times${NC}"
+    fi
+
+    # Get SSH port from sshd section
+    local ssh_port=$(grep -A 10 "^\[sshd\]" "$config_file" | grep -E "^port\s*=" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$ssh_port" ]; then
+        echo -e "${GREEN}SSH Port:${NC}            ${YELLOW}${ssh_port}${NC}"
+    fi
+
+    # Get ignored IPs
+    local ignoreip=$(grep -E "^ignoreip\s*=" "$config_file" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$ignoreip" ]; then
+        echo -e "${GREEN}Ignored IPs:${NC}         ${YELLOW}${ignoreip}${NC}"
+    fi
+
+    # Get backend
+    local backend=$(grep -A 10 "^\[sshd\]" "$config_file" | grep -E "^backend\s*=" | head -n1 | sed 's/.*=\s*//' | xargs)
+    if [ -n "$backend" ]; then
+        echo -e "${GREEN}Backend:${NC}             ${YELLOW}${backend}${NC}"
+    fi
+
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log_info "Configuration file: ${config_file}"
+}
+
 # Uninstall Fail2ban
 uninstall_fail2ban() {
     log_warning "Starting Fail2ban uninstallation..."
@@ -374,11 +438,12 @@ uninstall_fail2ban() {
 
 # Display help
 show_help() {
-    echo "Usage: $0 {install|status|unban|show-banned|uninstall}"
+    echo "Usage: $0 {install|status|show-config|unban|show-banned|uninstall}"
     echo ""
     echo "Commands:"
     echo "  install      - Install and configure Fail2ban"
     echo "  status       - View Fail2ban status"
+    echo "  show-config  - View Fail2ban configuration"
     echo "  unban        - Unban specific IP address"
     echo "  show-banned  - View list of banned IPs"
     echo "  uninstall    - Uninstall Fail2ban"
@@ -398,6 +463,9 @@ main() {
             ;;
         status)
             show_status
+            ;;
+        show-config)
+            show_config
             ;;
         unban)
             unban_ip
