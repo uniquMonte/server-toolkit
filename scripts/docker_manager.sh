@@ -305,8 +305,8 @@ uninstall_docker() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Docker? This will delete all containers, images, and data (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    read -p "Are you sure you want to uninstall Docker? This will delete all containers, images, and data (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return
     fi
