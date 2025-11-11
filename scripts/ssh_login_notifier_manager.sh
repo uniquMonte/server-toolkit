@@ -32,21 +32,38 @@ log_warning() {
 
 # Check if SSH login notifier is installed
 check_installed() {
-    # Check for common installation locations
+    # Check for the actual installation paths used by ssh-login-notifier
+    # Primary check: main notification script and config directory
+    if [ -f "/usr/local/bin/ssh-login-notify.sh" ] || \
+       [ -d "/etc/ssh-login-notifier" ] || \
+       [ -f "/etc/ssh-login-notifier/config" ] || \
+       [ -f "/usr/local/bin/report-failed-logins.sh" ]; then
+        return 0
+    fi
+
+    # Legacy/alternative installation locations
     if [ -f "/usr/local/bin/ssh-login-notifier" ] || \
        [ -f "/opt/ssh-login-notifier/notifier.sh" ] || \
        [ -d "/opt/ssh-login-notifier" ] || \
        [ -f "/root/ssh-login-notifier/ssh_login_notifier.sh" ] || \
        [ -d "/root/.ssh-login-notifier" ]; then
         return 0
-    else
-        return 1
     fi
+
+    return 1
 }
 
 # Get installation path
 get_install_path() {
-    if [ -f "/usr/local/bin/ssh-login-notifier" ]; then
+    # Check for the actual installation paths first
+    if [ -f "/usr/local/bin/ssh-login-notify.sh" ]; then
+        echo "/usr/local/bin/ssh-login-notify.sh"
+    elif [ -d "/etc/ssh-login-notifier" ]; then
+        echo "/etc/ssh-login-notifier"
+    elif [ -f "/usr/local/bin/report-failed-logins.sh" ]; then
+        echo "/usr/local/bin (report-failed-logins.sh)"
+    # Legacy/alternative paths
+    elif [ -f "/usr/local/bin/ssh-login-notifier" ]; then
         echo "/usr/local/bin/ssh-login-notifier"
     elif [ -f "/opt/ssh-login-notifier/notifier.sh" ]; then
         echo "/opt/ssh-login-notifier/notifier.sh"
@@ -212,24 +229,19 @@ configure_notifier() {
     echo ""
     log_info "Opening SSH Login Notifier configuration..."
     echo ""
+    log_info "Re-running installation script to access configuration menu..."
+    echo ""
 
-    local install_path=$(get_install_path)
-
-    # Try to find management/setup script
-    if [ -f "/opt/ssh-login-notifier/manage.sh" ]; then
-        bash /opt/ssh-login-notifier/manage.sh
-    elif [ -f "/root/ssh-login-notifier/manage.sh" ]; then
-        bash /root/ssh-login-notifier/manage.sh
-    elif [ -f "/usr/local/bin/ssh-login-notifier" ]; then
-        /usr/local/bin/ssh-login-notifier --configure 2>/dev/null || {
-            log_warning "Configuration script not found"
-            log_info "Installation path: $install_path"
-            log_info "Please check the documentation for configuration instructions"
-        }
+    # The ssh-login-notifier configuration is handled by re-running the install script
+    # It will detect the existing installation and show the management menu
+    if command -v curl &> /dev/null; then
+        curl -Ls https://raw.githubusercontent.com/uniquMonte/ssh-login-notifier/main/install.sh | bash
+    elif command -v wget &> /dev/null; then
+        wget -qO- https://raw.githubusercontent.com/uniquMonte/ssh-login-notifier/main/install.sh | bash
     else
-        log_warning "Configuration script not found"
-        log_info "Installation path: $install_path"
-        log_info "Please check the documentation for configuration instructions"
+        log_error "Neither curl nor wget is available"
+        log_error "Please install curl or wget to access configuration"
+        return 1
     fi
 }
 
@@ -295,8 +307,22 @@ uninstall_notifier() {
     # Remove profile.d scripts
     rm -f /etc/profile.d/ssh-login-notifier.sh /etc/profile.d/ssh-notify.sh
 
-    # Remove installation directories
+    # Remove installation files and directories
     local removed=0
+
+    # Remove actual installation files
+    for path in "/usr/local/bin/ssh-login-notify.sh" \
+                "/usr/local/bin/report-failed-logins.sh" \
+                "/usr/local/bin/ssh-login-notifier-uninstall.sh" \
+                "/etc/ssh-login-notifier"; do
+        if [ -e "$path" ]; then
+            rm -rf "$path"
+            log_info "Removed: $path"
+            removed=1
+        fi
+    done
+
+    # Remove legacy/alternative installation paths
     for path in "/usr/local/bin/ssh-login-notifier" \
                 "/opt/ssh-login-notifier" \
                 "/root/ssh-login-notifier" \
