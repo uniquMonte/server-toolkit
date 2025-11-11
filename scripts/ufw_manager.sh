@@ -282,10 +282,12 @@ uninstall_ufw() {
     systemctl disable ufw
 
     # Uninstall UFW
+    local uninstall_status=0
     case $OS in
         ubuntu|debian)
             log_info "Uninstalling UFW using APT..."
             apt-get purge -y ufw
+            uninstall_status=$?
             apt-get autoremove -y
             ;;
 
@@ -293,8 +295,10 @@ uninstall_ufw() {
             log_info "Uninstalling UFW using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf remove -y ufw
+                uninstall_status=$?
             else
                 yum remove -y ufw
+                uninstall_status=$?
             fi
             ;;
 
@@ -309,11 +313,14 @@ uninstall_ufw() {
     rm -rf /etc/ufw
     rm -f /etc/default/ufw
 
-    if check_ufw_installed; then
-        log_error "UFW uninstallation failed"
-        exit 1
-    else
+    # Clear command hash to ensure ufw command is no longer cached
+    hash -r 2>/dev/null || true
+
+    if [ $uninstall_status -eq 0 ]; then
         log_success "UFW uninstallation complete!"
+    else
+        log_error "UFW uninstallation encountered errors"
+        exit 1
     fi
 }
 
