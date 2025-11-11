@@ -361,36 +361,79 @@ ufw_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "UFW Firewall Management"
-    echo -e "${CYAN}1.${NC} Install UFW only (no rule configuration)"
-    echo -e "${CYAN}2.${NC} Install UFW and open common ports (22, 80, 443)"
-    echo -e "${CYAN}3.${NC} Install UFW with custom configuration"
-    echo -e "${CYAN}4.${NC} Uninstall UFW"
-    echo -e "${CYAN}5.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-5]: " ufw_choice
+    while true; do
+        echo ""
+        log_step "UFW Firewall Management"
 
-    case $ufw_choice in
-        1)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-only
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" install-custom
-            ;;
-        4)
-            bash "${SCRIPTS_PATH}/ufw_manager.sh" uninstall
-            ;;
-        5)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        # Show UFW status
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}UFW Firewall Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+        if command -v ufw &> /dev/null; then
+            echo -e "${GREEN}Installation Status:${NC}  ${GREEN}Installed ✓${NC}"
+
+            # Check if UFW is active
+            if ufw status | grep -q "Status: active"; then
+                echo -e "${GREEN}Service Status:${NC}      ${GREEN}Active ✓${NC}"
+                echo ""
+                echo -e "${GREEN}Current Firewall Rules:${NC}"
+                ufw status numbered | tail -n +4
+            else
+                echo -e "${YELLOW}Service Status:${NC}      ${YELLOW}Inactive${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Installation Status:${NC}  ${YELLOW}Not installed${NC}"
+            echo ""
+            echo -e "${CYAN}UFW (Uncomplicated Firewall) provides:${NC}"
+            echo -e "  ${GREEN}•${NC} Easy-to-use firewall management"
+            echo -e "  ${GREEN}•${NC} Protection against unauthorized access"
+            echo -e "  ${GREEN}•${NC} Simple port and service configuration"
+        fi
+
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        echo -e "${CYAN}1.${NC} Install UFW only (no rule configuration)"
+        echo -e "${CYAN}2.${NC} Install UFW and open common ports (22, 80, 443)"
+        echo -e "${CYAN}3.${NC} Install UFW with custom configuration"
+        echo -e "${CYAN}4.${NC} Uninstall UFW"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-4, or press Enter to return]: " ufw_choice
+
+        case $ufw_choice in
+            1)
+                bash "${SCRIPTS_PATH}/ufw_manager.sh" install-only
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/ufw_manager.sh" install-custom
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                bash "${SCRIPTS_PATH}/ufw_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # Docker management menu
