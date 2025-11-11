@@ -493,11 +493,10 @@ docker_menu() {
         echo ""
 
         echo -e "${CYAN}1.${NC} Install Docker + Docker Compose"
-        echo -e "${CYAN}2.${NC} Install Docker"
-        echo -e "${CYAN}3.${NC} Uninstall Docker"
+        echo -e "${CYAN}2.${NC} Uninstall Docker"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-3, or press Enter for option 1]: " docker_choice
+        read -p "Please select an action [0-2, or press Enter for option 1]: " docker_choice
 
         # Set default to option 1 if Enter is pressed
         docker_choice=${docker_choice:-1}
@@ -509,11 +508,6 @@ docker_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             2)
-                bash "${SCRIPTS_PATH}/docker_manager.sh" install
-                echo ""
-                read -p "Press Enter to continue..."
-                ;;
-            3)
                 bash "${SCRIPTS_PATH}/docker_manager.sh" uninstall
                 echo ""
                 read -p "Press Enter to continue..."
