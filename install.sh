@@ -789,16 +789,25 @@ traffic_reporter_menu() {
 
 # SSH login notifier management menu
 ssh_login_notifier_menu() {
-    if ! download_script_if_needed "ssh_login_notifier_manager.sh"; then
-        log_error "Failed to load SSH login notifier script"
-        return 1
-    fi
-
     echo ""
     log_step "SSH Login Notifier"
+    echo ""
 
-    # Launch the SSH login notifier manager
-    bash "${SCRIPTS_PATH}/ssh_login_notifier_manager.sh" menu
+    log_info "Launching SSH Login Notifier management..."
+    log_info "Project: https://github.com/uniquMonte/ssh-login-notifier"
+    echo ""
+
+    # Directly call the original project script
+    # It will detect if already installed and show the management menu
+    if command -v curl &> /dev/null; then
+        curl -Ls https://raw.githubusercontent.com/uniquMonte/ssh-login-notifier/main/install.sh | bash
+    elif command -v wget &> /dev/null; then
+        wget -qO- https://raw.githubusercontent.com/uniquMonte/ssh-login-notifier/main/install.sh | bash
+    else
+        log_error "Neither curl nor wget is available"
+        log_error "Please install curl or wget first"
+        return 1
+    fi
 }
 
 # Backup management menu
