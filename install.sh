@@ -445,19 +445,22 @@ docker_menu() {
 
     echo ""
     log_step "Docker Container Engine Management"
-    echo -e "${CYAN}1.${NC} Install Docker"
-    echo -e "${CYAN}2.${NC} Install Docker + Docker Compose"
+    echo -e "${CYAN}1.${NC} Install Docker + Docker Compose"
+    echo -e "${CYAN}2.${NC} Install Docker"
     echo -e "${CYAN}3.${NC} Uninstall Docker"
     echo -e "${CYAN}4.${NC} Return to main menu"
     echo ""
-    read -p "Please select an action [1-4]: " docker_choice
+    read -p "Please select an action [1-4] (press Enter for option 1): " docker_choice
+
+    # Set default to option 1 if Enter is pressed
+    docker_choice=${docker_choice:-1}
 
     case $docker_choice in
         1)
-            bash "${SCRIPTS_PATH}/docker_manager.sh" install
+            bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
             ;;
         2)
-            bash "${SCRIPTS_PATH}/docker_manager.sh" install-compose
+            bash "${SCRIPTS_PATH}/docker_manager.sh" install
             ;;
         3)
             bash "${SCRIPTS_PATH}/docker_manager.sh" uninstall
