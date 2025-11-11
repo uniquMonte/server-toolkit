@@ -295,13 +295,13 @@ hostname_menu() {
     echo -e "${CYAN}1.${NC} Change hostname (interactive)"
     echo -e "${CYAN}2.${NC} Return to main menu"
     echo ""
-    read -p "Please select an action [1-2]: " hostname_choice
+    read -p "Please select an action [1-2, or press Enter to return to main menu]: " hostname_choice
 
     case $hostname_choice in
         1)
             bash "${SCRIPTS_PATH}/hostname_manager.sh" interactive
             ;;
-        2)
+        2|"")
             return
             ;;
         *)
