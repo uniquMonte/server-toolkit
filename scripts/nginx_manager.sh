@@ -264,6 +264,18 @@ uninstall_nginx() {
         return
     fi
 
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Nginx packages and service"
+    echo -e "  ${RED}•${NC} Configuration files (/etc/nginx)"
+    echo -e "  ${RED}•${NC} Website data (/var/www)"
+    echo -e "  ${RED}•${NC} Log files (/var/log/nginx)"
+    if check_certbot_installed; then
+        echo -e "  ${RED}•${NC} Certbot and SSL certificates (/etc/letsencrypt)"
+    fi
+    echo ""
+
     read -p "Are you sure you want to uninstall Nginx? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
