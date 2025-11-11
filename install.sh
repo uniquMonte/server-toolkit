@@ -775,16 +775,25 @@ swap_menu() {
 
 # Traffic reporter management menu
 traffic_reporter_menu() {
-    if ! download_script_if_needed "traffic_reporter_manager.sh"; then
-        log_error "Failed to load traffic reporter script"
-        return 1
-    fi
-
     echo ""
     log_step "Server Traffic Reporter"
+    echo ""
 
-    # Launch the traffic reporter manager
-    bash "${SCRIPTS_PATH}/traffic_reporter_manager.sh" menu
+    log_info "Launching Server Traffic Reporter management..."
+    log_info "Project: https://github.com/uniquMonte/server-traffic-reporter"
+    echo ""
+
+    # Directly call the original project script
+    # It will detect if already installed and show the management menu
+    if command -v curl &> /dev/null; then
+        curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | bash
+    elif command -v wget &> /dev/null; then
+        wget -qO- https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | bash
+    else
+        log_error "Neither curl nor wget is available"
+        log_error "Please install curl or wget first"
+        return 1
+    fi
 }
 
 # SSH login notifier management menu
