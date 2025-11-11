@@ -94,26 +94,19 @@ install_nginx_rhel() {
 configure_nginx() {
     log_info "Configuring Nginx..."
 
-    # Configure firewall
-    if [ "$AUTO_INSTALL" = "true" ]; then
-        fw_choice=""
-        log_info "Auto-install mode: Opening HTTP/HTTPS ports in firewall..."
-    else
-        read -p "Open HTTP/HTTPS ports in firewall? (Y/n) (press Enter to confirm): " fw_choice
-    fi
-    if [[ ! $fw_choice =~ ^[Nn]$ ]]; then
-        if command -v ufw &> /dev/null; then
-            log_info "Configuring UFW firewall..."
-            ufw allow 'Nginx Full' 2>/dev/null || {
-                ufw allow 80/tcp
-                ufw allow 443/tcp
-            }
-        elif command -v firewall-cmd &> /dev/null; then
-            log_info "Configuring firewalld..."
-            firewall-cmd --permanent --add-service=http
-            firewall-cmd --permanent --add-service=https
-            firewall-cmd --reload
-        fi
+    # Configure firewall automatically
+    log_info "Opening HTTP/HTTPS ports in firewall..."
+    if command -v ufw &> /dev/null; then
+        log_info "Configuring UFW firewall..."
+        ufw allow 'Nginx Full' 2>/dev/null || {
+            ufw allow 80/tcp
+            ufw allow 443/tcp
+        }
+    elif command -v firewall-cmd &> /dev/null; then
+        log_info "Configuring firewalld..."
+        firewall-cmd --permanent --add-service=http
+        firewall-cmd --permanent --add-service=https
+        firewall-cmd --reload
     fi
 
     log_info "Keeping Nginx default configuration (no optimization applied)"
