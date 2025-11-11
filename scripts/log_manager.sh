@@ -57,6 +57,8 @@ calculate_log_params() {
     local journald_max_use=""
     local journald_keep_free=""
     local journald_max_file_size=""
+    local nginx_rotate=""
+    local nginx_size=""
 
     if [ "$available_gb" -lt 5 ]; then
         # Strict mode: < 5GB
@@ -66,6 +68,8 @@ calculate_log_params() {
         journald_max_use="100M"
         journald_keep_free="500M"
         journald_max_file_size="10M"
+        nginx_rotate="7"
+        nginx_size="10M"
     elif [ "$available_gb" -lt 10 ]; then
         # Normal mode: 5-10GB
         mode="normal"
@@ -74,6 +78,8 @@ calculate_log_params() {
         journald_max_use="200M"
         journald_keep_free="1G"
         journald_max_file_size="20M"
+        nginx_rotate="14"
+        nginx_size="20M"
     elif [ "$available_gb" -lt 30 ]; then
         # Relaxed mode: 10-30GB
         mode="relaxed"
@@ -82,6 +88,8 @@ calculate_log_params() {
         journald_max_use="500M"
         journald_keep_free="2G"
         journald_max_file_size="50M"
+        nginx_rotate="30"
+        nginx_size="50M"
     else
         # Ample mode: >= 30GB
         mode="ample"
@@ -90,9 +98,11 @@ calculate_log_params() {
         journald_max_use="1G"
         journald_keep_free="3G"
         journald_max_file_size="100M"
+        nginx_rotate="52"
+        nginx_size="100M"
     fi
 
-    echo "$mode|$docker_max_size|$docker_max_file|$journald_max_use|$journald_keep_free|$journald_max_file_size"
+    echo "$mode|$docker_max_size|$docker_max_file|$journald_max_use|$journald_keep_free|$journald_max_file_size|$nginx_rotate|$nginx_size"
 }
 
 # Get current Docker log configuration
@@ -122,6 +132,23 @@ get_current_journald_config() {
         echo "not_configured|||"
     else
         echo "configured|${max_use:-default}|${keep_free:-default}|${max_file_size:-default}"
+    fi
+}
+
+# Get current Nginx log configuration
+get_current_nginx_config() {
+    if [ ! -f /etc/logrotate.d/nginx ]; then
+        echo "not_configured||"
+        return
+    fi
+
+    local rotate=$(grep "^[[:space:]]*rotate" /etc/logrotate.d/nginx 2>/dev/null | awk '{print $2}')
+    local size=$(grep "^[[:space:]]*size" /etc/logrotate.d/nginx 2>/dev/null | awk '{print $2}')
+
+    if [ -z "$rotate" ] && [ -z "$size" ]; then
+        echo "not_configured||"
+    else
+        echo "configured|${rotate:-daily}|${size:-unlimited}"
     fi
 }
 
@@ -224,6 +251,44 @@ show_journald_config() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
+# Show current Nginx log configuration
+show_nginx_log_config() {
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Nginx Log Configuration${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Check if Nginx is installed
+    if ! command -v nginx &> /dev/null; then
+        echo -e "${YELLOW}Nginx is not installed${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        return
+    fi
+
+    local nginx_config=$(get_current_nginx_config)
+    local status=$(echo "$nginx_config" | cut -d'|' -f1)
+    local rotate=$(echo "$nginx_config" | cut -d'|' -f2)
+    local size=$(echo "$nginx_config" | cut -d'|' -f3)
+
+    if [ "$status" = "not_configured" ]; then
+        echo -e "Status: ${YELLOW}Not Configured${NC}"
+        echo -e "Rotate Days     : ${YELLOW}Default (14 days)${NC}"
+        echo -e "Max File Size   : ${YELLOW}Default (daily rotation)${NC}"
+    else
+        echo -e "Status: ${GREEN}Configured${NC}"
+        echo -e "Rotate Days     : ${CYAN}$rotate days${NC}"
+        [ "$size" != "unlimited" ] && echo -e "Max File Size   : ${CYAN}$size${NC}"
+    fi
+
+    # Show current Nginx log disk usage
+    if [ -d /var/log/nginx ]; then
+        local nginx_log_size=$(du -sh /var/log/nginx 2>/dev/null | cut -f1)
+        [ -n "$nginx_log_size" ] && echo -e "Current Log Size: ${CYAN}$nginx_log_size${NC}"
+    fi
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
 # Show recommended configuration
 show_recommended_config() {
     local available_gb=$(get_disk_space)
@@ -235,6 +300,8 @@ show_recommended_config() {
     local journald_max_use=$(echo "$params" | cut -d'|' -f4)
     local journald_keep_free=$(echo "$params" | cut -d'|' -f5)
     local journald_max_file_size=$(echo "$params" | cut -d'|' -f6)
+    local nginx_rotate=$(echo "$params" | cut -d'|' -f7)
+    local nginx_size=$(echo "$params" | cut -d'|' -f8)
 
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -272,6 +339,12 @@ show_recommended_config() {
     echo -e "  Max Disk Usage  : ${CYAN}$journald_max_use${NC}"
     echo -e "  Keep Free       : ${CYAN}$journald_keep_free${NC}"
     echo -e "  Max File Size   : ${CYAN}$journald_max_file_size${NC}"
+
+    echo ""
+    echo -e "${YELLOW}Nginx Log Settings:${NC}"
+    echo -e "  Rotate Days     : ${CYAN}$nginx_rotate days${NC}"
+    echo -e "  Max File Size   : ${CYAN}$nginx_size${NC}"
+    echo -e "  Compression     : ${CYAN}Enabled${NC}"
 
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
@@ -617,6 +690,109 @@ EOF
     fi
 }
 
+# Configure Nginx log rotation
+configure_nginx_logs() {
+    local skip_confirm="$1"  # If set to "auto", skip confirmation
+
+    # Check if Nginx is installed
+    if ! command -v nginx &> /dev/null; then
+        log_warning "Nginx is not installed, skipping Nginx log configuration"
+        echo ""
+        log_info "Install Nginx first using menu option 6 (Nginx management)"
+        return 0
+    fi
+
+    log_info "Configuring Nginx log rotation..."
+    echo ""
+
+    local available_gb=$(get_disk_space)
+    local params=$(calculate_log_params "$available_gb")
+    local rec_rotate=$(echo "$params" | cut -d'|' -f7)
+    local rec_size=$(echo "$params" | cut -d'|' -f8)
+
+    # Show current vs recommended configuration
+    local nginx_config=$(get_current_nginx_config)
+    local current_status=$(echo "$nginx_config" | cut -d'|' -f1)
+    local current_rotate=$(echo "$nginx_config" | cut -d'|' -f2)
+    local current_size=$(echo "$nginx_config" | cut -d'|' -f3)
+
+    if [ "$current_status" = "not_configured" ]; then
+        echo -e "${YELLOW}Current Status:${NC} Using system defaults"
+        echo -e "  (Typically 14 days rotation)"
+    else
+        echo -e "${YELLOW}Current Status:${NC} Configured"
+        echo -e "  Rotate: ${CYAN}$current_rotate days${NC}, Size: ${CYAN}$current_size${NC}"
+    fi
+    echo ""
+    echo -e "${GREEN}Recommended:${NC}"
+    echo -e "  Rotate: ${CYAN}$rec_rotate days${NC}, Max Size: ${CYAN}$rec_size${NC}"
+    echo -e "  (Based on ${available_gb}GB available space)"
+    echo ""
+
+    # Check if already optimally configured
+    if [ "$current_rotate" = "$rec_rotate" ] && [ "$current_size" = "$rec_size" ]; then
+        log_success "Nginx logs are already optimally configured!"
+        return 0
+    fi
+
+    # Ask for confirmation only if not in auto mode
+    if [ "$skip_confirm" != "auto" ]; then
+        read -p "Apply recommended Nginx log configuration? (Y/n) (press Enter to confirm): " confirm
+        if [[ $confirm =~ ^[Nn]$ ]]; then
+            log_info "Nginx log configuration cancelled"
+            return 0
+        fi
+    fi
+
+    echo ""
+    log_info "Applying Nginx log rotation configuration..."
+
+    # Backup existing config if it exists
+    if [ -f /etc/logrotate.d/nginx ]; then
+        cp /etc/logrotate.d/nginx /etc/logrotate.d/nginx.bak.$(date +%Y%m%d_%H%M%S)
+        log_info "Backed up existing configuration"
+    fi
+
+    # Create logrotate configuration for Nginx
+    cat > /etc/logrotate.d/nginx <<EOF
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate $rec_rotate
+    size $rec_size
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    prerotate
+        if [ -d /etc/logrotate.d/httpd-prerotate ]; then \\
+            run-parts /etc/logrotate.d/httpd-prerotate; \\
+        fi
+    endscript
+    postrotate
+        [ -s /run/nginx.pid ] && kill -USR1 \$(cat /run/nginx.pid) 2>/dev/null || true
+    endscript
+}
+EOF
+
+    if [ $? -eq 0 ]; then
+        log_success "Nginx log rotation configured successfully"
+        echo ""
+        echo -e "${GREEN}Configuration Applied:${NC}"
+        echo -e "  Rotate Days     : ${CYAN}$rec_rotate${NC}"
+        echo -e "  Max File Size   : ${CYAN}$rec_size${NC}"
+        echo -e "  Compression     : ${CYAN}Enabled${NC}"
+        echo -e "  Log Location    : ${CYAN}/var/log/nginx/${NC}"
+        echo ""
+        log_info "Logs will be rotated daily and kept for $rec_rotate days"
+        log_info "Rotation will also trigger when log size exceeds $rec_size"
+    else
+        log_error "Failed to configure Nginx log rotation"
+        return 1
+    fi
+}
+
 # Clean old logs
 clean_old_logs() {
     log_info "Cleaning old logs..."
@@ -687,7 +863,7 @@ configure_all() {
     show_comparison
 
     echo ""
-    log_info "This will configure both Docker and system journal logs"
+    log_info "This will configure Docker, system journal, and Nginx logs"
     read -p "Proceed with configuration? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Configuration cancelled"
@@ -709,6 +885,15 @@ configure_all() {
     echo ""
     configure_journald_logs "auto"
 
+    # Configure Nginx logs (automatically, no confirmation)
+    if command -v nginx &> /dev/null; then
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        configure_nginx_logs "auto"
+    fi
+
+    local available_gb=$(get_disk_space)
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     log_success "Log management configuration completed!"
@@ -720,6 +905,7 @@ show_status() {
     show_disk_status
     show_docker_log_config
     show_journald_config
+    show_nginx_log_config
     show_recommended_config
 }
 
@@ -743,12 +929,15 @@ main() {
         journald)
             configure_journald_logs
             ;;
+        nginx)
+            configure_nginx_logs
+            ;;
         clean)
             clean_old_logs
             ;;
         *)
             log_error "Unknown command: $1"
-            echo "Usage: $0 {status|configure|docker|journald|clean}"
+            echo "Usage: $0 {status|configure|docker|journald|nginx|clean}"
             exit 1
             ;;
     esac
