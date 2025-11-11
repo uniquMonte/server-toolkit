@@ -343,10 +343,12 @@ uninstall_docker() {
     systemctl disable docker
 
     # Uninstall Docker
+    local uninstall_status=0
     case $OS in
         ubuntu|debian)
             log_info "Uninstalling Docker using APT..."
             apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            uninstall_status=$?
             apt-get autoremove -y
             ;;
 
@@ -354,8 +356,10 @@ uninstall_docker() {
             log_info "Uninstalling Docker using YUM/DNF..."
             if command -v dnf &> /dev/null; then
                 dnf remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                uninstall_status=$?
             else
                 yum remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                uninstall_status=$?
             fi
             ;;
 
@@ -365,22 +369,23 @@ uninstall_docker() {
             ;;
     esac
 
-    # Delete Docker data
-    read -p "Delete all Docker data? (y/N) (press Enter to skip): " delete_data
-    if [[ $delete_data =~ ^[Yy]$ ]]; then
-        log_info "Deleting Docker data..."
-        rm -rf /var/lib/docker
-        rm -rf /var/lib/containerd
-        rm -rf /etc/docker
-        rm -rf /etc/apt/keyrings/docker.gpg
-        rm -rf /etc/apt/sources.list.d/docker.list
-    fi
+    # Delete Docker data automatically (user already confirmed uninstall)
+    log_info "Deleting Docker data and configuration..."
+    rm -rf /var/lib/docker
+    rm -rf /var/lib/containerd
+    rm -rf /etc/docker
+    rm -rf /etc/apt/keyrings/docker.gpg
+    rm -rf /etc/apt/sources.list.d/docker.list
+    rm -rf /etc/yum.repos.d/docker-ce.repo
 
-    if check_docker_installed; then
-        log_error "Docker uninstallation failed"
-        exit 1
-    else
+    # Clear command hash to ensure docker command is no longer cached
+    hash -r 2>/dev/null || true
+
+    if [ $uninstall_status -eq 0 ]; then
         log_success "Docker uninstallation complete!"
+    else
+        log_error "Docker uninstallation encountered errors"
+        exit 1
     fi
 }
 
