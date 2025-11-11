@@ -398,7 +398,9 @@ main() {
                             read -p "Press Enter to continue..."
                             ;;
                         3)
-                            # Status will be shown at the start of next loop
+                            # Refresh and show current status
+                            echo ""
+                            show_status
                             echo ""
                             read -p "Press Enter to continue..."
                             ;;
