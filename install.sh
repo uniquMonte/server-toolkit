@@ -410,7 +410,7 @@ ufw_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             2)
-                bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
+                AUTO_INSTALL=true bash "${SCRIPTS_PATH}/ufw_manager.sh" install-common
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
