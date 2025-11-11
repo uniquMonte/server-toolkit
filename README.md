@@ -41,9 +41,8 @@ This script integrates the following excellent open-source projects:
 - **[IPQuality](https://github.com/xykt/IPQuality)** - IP quality and reputation detection tool
 - **[NetQuality](https://github.com/xykt/NetQuality)** - Network quality check script
 
-**Management Tools:**
-- **[Server Traffic Reporter](https://github.com/uniquMonte/server-traffic-reporter)** - Automated traffic monitoring and reporting
-- **[Server Backup](https://github.com/uniquMonte/server-backup)** - Encrypted automated backup solution with cloud storage support
+**System Tools:**
+- **[Reinstall](https://github.com/bin456789/reinstall)** - One-click reinstallation script for VPS operating systems
 
 Special thanks to the authors and contributors of these projects!
 
