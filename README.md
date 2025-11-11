@@ -4,9 +4,38 @@ Quickly install and configure common tools on newly purchased VPS servers.
 
 ## Quick Start
 
+### One-line Installation
+
+**Using curl (recommended):**
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
 ```
+
+**Using wget (alternative):**
+```bash
+bash <(wget -qO- https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
+```
+
+### Fresh System Installation
+
+If your VPS is freshly installed and doesn't have curl or wget, install one first:
+
+**For Debian/Ubuntu:**
+```bash
+apt update && apt install -y curl
+```
+
+**For CentOS/Rocky Linux/AlmaLinux:**
+```bash
+yum install -y curl
+```
+
+**For Fedora:**
+```bash
+dnf install -y curl
+```
+
+Then run the one-line installation command above.
 
 ## Menu Options
 
