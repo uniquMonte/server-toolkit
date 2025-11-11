@@ -119,6 +119,11 @@ configure_nginx() {
         # Backup original configuration
         cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
 
+        # Comment out existing gzip settings in nginx.conf to avoid duplication
+        if [ -f /etc/nginx/nginx.conf ]; then
+            sed -i '/^\s*gzip/s/^/# /' /etc/nginx/nginx.conf
+        fi
+
         # Create optimization configuration
         cat > /etc/nginx/conf.d/optimization.conf <<'EOF'
 # Performance optimization
