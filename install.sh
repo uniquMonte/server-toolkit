@@ -467,6 +467,9 @@ nginx_menu() {
 install_all() {
     log_step "Starting complete setup (all-in-one)..."
 
+    # Enable auto-install mode (skip all prompts)
+    export AUTO_INSTALL=true
+
     # Download all required scripts first
     local required_scripts=("system_update.sh" "basic_tools.sh" "ufw_manager.sh" "docker_manager.sh" "nginx_manager.sh")
     for script in "${required_scripts[@]}"; do

@@ -95,7 +95,12 @@ configure_nginx() {
     log_info "Configuring Nginx..."
 
     # Configure firewall
-    read -p "Open HTTP/HTTPS ports in firewall? (Y/n) (press Enter to confirm): " fw_choice
+    if [ "$AUTO_INSTALL" = "true" ]; then
+        fw_choice=""
+        log_info "Auto-install mode: Opening HTTP/HTTPS ports in firewall..."
+    else
+        read -p "Open HTTP/HTTPS ports in firewall? (Y/n) (press Enter to confirm): " fw_choice
+    fi
     if [[ ! $fw_choice =~ ^[Nn]$ ]]; then
         if command -v ufw &> /dev/null; then
             log_info "Configuring UFW firewall..."
@@ -112,7 +117,12 @@ configure_nginx() {
     fi
 
     # Optimize Nginx configuration
-    read -p "Apply recommended Nginx optimization configuration? (Y/n) (press Enter to confirm): " optimize_choice
+    if [ "$AUTO_INSTALL" = "true" ]; then
+        optimize_choice=""
+        log_info "Auto-install mode: Applying recommended Nginx optimization..."
+    else
+        read -p "Apply recommended Nginx optimization configuration? (Y/n) (press Enter to confirm): " optimize_choice
+    fi
     if [[ ! $optimize_choice =~ ^[Nn]$ ]]; then
         log_info "Optimizing Nginx configuration..."
 

@@ -126,10 +126,15 @@ configure_ufw_common() {
     log_warning "⚠️  IMPORTANT: Resetting UFW will temporarily remove all firewall rules!"
     log_warning "This may briefly interrupt your SSH connection if not configured properly."
     echo ""
-    read -p "Continue with UFW reset? (y/N) (press Enter to cancel): " reset_confirm
-    if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
-        log_info "Operation cancelled"
-        return
+    if [ "$AUTO_INSTALL" = "true" ]; then
+        reset_confirm="y"
+        log_info "Auto-install mode: Proceeding with UFW reset..."
+    else
+        read -p "Continue with UFW reset? (y/N) (press Enter to cancel): " reset_confirm
+        if [[ ! $reset_confirm =~ ^[Yy]$ ]]; then
+            log_info "Operation cancelled"
+            return
+        fi
     fi
 
     # Reset UFW rules
@@ -142,8 +147,13 @@ configure_ufw_common() {
     ufw default allow outgoing
 
     # Ask for SSH port
-    read -p "Enter SSH port (default: 22) (press Enter for default): " ssh_port
-    ssh_port=${ssh_port:-22}
+    if [ "$AUTO_INSTALL" = "true" ]; then
+        ssh_port=22
+        log_info "Auto-install mode: Using default SSH port 22..."
+    else
+        read -p "Enter SSH port (default: 22) (press Enter for default): " ssh_port
+        ssh_port=${ssh_port:-22}
+    fi
 
     log_info "Allowing SSH port ${ssh_port}..."
     ufw allow ${ssh_port}/tcp comment 'SSH'
