@@ -822,40 +822,89 @@ fail2ban_menu() {
         return 1
     fi
 
-    echo ""
-    log_step "Fail2ban Intrusion Prevention Management"
-    echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
-    echo -e "${CYAN}2.${NC} View Fail2ban status"
-    echo -e "${CYAN}3.${NC} View banned IPs"
-    echo -e "${CYAN}4.${NC} Unban specific IP"
-    echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
-    echo -e "${CYAN}6.${NC} Return to main menu"
-    echo ""
-    read -p "Please select an action [1-6]: " fail2ban_choice
+    while true; do
+        # Clear command cache to ensure accurate status detection
+        hash -r 2>/dev/null || true
 
-    case $fail2ban_choice in
-        1)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" install
-            ;;
-        2)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" status
-            ;;
-        3)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
-            ;;
-        4)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
-            ;;
-        5)
-            bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
-            ;;
-        6)
-            return
-            ;;
-        *)
-            log_error "Invalid selection"
-            ;;
-    esac
+        echo ""
+        log_step "Fail2ban Intrusion Prevention Management"
+
+        # Show Fail2ban status
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}Fail2ban Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+        if command -v fail2ban-client &> /dev/null; then
+            echo -e "${GREEN}Fail2ban:${NC}            ${GREEN}Installed ✓${NC}"
+            fail2ban-client version 2>/dev/null | head -n1 | sed 's/^/                       /'
+
+            # Check if Fail2ban service is running
+            if systemctl is-active --quiet fail2ban 2>/dev/null; then
+                echo -e "${GREEN}Service Status:${NC}      ${GREEN}Running ✓${NC}"
+            else
+                echo -e "${YELLOW}Service Status:${NC}      ${YELLOW}Stopped${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Fail2ban:${NC}            ${YELLOW}Not installed${NC}"
+        fi
+
+        if ! command -v fail2ban-client &> /dev/null; then
+            echo ""
+            echo -e "${CYAN}Fail2ban provides:${NC}"
+            echo -e "  ${GREEN}•${NC} Prevents SSH brute force attacks"
+            echo -e "  ${GREEN}•${NC} Automatically bans malicious IPs"
+            echo -e "  ${GREEN}•${NC} Protection for multiple services"
+        fi
+
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        echo -e "${CYAN}1.${NC} Install and configure Fail2ban"
+        echo -e "${CYAN}2.${NC} View Fail2ban status"
+        echo -e "${CYAN}3.${NC} View banned IPs"
+        echo -e "${CYAN}4.${NC} Unban specific IP"
+        echo -e "${CYAN}5.${NC} Uninstall Fail2ban"
+        echo -e "${CYAN}0.${NC} Return to main menu"
+        echo ""
+        read -p "Please select an action [0-5, or press Enter to return]: " fail2ban_choice
+
+        case $fail2ban_choice in
+            1)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" install
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" show-banned
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" unban
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                bash "${SCRIPTS_PATH}/fail2ban_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            0|"")
+                log_info "Returning to main menu"
+                break
+                ;;
+            *)
+                log_error "Invalid selection"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # SSH security configuration menu
