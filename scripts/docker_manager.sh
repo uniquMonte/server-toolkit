@@ -95,9 +95,9 @@ install_docker_debian() {
     # Update package index
     apt-get update
 
-    # Install Docker Engine
+    # Install Docker Engine (without Compose)
     log_info "Installing Docker Engine..."
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 }
 
 # Install Docker (CentOS/RHEL/Rocky/AlmaLinux)
@@ -124,12 +124,12 @@ install_docker_rhel() {
     log_info "Setting up Docker repository..."
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-    # Install Docker Engine
+    # Install Docker Engine (without Compose)
     log_info "Installing Docker Engine..."
     if command -v dnf &> /dev/null; then
-        dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
     else
-        yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
     fi
 }
 
@@ -215,8 +215,7 @@ install_compose() {
         return
     fi
 
-    log_info "Docker Compose plugin should already be installed with Docker"
-    log_info "If not installed, attempting to install..."
+    log_info "Installing Docker Compose plugin..."
 
     detect_os
 
