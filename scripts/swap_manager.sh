@@ -192,12 +192,7 @@ main() {
         menu)
             show_status
             echo ""
-            log_info "Use 'setup' to launch the full swap configuration tool"
-            echo ""
-            read -p "Launch swap setup now? [Y/n] (press Enter to launch): " launch
-            if [[ ! $launch =~ ^[Nn]$ ]]; then
-                launch_swap_setup
-            fi
+            launch_swap_setup
             ;;
         *)
             log_error "Unknown command: $1"
