@@ -260,7 +260,7 @@ show_nginx_log_config() {
 
     # Check if Nginx is installed
     if ! command -v nginx &> /dev/null; then
-        echo -e "Status: ${YELLOW}Nginx Not Installed${NC}"
+        echo -e "${YELLOW}Nginx is not installed${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         return
     fi
@@ -697,6 +697,8 @@ configure_nginx_logs() {
     # Check if Nginx is installed
     if ! command -v nginx &> /dev/null; then
         log_warning "Nginx is not installed, skipping Nginx log configuration"
+        echo ""
+        log_info "Install Nginx first using menu option 6 (Nginx management)"
         return 0
     fi
 
