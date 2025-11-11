@@ -365,14 +365,126 @@ uninstall_certbot() {
     fi
 }
 
+# Uninstall Nginx and Certbot
+uninstall_nginx_and_certbot() {
+    log_warning "Starting Nginx + Certbot uninstallation..."
+
+    local has_nginx=$(check_nginx_installed && echo "yes" || echo "no")
+    local has_certbot=$(check_certbot_installed && echo "yes" || echo "no")
+
+    if [ "$has_nginx" = "no" ] && [ "$has_certbot" = "no" ]; then
+        log_warning "Neither Nginx nor Certbot is installed, no need to uninstall"
+        return
+    fi
+
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    if [ "$has_nginx" = "yes" ]; then
+        echo -e "  ${RED}•${NC} Nginx packages and service"
+        echo -e "  ${RED}•${NC} Configuration files (/etc/nginx)"
+        echo -e "  ${RED}•${NC} Website data (/var/www)"
+        echo -e "  ${RED}•${NC} Log files (/var/log/nginx)"
+    fi
+    if [ "$has_certbot" = "yes" ]; then
+        echo -e "  ${RED}•${NC} Certbot package"
+        echo -e "  ${RED}•${NC} SSL certificates (/etc/letsencrypt)"
+        echo -e "  ${RED}•${NC} Certbot data (/var/lib/letsencrypt)"
+    fi
+    echo ""
+
+    read -p "Are you sure you want to uninstall Nginx and Certbot? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled"
+        return
+    fi
+
+    detect_os
+
+    # Uninstall Nginx if installed
+    if [ "$has_nginx" = "yes" ]; then
+        log_info "Stopping Nginx service..."
+        systemctl stop nginx
+        systemctl disable nginx
+
+        case $OS in
+            ubuntu|debian)
+                log_info "Uninstalling Nginx using APT..."
+                apt-get purge -y nginx nginx-common nginx-core
+                apt-get autoremove -y
+                ;;
+
+            centos|rhel|rocky|almalinux|fedora)
+                log_info "Uninstalling Nginx using YUM/DNF..."
+                if command -v dnf &> /dev/null; then
+                    dnf remove -y nginx
+                else
+                    yum remove -y nginx
+                fi
+                ;;
+
+            *)
+                log_error "Unsupported operating system: $OS"
+                exit 1
+                ;;
+        esac
+
+        log_info "Deleting Nginx configuration and data..."
+        rm -rf /etc/nginx
+        rm -rf /var/www
+        rm -rf /var/log/nginx
+    fi
+
+    # Uninstall Certbot if installed
+    if [ "$has_certbot" = "yes" ]; then
+        log_info "Uninstalling Certbot..."
+
+        case $OS in
+            ubuntu|debian)
+                apt-get purge -y certbot python3-certbot-nginx
+                apt-get autoremove -y
+                ;;
+
+            centos|rhel|rocky|almalinux|fedora)
+                if command -v dnf &> /dev/null; then
+                    dnf remove -y certbot python3-certbot-nginx
+                else
+                    yum remove -y certbot python3-certbot-nginx
+                fi
+                ;;
+        esac
+
+        log_info "Deleting SSL certificate data..."
+        rm -rf /etc/letsencrypt
+        rm -rf /var/lib/letsencrypt
+    fi
+
+    # Check results
+    local final_nginx=$(check_nginx_installed && echo "yes" || echo "no")
+    local final_certbot=$(check_certbot_installed && echo "yes" || echo "no")
+
+    if [ "$has_nginx" = "yes" ] && [ "$final_nginx" = "yes" ]; then
+        log_error "Nginx uninstallation failed"
+        exit 1
+    fi
+
+    if [ "$has_certbot" = "yes" ] && [ "$final_certbot" = "yes" ]; then
+        log_error "Certbot uninstallation failed"
+        exit 1
+    fi
+
+    log_success "Nginx and Certbot uninstallation complete!"
+}
+
 # Display help
 show_help() {
-    echo "Usage: $0 {install|install-certbot|uninstall|uninstall-certbot}"
+    echo "Usage: $0 {install|install-certbot|uninstall|uninstall-all|uninstall-certbot}"
     echo ""
     echo "Commands:"
     echo "  install           - Install Nginx"
     echo "  install-certbot   - Install Nginx and Certbot"
-    echo "  uninstall         - Uninstall Nginx (keeps Certbot)"
+    echo "  uninstall-all     - Uninstall both Nginx and Certbot"
+    echo "  uninstall         - Uninstall Nginx only (keeps Certbot)"
     echo "  uninstall-certbot - Uninstall Certbot only"
     echo ""
 }
@@ -390,6 +502,9 @@ main() {
             ;;
         install-certbot)
             install_nginx_and_certbot
+            ;;
+        uninstall-all)
+            uninstall_nginx_and_certbot
             ;;
         uninstall)
             uninstall_nginx
