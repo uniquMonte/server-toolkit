@@ -267,7 +267,15 @@ uninstall_ufw() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall UFW? This will remove all firewall rules (Y/n) (press Enter to confirm): " confirm
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} UFW firewall package"
+    echo -e "  ${RED}•${NC} All firewall rules"
+    echo -e "  ${RED}•${NC} UFW configuration files"
+    echo ""
+
+    read -p "Are you sure you want to uninstall UFW? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return

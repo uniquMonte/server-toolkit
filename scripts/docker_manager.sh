@@ -257,7 +257,19 @@ uninstall_docker() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Docker? This will delete all containers, images, and data (Y/n) (press Enter to confirm): " confirm
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Docker Engine and Docker Compose"
+    echo -e "  ${RED}•${NC} All containers (running and stopped)"
+    echo -e "  ${RED}•${NC} All images"
+    echo -e "  ${RED}•${NC} All volumes"
+    echo -e "  ${RED}•${NC} All networks"
+    echo -e "  ${RED}•${NC} Docker data (/var/lib/docker)"
+    echo -e "  ${RED}•${NC} Configuration files (/etc/docker)"
+    echo ""
+
+    read -p "Are you sure you want to uninstall Docker? (Y/n) (press Enter to confirm): " confirm
     if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return

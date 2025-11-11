@@ -264,8 +264,20 @@ uninstall_nginx() {
         return
     fi
 
-    read -p "Are you sure you want to uninstall Nginx? (y/N) (press Enter to cancel): " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Nginx packages and service"
+    echo -e "  ${RED}•${NC} Configuration files (/etc/nginx)"
+    echo -e "  ${RED}•${NC} Website data (/var/www)"
+    echo -e "  ${RED}•${NC} Log files (/var/log/nginx)"
+    if check_certbot_installed; then
+        echo -e "  ${RED}•${NC} Certbot and SSL certificates (/etc/letsencrypt)"
+    fi
+    echo ""
+
+    read -p "Are you sure you want to uninstall Nginx? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled"
         return
     fi
@@ -300,43 +312,35 @@ uninstall_nginx() {
             ;;
     esac
 
-    # Ask about deleting configuration and data
-    read -p "Delete Nginx configuration files and website data? (y/N) (press Enter to skip): " delete_data
-    if [[ $delete_data =~ ^[Yy]$ ]]; then
-        log_info "Deleting Nginx configuration and data..."
-        rm -rf /etc/nginx
-        rm -rf /var/www
-        rm -rf /var/log/nginx
-    fi
+    # Delete Nginx configuration and data automatically (user already confirmed uninstall)
+    log_info "Deleting Nginx configuration and data..."
+    rm -rf /etc/nginx
+    rm -rf /var/www
+    rm -rf /var/log/nginx
 
-    # Uninstall Certbot
+    # Uninstall Certbot automatically if installed
     if check_certbot_installed; then
-        read -p "Also uninstall Certbot? (y/N) (press Enter to skip): " uninstall_certbot
-        if [[ $uninstall_certbot =~ ^[Yy]$ ]]; then
-            log_info "Uninstalling Certbot..."
+        log_info "Uninstalling Certbot..."
 
-            case $OS in
-                ubuntu|debian)
-                    apt-get purge -y certbot python3-certbot-nginx
-                    apt-get autoremove -y
-                    ;;
+        case $OS in
+            ubuntu|debian)
+                apt-get purge -y certbot python3-certbot-nginx
+                apt-get autoremove -y
+                ;;
 
-                centos|rhel|rocky|almalinux|fedora)
-                    if command -v dnf &> /dev/null; then
-                        dnf remove -y certbot python3-certbot-nginx
-                    else
-                        yum remove -y certbot python3-certbot-nginx
-                    fi
-                    ;;
-            esac
+            centos|rhel|rocky|almalinux|fedora)
+                if command -v dnf &> /dev/null; then
+                    dnf remove -y certbot python3-certbot-nginx
+                else
+                    yum remove -y certbot python3-certbot-nginx
+                fi
+                ;;
+        esac
 
-            # Delete Let's Encrypt data
-            read -p "Delete SSL certificate data? (y/N) (press Enter to skip): " delete_ssl
-            if [[ $delete_ssl =~ ^[Yy]$ ]]; then
-                rm -rf /etc/letsencrypt
-                rm -rf /var/lib/letsencrypt
-            fi
-        fi
+        # Delete Let's Encrypt data automatically
+        log_info "Deleting SSL certificate data..."
+        rm -rf /etc/letsencrypt
+        rm -rf /var/lib/letsencrypt
     fi
 
     if check_nginx_installed; then
