@@ -116,53 +116,7 @@ configure_nginx() {
         fi
     fi
 
-    # Optimize Nginx configuration
-    if [ "$AUTO_INSTALL" = "true" ]; then
-        optimize_choice=""
-        log_info "Auto-install mode: Applying recommended Nginx optimization..."
-    else
-        read -p "Apply recommended Nginx optimization configuration? (Y/n) (press Enter to confirm): " optimize_choice
-    fi
-    if [[ ! $optimize_choice =~ ^[Nn]$ ]]; then
-        log_info "Optimizing Nginx configuration..."
-
-        # Backup original configuration
-        cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
-
-        # Comment out existing gzip settings in nginx.conf to avoid duplication
-        if [ -f /etc/nginx/nginx.conf ]; then
-            sed -i '/^\s*gzip/s/^/# /' /etc/nginx/nginx.conf
-        fi
-
-        # Create optimization configuration
-        cat > /etc/nginx/conf.d/optimization.conf <<'EOF'
-# Performance optimization
-client_max_body_size 100M;
-client_body_buffer_size 128k;
-client_header_buffer_size 1k;
-large_client_header_buffers 4 16k;
-
-# Gzip compression
-gzip on;
-gzip_vary on;
-gzip_proxied any;
-gzip_comp_level 6;
-gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/rss+xml font/truetype font/opentype application/vnd.ms-fontobject image/svg+xml;
-gzip_disable "msie6";
-
-# Security headers
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Referrer-Policy "no-referrer-when-downgrade" always;
-
-# Hide Nginx version
-server_tokens off;
-EOF
-
-        systemctl reload nginx
-        log_success "Nginx configuration optimization complete"
-    fi
+    log_info "Keeping Nginx default configuration (no optimization applied)"
 
     # Create default site directory
     log_info "Creating default site directory..."
