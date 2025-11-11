@@ -362,6 +362,9 @@ ufw_menu() {
     fi
 
     while true; do
+        # Clear command cache to ensure accurate status detection
+        hash -r 2>/dev/null || true
+
         echo ""
         log_step "UFW Firewall Management"
 
@@ -444,6 +447,9 @@ docker_menu() {
     fi
 
     while true; do
+        # Clear command cache to ensure accurate status detection
+        hash -r 2>/dev/null || true
+
         echo ""
         log_step "Docker Container Engine Management"
 
