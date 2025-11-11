@@ -839,13 +839,13 @@ dd_system_menu() {
     echo -e "${CYAN}1.${NC} Reinstall operating system"
     echo -e "${CYAN}2.${NC} Return to main menu"
     echo ""
-    read -p "Please select an action [1-2]: " dd_choice
+    read -p "Please select an action [1-2, or press Enter to return to main menu]: " dd_choice
 
     case $dd_choice in
         1)
             bash "${SCRIPTS_PATH}/dd_system.sh" reinstall
             ;;
-        2)
+        2|"")
             return
             ;;
         *)
