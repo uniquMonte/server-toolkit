@@ -69,6 +69,7 @@ print_banner() {
 ║           - BBR / Timezone & NTP / Hostname / Logs        ║
 ║           - Swap / Traffic Monitor / Backup Manager       ║
 ║           - YABS / IP Quality / Network Quality Tests     ║
+║           - Streaming & AI Unlock Check                   ║
 ║           - System Reinstallation (DD)                    ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -1040,6 +1041,15 @@ network_quality_menu() {
     fi
 }
 
+# Streaming and AI unlock check menu
+unlock_check_menu() {
+    if download_script_if_needed "unlock_check.sh"; then
+        bash "${SCRIPTS_PATH}/unlock_check.sh" menu
+    else
+        log_error "Failed to load unlock check script"
+    fi
+}
+
 # Swap management menu
 swap_menu() {
     if ! download_script_if_needed "swap_manager.sh"; then
@@ -1193,15 +1203,16 @@ main_menu() {
         echo -e "${PURPLE}17.${NC} YABS performance test"
         echo -e "${PURPLE}18.${NC} IP quality check"
         echo -e "${PURPLE}19.${NC} Network quality check"
+        echo -e "${PURPLE}20.${NC} Streaming & AI unlock check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}20.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}21.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED} 0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-20, or press Enter to exit]: " choice
+        read -p "Please select an action [0-21, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -1262,6 +1273,9 @@ main_menu() {
                 network_quality_menu
                 ;;
             20)
+                unlock_check_menu
+                ;;
+            21)
                 dd_system_menu
                 ;;
             0|"")
