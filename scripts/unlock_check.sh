@@ -80,16 +80,7 @@ run_dual_stack_test() {
     echo -e "${PURPLE}Estimated time: 1-3 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log_warning "⚠️  This detection will download and execute scripts from unlockcheck.mlkit.workers.dev"
-    echo ""
 
-    read -p "Confirm to start detection? [Y/n] (press Enter to start): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Detection cancelled"
-        return
-    fi
-
-    echo ""
     run_unlock_check_safely ""
 
     if [ $? -eq 0 ]; then
@@ -110,16 +101,7 @@ run_ipv4_test() {
     echo -e "${PURPLE}Estimated time: 1-2 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log_warning "⚠️  This detection will download and execute scripts from unlockcheck.mlkit.workers.dev"
-    echo ""
 
-    read -p "Confirm to start detection? [Y/n] (press Enter to start): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Detection cancelled"
-        return
-    fi
-
-    echo ""
     run_unlock_check_safely "-4"
 
     if [ $? -eq 0 ]; then
@@ -140,16 +122,7 @@ run_ipv6_test() {
     echo -e "${PURPLE}Estimated time: 1-2 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log_warning "⚠️  This detection will download and execute scripts from unlockcheck.mlkit.workers.dev"
-    echo ""
 
-    read -p "Confirm to start detection? [Y/n] (press Enter to start): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Detection cancelled"
-        return
-    fi
-
-    echo ""
     run_unlock_check_safely "-6"
 
     if [ $? -eq 0 ]; then
