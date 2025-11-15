@@ -73,6 +73,24 @@ install_nginx_debian() {
     systemctl enable nginx
 }
 
+# Install Nginx-Extras with stream support (Ubuntu/Debian)
+install_nginx_extras_debian() {
+    log_info "Installing Nginx-Extras with stream module support on Ubuntu/Debian..."
+
+    # Update package index
+    apt-get update
+
+    # Install Nginx-Extras (includes stream module and other modules)
+    apt-get install -y nginx-extras
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+
+    log_success "Nginx-Extras installed successfully with stream module support"
+    log_info "Stream module is available for DoH/Reality protocol deployments"
+}
+
 # Install Nginx (CentOS/RHEL/Rocky/AlmaLinux)
 install_nginx_rhel() {
     log_info "Installing Nginx on CentOS/RHEL/Rocky/AlmaLinux..."
@@ -88,6 +106,26 @@ install_nginx_rhel() {
     # Start and enable on boot
     systemctl start nginx
     systemctl enable nginx
+}
+
+# Install Nginx with stream module (CentOS/RHEL/Rocky/AlmaLinux)
+install_nginx_stream_rhel() {
+    log_info "Installing Nginx with stream module on CentOS/RHEL/Rocky/AlmaLinux..."
+
+    if command -v dnf &> /dev/null; then
+        dnf install -y nginx nginx-mod-stream
+    else
+        # EPEL repository may be needed
+        yum install -y epel-release
+        yum install -y nginx nginx-mod-stream
+    fi
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+
+    log_success "Nginx installed successfully with stream module support"
+    log_info "Stream module is available for DoH/Reality protocol deployments"
 }
 
 # Configure Nginx
@@ -230,6 +268,62 @@ install_certbot() {
 install_nginx_and_certbot() {
     install_nginx
     echo ""
+    install_certbot
+}
+
+# Install Nginx-Extras (with stream module) + Certbot
+install_nginx_extras() {
+    log_info "Starting Nginx-Extras installation (with stream module support)..."
+
+    if check_nginx_installed; then
+        log_warning "Nginx is already installed"
+        nginx -v
+        echo ""
+        log_info "To upgrade to nginx-extras, please uninstall current Nginx first"
+        return
+    fi
+
+    detect_os
+
+    case $OS in
+        ubuntu|debian)
+            install_nginx_extras_debian
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            install_nginx_stream_rhel
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    configure_nginx
+    log_success "Nginx-Extras installation complete!"
+    echo ""
+    log_info "Stream module features:"
+    log_info "  • TCP/UDP load balancing"
+    log_info "  • SSL/TLS SNI routing (for DoH deployments)"
+    log_info "  • Advanced proxy protocol support"
+}
+
+# Install Nginx-Extras + Certbot
+install_nginx_extras_and_certbot() {
+    install_nginx_extras
+    echo ""
+    install_certbot
+}
+
+# Install Certbot only (requires Nginx to be pre-installed)
+install_certbot_only() {
+    if ! check_nginx_installed; then
+        log_error "Nginx is not installed!"
+        log_info "Please install Nginx first (option 1 or 3)"
+        return 1
+    fi
+
     install_certbot
 }
 
@@ -502,14 +596,17 @@ uninstall_nginx_and_certbot() {
 
 # Display help
 show_help() {
-    echo "Usage: $0 {install|install-certbot|uninstall|uninstall-all|uninstall-certbot}"
+    echo "Usage: $0 {install|install-certbot|install-extras|install-extras-certbot|install-certbot-only|uninstall|uninstall-all|uninstall-certbot}"
     echo ""
     echo "Commands:"
-    echo "  install           - Install Nginx"
-    echo "  install-certbot   - Install Nginx and Certbot"
-    echo "  uninstall-all     - Uninstall both Nginx and Certbot"
-    echo "  uninstall         - Uninstall Nginx only (keeps Certbot)"
-    echo "  uninstall-certbot - Uninstall Certbot only"
+    echo "  install                  - Install Nginx (standard)"
+    echo "  install-certbot          - Install Nginx + Certbot"
+    echo "  install-extras           - Install Nginx-Extras (with stream module for DoH)"
+    echo "  install-extras-certbot   - Install Nginx-Extras + Certbot"
+    echo "  install-certbot-only     - Install Certbot only (requires existing Nginx)"
+    echo "  uninstall-all            - Uninstall both Nginx and Certbot"
+    echo "  uninstall                - Uninstall Nginx only (keeps Certbot)"
+    echo "  uninstall-certbot        - Uninstall Certbot only"
     echo ""
 }
 
@@ -526,6 +623,15 @@ main() {
             ;;
         install-certbot)
             install_nginx_and_certbot
+            ;;
+        install-extras)
+            install_nginx_extras
+            ;;
+        install-extras-certbot)
+            install_nginx_extras_and_certbot
+            ;;
+        install-certbot-only)
+            install_certbot_only
             ;;
         uninstall-all)
             uninstall_nginx_and_certbot
