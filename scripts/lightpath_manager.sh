@@ -197,6 +197,35 @@ get_nginx_package_variant() {
     fi
 }
 
+# Completely remove Nginx and clean up all related files
+clean_nginx_completely() {
+    log_info "Completely removing Nginx and cleaning up..."
+
+    # Stop nginx service
+    systemctl stop nginx 2>/dev/null || true
+    killall nginx 2>/dev/null || true
+
+    # Use dpkg to force remove all nginx packages
+    local nginx_packages=$(dpkg -l 2>/dev/null | grep nginx | awk '{print $2}' | tr '\n' ' ')
+    if [ -n "$nginx_packages" ]; then
+        log_info "Removing nginx packages: $nginx_packages"
+        dpkg --purge --force-all $nginx_packages 2>/dev/null || true
+    fi
+
+    # Clean up dpkg info files
+    rm -rf /var/lib/dpkg/info/nginx* 2>/dev/null || true
+    rm -rf /var/lib/dpkg/info/libnginx* 2>/dev/null || true
+
+    # Clean package cache
+    apt-get clean 2>/dev/null || true
+    apt-get autoclean 2>/dev/null || true
+
+    # Fix broken dependencies
+    apt-get -f install -y 2>/dev/null || true
+
+    log_success "Nginx cleanup completed"
+}
+
 # Create default Nginx configuration with stream support for DoH
 create_default_nginx_config() {
     local nginx_conf="/etc/nginx/nginx.conf"
@@ -220,27 +249,14 @@ create_default_nginx_config() {
     # Set ownership for log directory
     chown -R www-data:www-data /var/log/nginx 2>/dev/null || true
 
-    # Check if we need to load stream module dynamically
-    local load_stream_module=""
-    if is_stream_module_dynamic; then
-        local module_path
-        if module_path=$(get_stream_module_path); then
-            log_info "Detected dynamic stream module at: $module_path"
-            load_stream_module="load_module $module_path;"
-        else
-            log_warning "Dynamic stream module declared but .so file not found"
-            log_warning "Stream module loading will be skipped - this may cause errors"
-        fi
-    fi
-
     # Create default nginx.conf with stream block for DoH
-    cat > "$nginx_conf" <<EOF
-${load_stream_module}
-
+    # Note: Stream module will be loaded via /etc/nginx/modules-enabled/*.conf
+    cat > "$nginx_conf" <<'EOF'
 user www-data;
 worker_processes auto;
 pid /run/nginx.pid;
 error_log /var/log/nginx/error.log;
+include /etc/nginx/modules-enabled/*.conf;
 
 events {
     worker_connections 768;
@@ -1057,39 +1073,30 @@ deploy_with_doh() {
                     if [ "$nginx_needs_upgrade" = true ]; then
                         log_step "Upgrading Nginx to nginx-extras..."
 
+                        # Backup nginx configuration if exists
+                        if [ -d /etc/nginx ]; then
+                            log_info "Backing up Nginx configuration..."
+                            cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
+                        fi
+
+                        # Completely remove existing Nginx installation
+                        clean_nginx_completely
+
                         case $OS in
                             ubuntu|debian)
                                 export DEBIAN_FRONTEND=noninteractive
 
-                                # Stop nginx service
-                                systemctl stop nginx > /dev/null 2>&1
-
-                                # Backup nginx configuration
-                                if [ -d /etc/nginx ]; then
-                                    log_info "Backing up Nginx configuration..."
-                                    cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
-                                fi
-
-                                # Remove current nginx packages
-                                log_info "Removing current Nginx packages..."
-                                local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
-                                if [ -n "$nginx_packages" ]; then
-                                    apt-get purge -y $nginx_packages > /dev/null 2>&1
-                                fi
-
-                                # Install nginx-extras
+                                # Update and install nginx-extras
                                 log_info "Installing nginx-extras..."
                                 apt-get update -y > /dev/null 2>&1
                                 apt-get install -y nginx-extras > /dev/null 2>&1
                                 ;;
                             centos|rhel|rocky|almalinux|fedora)
-                                log_warning "On RHEL-based systems, nginx from EPEL usually includes stream modules"
-                                log_info "Reinstalling Nginx..."
-                                systemctl stop nginx > /dev/null 2>&1
+                                log_info "Installing Nginx with stream support..."
                                 if command -v dnf &> /dev/null; then
-                                    dnf reinstall -y nginx > /dev/null 2>&1
+                                    dnf install -y nginx nginx-mod-stream > /dev/null 2>&1
                                 else
-                                    yum reinstall -y nginx > /dev/null 2>&1
+                                    yum install -y nginx nginx-mod-stream > /dev/null 2>&1
                                 fi
                                 ;;
                             *)
@@ -1148,11 +1155,11 @@ deploy_with_doh() {
                                 apt-get install -y nginx-extras > /dev/null 2>&1
                                 ;;
                             centos|rhel|rocky|almalinux|fedora)
-                                log_info "Installing Nginx on CentOS/RHEL/Rocky/AlmaLinux/Fedora..."
+                                log_info "Installing Nginx with stream support on CentOS/RHEL/Rocky/AlmaLinux/Fedora..."
                                 if command -v dnf &> /dev/null; then
-                                    dnf install -y nginx > /dev/null 2>&1
+                                    dnf install -y nginx nginx-mod-stream > /dev/null 2>&1
                                 else
-                                    yum install -y nginx > /dev/null 2>&1
+                                    yum install -y nginx nginx-mod-stream > /dev/null 2>&1
                                 fi
                                 ;;
                             *)
@@ -1215,39 +1222,30 @@ deploy_with_doh() {
                                 return 1
                             fi
 
+                            # Backup nginx configuration if exists
+                            if [ -d /etc/nginx ]; then
+                                log_info "Backing up Nginx configuration..."
+                                cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
+                            fi
+
+                            # Completely remove existing Nginx installation
+                            clean_nginx_completely
+
                             case $OS in
                                 ubuntu|debian)
                                     export DEBIAN_FRONTEND=noninteractive
 
-                                    # Stop nginx service (if running)
-                                    systemctl stop nginx > /dev/null 2>&1 || true
-
-                                    # Backup nginx configuration
-                                    if [ -d /etc/nginx ]; then
-                                        log_info "Backing up Nginx configuration..."
-                                        cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
-                                    fi
-
-                                    # Remove current nginx packages
-                                    log_info "Removing current Nginx packages..."
-                                    local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
-                                    if [ -n "$nginx_packages" ]; then
-                                        apt-get purge -y $nginx_packages > /dev/null 2>&1
-                                    fi
-
-                                    # Install nginx-extras
+                                    # Update and install nginx-extras
                                     log_info "Installing nginx-extras..."
                                     apt-get update -y > /dev/null 2>&1
                                     apt-get install -y nginx-extras > /dev/null 2>&1
                                     ;;
                                 centos|rhel|rocky|almalinux|fedora)
-                                    log_warning "On RHEL-based systems, nginx from EPEL usually includes stream modules"
-                                    log_info "Reinstalling Nginx..."
-                                    systemctl stop nginx > /dev/null 2>&1 || true
+                                    log_info "Installing Nginx with stream support..."
                                     if command -v dnf &> /dev/null; then
-                                        dnf reinstall -y nginx > /dev/null 2>&1
+                                        dnf install -y nginx nginx-mod-stream > /dev/null 2>&1
                                     else
-                                        yum reinstall -y nginx > /dev/null 2>&1
+                                        yum install -y nginx nginx-mod-stream > /dev/null 2>&1
                                     fi
                                     ;;
                                 *)
