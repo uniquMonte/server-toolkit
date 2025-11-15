@@ -42,6 +42,9 @@ log_step() {
     echo -e "${PURPLE}[STEP]${NC} $1"
 }
 
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Configuration paths
 XRAY_CONFIG_PATH="/usr/local/etc/xray/config.json"
 LIGHTPATH_CONFIG_DIR="/etc/lightpath"
@@ -550,36 +553,132 @@ deploy_with_doh() {
         log_success "AdGuardHome is installed and running"
     fi
 
-    # If prerequisites are not met, show guidance and exit
+    # If prerequisites are not met, offer to install them automatically
     if [ "$prerequisites_met" = false ]; then
         echo ""
         log_error "Prerequisites not met for DoH deployment!"
         echo ""
-        echo -e "${YELLOW}Please install and start the required services first:${NC}"
+        echo -e "${YELLOW}The following services are required but not available:${NC}"
 
-        if [ $nginx_status -ne 0 ]; then
-            echo -e "  ${CYAN}1.${NC} Install/Start Nginx:"
-            echo -e "     ${PURPLE}Use menu option 6 (Nginx Proxy Manager)${NC}"
-            if [ $nginx_status -eq 2 ]; then
-                echo -e "     ${PURPLE}Or run: systemctl start nginx${NC}"
-            fi
+        local services_needed=()
+        if [ $nginx_status -eq 1 ]; then
+            echo -e "  ${RED}✗${NC} Nginx - not installed"
+            services_needed+=("Nginx")
+        elif [ $nginx_status -eq 2 ]; then
+            echo -e "  ${YELLOW}○${NC} Nginx - installed but not running"
+            services_needed+=("Nginx")
         fi
 
-        if [ $adguard_status -ne 0 ]; then
-            echo -e "  ${CYAN}2.${NC} Install/Start AdGuardHome:"
-            echo -e "     ${PURPLE}Use menu option 7 (AdGuardHome DNS)${NC}"
-            if [ $adguard_status -eq 2 ]; then
-                echo -e "     ${PURPLE}Or run: systemctl start AdGuardHome${NC}"
-            fi
+        if [ $adguard_status -eq 1 ]; then
+            echo -e "  ${RED}✗${NC} AdGuardHome - not installed"
+            services_needed+=("AdGuardHome")
+        elif [ $adguard_status -eq 2 ]; then
+            echo -e "  ${YELLOW}○${NC} AdGuardHome - installed but not running"
+            services_needed+=("AdGuardHome")
         fi
 
         echo ""
-        echo -e "${YELLOW}After installing both services, you can proceed with DoH deployment.${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}What would you like to do?${NC}"
         echo ""
+        echo -e "${GREEN}1.${NC} Automatically install and configure missing services"
+        echo -e "${YELLOW}2.${NC} Cancel and return to menu"
+        echo ""
+        read -p "Choose option [1-2]: " install_choice
 
-        # Pause to let user read the error message
-        read -p "Press Enter to return to menu..."
-        return 1
+        case $install_choice in
+            1)
+                echo ""
+                log_step "Installing required services automatically..."
+                echo ""
+
+                # Install/start Nginx if needed
+                if [ $nginx_status -ne 0 ]; then
+                    if [ $nginx_status -eq 1 ]; then
+                        log_step "Installing Nginx..."
+                        # Download Nginx manager if needed
+                        local nginx_script="${SCRIPT_DIR}/nginx_manager.sh"
+                        if [ ! -f "$nginx_script" ]; then
+                            log_error "Nginx manager script not found at $nginx_script"
+                            log_info "Please install Nginx manually using main menu option 6"
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+                        bash "$nginx_script" install
+                        if [ $? -ne 0 ]; then
+                            log_error "Failed to install Nginx"
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+                    else
+                        log_step "Starting Nginx service..."
+                        systemctl start nginx
+                    fi
+                fi
+
+                # Install/start AdGuardHome if needed
+                if [ $adguard_status -ne 0 ]; then
+                    if [ $adguard_status -eq 1 ]; then
+                        log_step "Installing AdGuardHome..."
+                        # Use official installation script
+                        curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
+                        if [ $? -eq 0 ]; then
+                            systemctl enable AdGuardHome
+                            systemctl start AdGuardHome
+                            log_success "AdGuardHome installed successfully"
+                        else
+                            log_error "Failed to install AdGuardHome"
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+                    else
+                        log_step "Starting AdGuardHome service..."
+                        systemctl start AdGuardHome
+                    fi
+                fi
+
+                # Verify installation
+                echo ""
+                log_step "Verifying installation..."
+                sleep 2
+
+                check_nginx_installed
+                nginx_status=$?
+                check_adguardhome_installed
+                adguard_status=$?
+
+                if [ $nginx_status -eq 0 ] && [ $adguard_status -eq 0 ]; then
+                    echo ""
+                    log_success "All prerequisites installed successfully!"
+                    echo ""
+                    log_info "Continuing with DoH deployment..."
+                    echo ""
+                    sleep 2
+                    # Continue with deployment (don't return, let the function continue)
+                else
+                    echo ""
+                    log_error "Installation verification failed"
+                    if [ $nginx_status -ne 0 ]; then
+                        log_error "Nginx is not running properly"
+                    fi
+                    if [ $adguard_status -ne 0 ]; then
+                        log_error "AdGuardHome is not running properly"
+                    fi
+                    read -p "Press Enter to return to menu..."
+                    return 1
+                fi
+                ;;
+            2|"")
+                log_info "Installation cancelled"
+                read -p "Press Enter to return to menu..."
+                return 1
+                ;;
+            *)
+                log_error "Invalid option"
+                read -p "Press Enter to return to menu..."
+                return 1
+                ;;
+        esac
     fi
 
     echo ""
