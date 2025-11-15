@@ -452,7 +452,7 @@ update_nginx_reality_sni() {
         cat <<'EOF'
 stream {
     map $ssl_preread_server_name $sni_backend {
-        cloud.983888.xyz        doh;
+        doh.example.com        doh;
         DEST_DOMAIN            reality;
         default                 web;
     }
@@ -482,7 +482,7 @@ EOF
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "${YELLOW}Replace 'DEST_DOMAIN' with:${NC} ${GREEN}${dest_domain}${NC}"
-        echo -e "${YELLOW}Replace 'cloud.983888.xyz' with your DoH domain${NC}"
+        echo -e "${YELLOW}Replace 'doh.example.com' with your DoH domain${NC}"
         echo ""
         echo -e "${CYAN}Steps:${NC}"
         echo -e "  ${GREEN}1.${NC} Edit Nginx config: ${CYAN}nano $nginx_conf${NC}"
