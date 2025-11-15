@@ -1163,6 +1163,20 @@ dd_system_menu() {
     esac
 }
 
+# Lightpath manager menu (Xray Reality Protocol)
+lightpath_menu() {
+    if ! download_script_if_needed "lightpath_manager.sh"; then
+        log_error "Failed to load Lightpath manager script"
+        return 1
+    fi
+
+    # Make script executable
+    chmod +x "${SCRIPTS_PATH}/lightpath_manager.sh"
+
+    # Run the Lightpath manager (it has its own menu system)
+    bash "${SCRIPTS_PATH}/lightpath_manager.sh"
+}
+
 # Main menu
 main_menu() {
     while true; do
@@ -1206,13 +1220,17 @@ main_menu() {
         echo -e "${PURPLE}20.${NC} Streaming & AI unlock check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
+        echo -e "${CYAN}┌─ Network Tools ──────────────────────┐${NC}"
+        echo -e "${GREEN}22.${NC} Lightpath (Network acceleration)"
+        echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
+        echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
         echo -e "${RED}21.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED} 0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-21, or press Enter to exit]: " choice
+        read -p "Please select an action [0-22, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -1277,6 +1295,9 @@ main_menu() {
                 ;;
             21)
                 dd_system_menu
+                ;;
+            22)
+                lightpath_menu
                 ;;
             0|"")
                 log_info "Thank you for using!"
