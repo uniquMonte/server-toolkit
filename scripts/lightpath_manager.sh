@@ -60,7 +60,6 @@ DEST_DOMAINS=(
     "www.yahoo.com"
     "www.bing.com"
     "www.reddit.com"
-    "www.github.com"
     "addons.mozilla.org"
     "www.lovelive-anime.jp"
     "www.swift.org"
