@@ -1221,11 +1221,11 @@ main_menu() {
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Network Tools ──────────────────────┐${NC}"
-        echo -e "${GREEN}22.${NC} Lightpath (Network acceleration)"
+        echo -e "${GREEN}21.${NC} Lightpath (Network acceleration)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}21.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}22.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED} 0.${NC} Exit"
@@ -1294,10 +1294,10 @@ main_menu() {
                 unlock_check_menu
                 ;;
             21)
-                dd_system_menu
+                lightpath_menu
                 ;;
             22)
-                lightpath_menu
+                dd_system_menu
                 ;;
             0|"")
                 log_info "Thank you for using!"

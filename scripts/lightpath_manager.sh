@@ -798,6 +798,20 @@ show_menu() {
         echo -e "${CYAN}           Lightpath Manager (Xray Reality)         ${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
+
+        # Show current status
+        if check_xray_installed; then
+            local status=$(systemctl is-active xray 2>/dev/null || echo "inactive")
+            if [ "$status" = "active" ]; then
+                echo -e "${GREEN}Status: Xray is running${NC}"
+            else
+                echo -e "${RED}Status: Xray is installed but not running${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Status: Xray is not installed${NC}"
+        fi
+        echo ""
+
         echo -e "${CYAN}┌─ Deployment ─────────────────────────────────────┐${NC}"
         echo -e "${GREEN} 1.${NC} Deploy (without DoH)"
         echo -e "${GREEN} 2.${NC} Deploy (with DoH)"
@@ -818,19 +832,6 @@ show_menu() {
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${YELLOW} 0.${NC} Return to Main Menu"
-        echo ""
-
-        # Show current status
-        if check_xray_installed; then
-            local status=$(systemctl is-active xray 2>/dev/null || echo "inactive")
-            if [ "$status" = "active" ]; then
-                echo -e "${GREEN}Status: Xray is running${NC}"
-            else
-                echo -e "${RED}Status: Xray is installed but not running${NC}"
-            fi
-        else
-            echo -e "${YELLOW}Status: Xray is not installed${NC}"
-        fi
         echo ""
 
         read -p "Choose option [0-10]: " choice
