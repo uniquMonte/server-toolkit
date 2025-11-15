@@ -584,7 +584,10 @@ deploy_with_doh() {
         echo -e "${GREEN}1.${NC} Automatically install and configure missing services"
         echo -e "${YELLOW}2.${NC} Cancel and return to menu"
         echo ""
-        read -p "Choose option [1-2]: " install_choice
+        read -p "Choose option [1-2, or press Enter to cancel]: " install_choice
+
+        # Default to option 2 (cancel) if Enter is pressed
+        install_choice=${install_choice:-2}
 
         case $install_choice in
             1)
