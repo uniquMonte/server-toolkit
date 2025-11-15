@@ -248,8 +248,8 @@ test_menu() {
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select test type [0-7] (press Enter for 1): " choice
-        choice="${choice:-1}"
+        read -p "Please select test type [0-7] (press Enter to return): " choice
+        choice="${choice:-0}"
 
         case $choice in
             1)
