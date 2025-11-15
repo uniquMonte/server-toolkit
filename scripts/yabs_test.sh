@@ -261,7 +261,7 @@ test_menu() {
         echo -e "${CYAN}           YABS Test Options                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
-        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network, no GeekBench 5)"
+        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network)"
         echo -e "${GREEN}3.${NC} 📊 GeekBench 5 only test"
         echo -e "${GREEN}4.${NC} 💿 Disk I/O only test"
         echo -e "${GREEN}5.${NC} 🌐 Network speed only test"
