@@ -576,6 +576,9 @@ deploy_with_doh() {
         echo ""
         echo -e "${YELLOW}After installing both services, you can proceed with DoH deployment.${NC}"
         echo ""
+
+        # Pause to let user read the error message
+        read -p "Press Enter to return to menu..."
         return 1
     fi
 
@@ -1009,15 +1012,18 @@ show_menu() {
 
         read -p "Choose option [0-10, or press Enter to return]: " choice
 
+        # Track if we need to pause after the operation
+        local need_pause=true
+
         case $choice in
             1)
-                deploy_no_doh
+                deploy_no_doh || need_pause=false
                 ;;
             2)
-                deploy_with_doh
+                deploy_with_doh || need_pause=false
                 ;;
             3)
-                modify_configuration
+                modify_configuration || need_pause=false
                 ;;
             4)
                 generate_all_client_configs
@@ -1051,8 +1057,11 @@ show_menu() {
                 ;;
         esac
 
-        echo ""
-        read -p "Press Enter to continue..."
+        # Only show "Press Enter" if the function didn't handle it internally
+        if [ "$need_pause" = true ]; then
+            echo ""
+            read -p "Press Enter to continue..."
+        fi
     done
 }
 
