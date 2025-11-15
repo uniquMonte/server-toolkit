@@ -543,10 +543,10 @@ docker_menu() {
         echo -e "${CYAN}2.${NC} Uninstall Docker"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-2, or press Enter for option 1]: " docker_choice
+        read -p "Please select an action [0-2, or press Enter to return]: " docker_choice
 
-        # Set default to option 1 if Enter is pressed
-        docker_choice=${docker_choice:-1}
+        # Set default to option 0 (return) if Enter is pressed
+        docker_choice=${docker_choice:-0}
 
         case $docker_choice in
             1)
