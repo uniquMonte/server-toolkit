@@ -368,25 +368,30 @@ uninstall_nginx() {
 
             # Detect all installed Nginx packages
             log_info "Detecting installed Nginx packages..."
-            local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+            local nginx_packages=$(dpkg -l 2>/dev/null | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
 
             if [ -n "$nginx_packages" ]; then
                 log_info "Found Nginx packages: $nginx_packages"
-                apt-get purge -y $nginx_packages
-            else
-                log_warning "No Nginx packages found via dpkg, trying default packages..."
-                apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light 2>/dev/null || true
+                # Purge detected packages
+                apt-get purge -y $nginx_packages 2>/dev/null || true
             fi
 
+            # Also try to purge all common Nginx variants to ensure complete removal
+            # This covers both nginx-extras and standard nginx installations
+            log_info "Ensuring all Nginx variants are removed..."
+            apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light libnginx-mod-* 2>/dev/null || true
+
             apt-get autoremove -y
+            apt-get autoclean -y
             ;;
 
         centos|rhel|rocky|almalinux|fedora)
             log_info "Uninstalling Nginx using YUM/DNF..."
             if command -v dnf &> /dev/null; then
-                dnf remove -y nginx
+                # Remove all nginx packages and modules
+                dnf remove -y nginx nginx-mod-* 2>/dev/null || true
             else
-                yum remove -y nginx
+                yum remove -y nginx nginx-mod-* 2>/dev/null || true
             fi
             ;;
 
