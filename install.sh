@@ -543,10 +543,10 @@ docker_menu() {
         echo -e "${CYAN}2.${NC} Uninstall Docker"
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-2, or press Enter for option 1]: " docker_choice
+        read -p "Please select an action [0-2, or press Enter to return]: " docker_choice
 
-        # Set default to option 1 if Enter is pressed
-        docker_choice=${docker_choice:-1}
+        # Set default to option 0 (return) if Enter is pressed
+        docker_choice=${docker_choice:-0}
 
         case $docker_choice in
             1)
@@ -1164,6 +1164,21 @@ dd_system_menu() {
 }
 
 # Lightpath manager menu (Xray Reality Protocol)
+# AdGuardHome manager menu
+adguardhome_menu() {
+    if ! download_script_if_needed "adguardhome_manager.sh"; then
+        log_error "Failed to load AdGuardHome manager script"
+        return 1
+    fi
+
+    # Make script executable
+    chmod +x "${SCRIPTS_PATH}/adguardhome_manager.sh"
+
+    # Run the AdGuardHome manager (it has its own menu system)
+    bash "${SCRIPTS_PATH}/adguardhome_manager.sh"
+}
+
+# Lightpath manager menu (Network acceleration)
 lightpath_menu() {
     if ! download_script_if_needed "lightpath_manager.sh"; then
         log_error "Failed to load Lightpath manager script"
@@ -1195,42 +1210,43 @@ main_menu() {
         echo -e "${GREEN} 4.${NC} UFW Firewall management"
         echo -e "${GREEN} 5.${NC} Docker management"
         echo -e "${GREEN} 6.${NC} Nginx management"
+        echo -e "${GREEN} 7.${NC} AdGuardHome DNS management"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Security & Optimization ────────────┐${NC}"
-        echo -e "${YELLOW} 7.${NC} Fail2ban brute force protection"
-        echo -e "${YELLOW} 8.${NC} SSH security configuration"
-        echo -e "${YELLOW} 9.${NC} SSH login notifier"
-        echo -e "${YELLOW}10.${NC} BBR TCP optimization"
-        echo -e "${YELLOW}11.${NC} Timezone and NTP sync"
-        echo -e "${YELLOW}12.${NC} Hostname modification"
-        echo -e "${YELLOW}13.${NC} Log management (system & Docker)"
+        echo -e "${YELLOW} 8.${NC} Fail2ban brute force protection"
+        echo -e "${YELLOW} 9.${NC} SSH security configuration"
+        echo -e "${YELLOW}10.${NC} SSH login notifier"
+        echo -e "${YELLOW}11.${NC} BBR TCP optimization"
+        echo -e "${YELLOW}12.${NC} Timezone and NTP sync"
+        echo -e "${YELLOW}13.${NC} Hostname modification"
+        echo -e "${YELLOW}14.${NC} Log management (system & Docker)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ System Resources & Monitoring ──────┐${NC}"
-        echo -e "${PURPLE}14.${NC} Swap memory management"
-        echo -e "${PURPLE}15.${NC} Server traffic reporter"
-        echo -e "${PURPLE}16.${NC} VPS backup manager"
+        echo -e "${PURPLE}15.${NC} Swap memory management"
+        echo -e "${PURPLE}16.${NC} Server traffic reporter"
+        echo -e "${PURPLE}17.${NC} VPS backup manager"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ VPS Testing Tools ──────────────────┐${NC}"
-        echo -e "${PURPLE}17.${NC} YABS performance test"
-        echo -e "${PURPLE}18.${NC} IP quality check"
-        echo -e "${PURPLE}19.${NC} Network quality check"
-        echo -e "${PURPLE}20.${NC} Streaming & AI unlock check"
+        echo -e "${PURPLE}18.${NC} YABS performance test"
+        echo -e "${PURPLE}19.${NC} IP quality check"
+        echo -e "${PURPLE}20.${NC} Network quality check"
+        echo -e "${PURPLE}21.${NC} Streaming & AI unlock check"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Network Tools ──────────────────────┐${NC}"
-        echo -e "${GREEN}21.${NC} Lightpath (Network acceleration)"
+        echo -e "${GREEN}22.${NC} Lightpath (Network acceleration)"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced Operations ────────────────┐${NC}"
-        echo -e "${RED}22.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
+        echo -e "${RED}23.${NC} System reinstallation (DD) ${YELLOW}⚠ Destructive${NC}"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${RED} 0.${NC} Exit"
         echo ""
-        read -p "Please select an action [0-22, or press Enter to exit]: " choice
+        read -p "Please select an action [0-23, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -1252,51 +1268,54 @@ main_menu() {
                 nginx_menu
                 ;;
             7)
-                fail2ban_menu
+                adguardhome_menu
                 ;;
             8)
-                ssh_security_menu
+                fail2ban_menu
                 ;;
             9)
-                ssh_login_notifier_menu
+                ssh_security_menu
                 ;;
             10)
-                bbr_menu
+                ssh_login_notifier_menu
                 ;;
             11)
-                timezone_ntp_menu
+                bbr_menu
                 ;;
             12)
-                hostname_menu
+                timezone_ntp_menu
                 ;;
             13)
-                log_management_menu
+                hostname_menu
                 ;;
             14)
-                swap_menu
+                log_management_menu
                 ;;
             15)
-                traffic_reporter_menu
+                swap_menu
                 ;;
             16)
-                backup_manager_menu
+                traffic_reporter_menu
                 ;;
             17)
-                yabs_test_menu
+                backup_manager_menu
                 ;;
             18)
-                ip_quality_menu
+                yabs_test_menu
                 ;;
             19)
-                network_quality_menu
+                ip_quality_menu
                 ;;
             20)
-                unlock_check_menu
+                network_quality_menu
                 ;;
             21)
-                lightpath_menu
+                unlock_check_menu
                 ;;
             22)
+                lightpath_menu
+                ;;
+            23)
                 dd_system_menu
                 ;;
             0|"")
