@@ -226,6 +226,77 @@ clean_nginx_completely() {
     log_success "Nginx cleanup completed"
 }
 
+# Add stream block to existing Nginx configuration
+add_stream_block_to_nginx() {
+    local nginx_conf="$1"
+    local dest_domain="$2"
+
+    log_info "Adding stream block to Nginx configuration..."
+
+    # Backup original config
+    cp "$nginx_conf" "${nginx_conf}.bak.$(date +%s)"
+
+    # Create temporary file with stream block
+    local stream_block=$(cat <<EOF
+stream {
+    # SNI-based routing for DoH deployment
+    map \$ssl_preread_server_name \$sni_backend {
+        # doh.example.com        doh;
+        ${dest_domain}            reality;
+        default                 web;
+    }
+
+    upstream web {
+        server unix:/dev/shm/web.sock;
+    }
+
+    upstream doh {
+        server unix:/dev/shm/doh.sock;
+    }
+
+    upstream reality {
+        server unix:/dev/shm/reality.sock;
+    }
+
+    server {
+        listen 443 reuseport;
+        listen [::]:443 reuseport;
+        proxy_pass \$sni_backend;
+        proxy_protocol on;
+        ssl_preread on;
+        tcp_nodelay on;
+    }
+}
+
+EOF
+)
+
+    # Create temporary file
+    local temp_conf=$(mktemp)
+
+    # Check if http block exists
+    if grep -q "^http {" "$nginx_conf"; then
+        # Insert stream block before http block
+        awk -v stream_block="$stream_block" '
+        /^http {/ && !stream_printed {
+            print stream_block
+            stream_printed=1
+        }
+        {print}
+        ' "$nginx_conf" > "$temp_conf"
+    else
+        # If no http block, append stream block at the end
+        cat "$nginx_conf" > "$temp_conf"
+        echo "" >> "$temp_conf"
+        echo "$stream_block" >> "$temp_conf"
+    fi
+
+    # Replace original config
+    mv "$temp_conf" "$nginx_conf"
+
+    log_success "Stream block added with destination: $dest_domain"
+}
+
 # Create default Nginx configuration with stream support for DoH
 create_default_nginx_config() {
     local nginx_conf="/etc/nginx/nginx.conf"
@@ -676,62 +747,43 @@ update_nginx_reality_sni() {
     # Check if Nginx has stream block
     if ! grep -q "^stream {" "$nginx_conf"; then
         log_warning "Nginx configuration does not contain 'stream' block for SNI routing"
-        echo ""
-        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${RED}⚠️  NGINX CONFIGURATION REQUIRED${NC}"
-        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "${YELLOW}DoH deployment requires Nginx stream module for SNI routing.${NC}"
-        echo -e "${YELLOW}Your current Nginx configuration is missing the stream block.${NC}"
-        echo ""
-        echo -e "${CYAN}Configuration file:${NC} ${YELLOW}${nginx_conf}${NC}"
-        echo ""
-        echo -e "${YELLOW}You need to manually add the following configuration:${NC}"
-        echo ""
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        cat <<'EOF'
-stream {
-    map $ssl_preread_server_name $sni_backend {
-        doh.example.com        doh;
-        DEST_DOMAIN            reality;
-        default                 web;
-    }
 
-    upstream web {
-        server unix:/dev/shm/web.sock;
-    }
+        # Automatically add stream block to nginx.conf
+        add_stream_block_to_nginx "$nginx_conf" "$dest_domain"
 
-    upstream doh {
-        server unix:/dev/shm/doh.sock;
-    }
+        # Test the new configuration
+        log_step "Testing Nginx configuration..."
+        if nginx -t &>/dev/null; then
+            log_success "Nginx configuration test passed"
 
-    upstream reality {
-        server unix:/dev/shm/reality.sock;
-    }
-
-    server {
-        listen 443 reuseport;
-        listen [::]:443 reuseport;
-        proxy_pass $sni_backend;
-        proxy_protocol on;
-        ssl_preread on;
-        tcp_nodelay on;
-    }
-}
-EOF
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "${YELLOW}Replace 'DEST_DOMAIN' with:${NC} ${GREEN}${dest_domain}${NC}"
-        echo -e "${YELLOW}Replace 'doh.example.com' with your DoH domain${NC}"
-        echo ""
-        echo -e "${CYAN}Steps:${NC}"
-        echo -e "  ${GREEN}1.${NC} Edit Nginx config: ${CYAN}nano $nginx_conf${NC}"
-        echo -e "  ${GREEN}2.${NC} Add the stream block BEFORE the http block"
-        echo -e "  ${GREEN}3.${NC} Test configuration: ${CYAN}nginx -t${NC}"
-        echo -e "  ${GREEN}4.${NC} Reload Nginx: ${CYAN}systemctl reload nginx${NC}"
-        echo ""
-        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        return 2  # Return code 2 = needs manual configuration
+            # Reload Nginx to apply changes
+            log_step "Reloading Nginx service..."
+            if systemctl reload nginx &>/dev/null; then
+                log_success "Nginx reloaded successfully with stream configuration"
+            else
+                log_warning "Nginx reload failed, attempting restart..."
+                systemctl restart nginx
+                if systemctl is-active --quiet nginx; then
+                    log_success "Nginx restarted successfully"
+                else
+                    log_error "Nginx restart failed!"
+                    echo ""
+                    echo -e "${YELLOW}Service status:${NC}"
+                    systemctl status nginx.service --no-pager -l 2>&1 || true
+                    echo ""
+                    return 1
+                fi
+            fi
+        else
+            log_error "Nginx configuration test failed!"
+            echo ""
+            echo -e "${YELLOW}Configuration test output:${NC}"
+            nginx -t 2>&1
+            echo ""
+            log_warning "Please check the configuration manually at: $nginx_conf"
+            log_info "A backup was created before modification"
+            return 1
+        fi
     fi
 
     log_step "Updating Nginx SNI routing for Reality..."
