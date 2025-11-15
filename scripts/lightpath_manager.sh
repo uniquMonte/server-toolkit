@@ -126,8 +126,8 @@ check_nginx_stream_support() {
     # Check nginx compile-time configuration
     local nginx_config=$(nginx -V 2>&1)
 
-    # Check for stream module
-    if ! echo "$nginx_config" | grep -q -- "--with-stream"; then
+    # Check for stream module (both static and dynamic)
+    if ! echo "$nginx_config" | grep -qE -- "--with-stream(=dynamic)?"; then
         return 1
     fi
 
@@ -137,6 +137,20 @@ check_nginx_stream_support() {
     fi
 
     return 0
+}
+
+# Check if stream module is compiled as dynamic module
+is_stream_module_dynamic() {
+    if ! command -v nginx &> /dev/null; then
+        return 1
+    fi
+
+    local nginx_config=$(nginx -V 2>&1)
+    if echo "$nginx_config" | grep -q -- "--with-stream=dynamic"; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Get installed Nginx package variant
@@ -177,8 +191,17 @@ create_default_nginx_config() {
     # Set ownership for log directory
     chown -R www-data:www-data /var/log/nginx 2>/dev/null || true
 
+    # Check if we need to load stream module dynamically
+    local load_stream_module=""
+    if is_stream_module_dynamic; then
+        log_info "Detected dynamic stream module, adding load_module directive..."
+        load_stream_module="load_module modules/ngx_stream_module.so;"
+    fi
+
     # Create default nginx.conf with stream block for DoH
-    cat > "$nginx_conf" <<'EOF'
+    cat > "$nginx_conf" <<EOF
+${load_stream_module}
+
 user www-data;
 worker_processes auto;
 pid /run/nginx.pid;
