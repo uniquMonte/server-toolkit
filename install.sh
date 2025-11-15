@@ -627,19 +627,20 @@ nginx_menu() {
         echo -e "${CYAN}┌─ Installation ───────────────────────┐${NC}"
         echo -e "${GREEN}1.${NC} Install Nginx (standard)"
         echo -e "${GREEN}2.${NC} Install Nginx + Certbot"
-        echo -e "${GREEN}3.${NC} Install Nginx-Extras + Certbot ${YELLOW}(for DoH/stream)${NC}"
-        echo -e "${GREEN}4.${NC} Install Certbot only"
+        echo -e "${GREEN}3.${NC} Install Nginx-Extras ${YELLOW}(with stream support)${NC}"
+        echo -e "${GREEN}4.${NC} Install Nginx-Extras + Certbot ${YELLOW}(for DoH/stream)${NC}"
+        echo -e "${GREEN}5.${NC} Install Certbot only"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Uninstallation ─────────────────────┐${NC}"
-        echo -e "${YELLOW}5.${NC} Uninstall Nginx + Certbot"
-        echo -e "${YELLOW}6.${NC} Uninstall Nginx only"
-        echo -e "${YELLOW}7.${NC} Uninstall Certbot only"
+        echo -e "${YELLOW}6.${NC} Uninstall Nginx + Certbot ${GRAY}(all variants)${NC}"
+        echo -e "${YELLOW}7.${NC} Uninstall Nginx only ${GRAY}(extras/standard)${NC}"
+        echo -e "${YELLOW}8.${NC} Uninstall Certbot only"
         echo -e "${CYAN}└──────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}0.${NC} Return to main menu"
         echo ""
-        read -p "Please select an action [0-7, or press Enter to return]: " nginx_choice
+        read -p "Please select an action [0-8, or press Enter to return]: " nginx_choice
 
         case $nginx_choice in
             1)
@@ -653,26 +654,31 @@ nginx_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             3)
-                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-extras-certbot
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-extras
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             4)
-                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot-only
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-extras-certbot
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             5)
-                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall-all
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" install-certbot-only
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             6)
-                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall-all
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             7)
+                bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            8)
                 bash "${SCRIPTS_PATH}/nginx_manager.sh" uninstall-certbot
                 echo ""
                 read -p "Press Enter to continue..."
