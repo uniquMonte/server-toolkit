@@ -45,7 +45,7 @@ install_basic_tools() {
     detect_os
 
     # Define tool lists
-    local tools_to_check=("curl" "wget" "git" "vim" "nano" "htop" "unzip" "zip" "tar" "gzip" "bzip2")
+    local tools_to_check=("sudo" "curl" "wget" "git" "vim" "nano" "htop" "unzip" "zip" "tar" "gzip" "bzip2")
     local packages_to_install=()
     local already_installed=()
     local newly_installed=()
