@@ -1119,55 +1119,152 @@ deploy_with_doh() {
                             return 1
                         fi
                     else
-                        log_step "Starting Nginx service..."
+                        # Nginx is installed but not running (nginx_status=2)
+                        # But we still need to check if it has stream module support
+                        if [ "$nginx_needs_upgrade" = true ]; then
+                            # Nginx lacks stream modules, need to upgrade
+                            log_step "Upgrading Nginx to nginx-extras for stream module support..."
 
-                        # Check if nginx.conf exists, create if missing
-                        if [ ! -f /etc/nginx/nginx.conf ]; then
-                            log_warning "Nginx configuration file not found, creating default config with stream support..."
-                            create_default_nginx_config
-                        fi
+                            # Detect OS first
+                            if [ -f /etc/os-release ]; then
+                                . /etc/os-release
+                                OS=$ID
+                            else
+                                log_error "Unable to detect operating system"
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                            fi
 
-                        # Test Nginx configuration before starting
-                        if ! nginx -t &>/dev/null; then
-                            log_error "Nginx configuration test failed!"
-                            echo ""
-                            echo -e "${YELLOW}Running configuration test:${NC}"
-                            nginx -t
-                            echo ""
-                            echo -e "${YELLOW}Common issues:${NC}"
-                            echo -e "  ${CYAN}1.${NC} Missing or incomplete stream block in /etc/nginx/nginx.conf"
-                            echo -e "  ${CYAN}2.${NC} Syntax errors in configuration files"
-                            echo -e "  ${CYAN}3.${NC} Conflicting server blocks or ports"
-                            echo -e "  ${CYAN}4.${NC} Missing SSL certificates referenced in config"
-                            echo ""
-                            echo -e "${YELLOW}To fix:${NC}"
-                            echo -e "  ${GREEN}•${NC} Check the configuration: ${CYAN}nginx -t${NC}"
-                            echo -e "  ${GREEN}•${NC} Review error messages above"
-                            echo -e "  ${GREEN}•${NC} Fix configuration files in /etc/nginx/"
-                            echo -e "  ${GREEN}•${NC} Try again after fixing the issues"
-                            echo ""
-                            read -p "Press Enter to return to menu..."
-                            return 1
-                        fi
+                            case $OS in
+                                ubuntu|debian)
+                                    export DEBIAN_FRONTEND=noninteractive
 
-                        systemctl start nginx
+                                    # Stop nginx service (if running)
+                                    systemctl stop nginx > /dev/null 2>&1 || true
 
-                        if ! systemctl is-active --quiet nginx; then
-                            log_error "Nginx failed to start!"
-                            echo ""
-                            echo -e "${YELLOW}Checking status:${NC}"
-                            systemctl status nginx.service --no-pager -l 2>&1 || true
-                            echo ""
-                            echo -e "${YELLOW}Recent error logs:${NC}"
-                            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
-                            echo ""
-                            echo -e "${YELLOW}To diagnose:${NC}"
-                            echo -e "  ${CYAN}•${NC} Check status: ${GREEN}systemctl status nginx${NC}"
-                            echo -e "  ${CYAN}•${NC} View logs: ${GREEN}journalctl -xeu nginx${NC}"
-                            echo -e "  ${CYAN}•${NC} Error log: ${GREEN}tail /var/log/nginx/error.log${NC}"
-                            echo ""
-                            read -p "Press Enter to return to menu..."
-                            return 1
+                                    # Backup nginx configuration
+                                    if [ -d /etc/nginx ]; then
+                                        log_info "Backing up Nginx configuration..."
+                                        cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
+                                    fi
+
+                                    # Remove current nginx packages
+                                    log_info "Removing current Nginx packages..."
+                                    local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+                                    if [ -n "$nginx_packages" ]; then
+                                        apt-get purge -y $nginx_packages > /dev/null 2>&1
+                                    fi
+
+                                    # Install nginx-extras
+                                    log_info "Installing nginx-extras..."
+                                    apt-get update -y > /dev/null 2>&1
+                                    apt-get install -y nginx-extras > /dev/null 2>&1
+                                    ;;
+                                centos|rhel|rocky|almalinux|fedora)
+                                    log_warning "On RHEL-based systems, nginx from EPEL usually includes stream modules"
+                                    log_info "Reinstalling Nginx..."
+                                    systemctl stop nginx > /dev/null 2>&1 || true
+                                    if command -v dnf &> /dev/null; then
+                                        dnf reinstall -y nginx > /dev/null 2>&1
+                                    else
+                                        yum reinstall -y nginx > /dev/null 2>&1
+                                    fi
+                                    ;;
+                                *)
+                                    log_error "Unsupported operating system: $OS"
+                                    read -p "Press Enter to return to menu..."
+                                    return 1
+                                    ;;
+                            esac
+
+                            # Check if nginx.conf exists, create if missing
+                            if [ ! -f /etc/nginx/nginx.conf ]; then
+                                log_warning "Nginx configuration file not found, creating default config with stream support..."
+                                create_default_nginx_config
+                            fi
+
+                            # Test configuration before starting
+                            if ! nginx -t &>/dev/null; then
+                                log_error "Nginx configuration test failed after upgrade!"
+                                echo ""
+                                echo -e "${YELLOW}Configuration test output:${NC}"
+                                nginx -t
+                                echo ""
+                                log_warning "The upgraded Nginx has configuration errors. Please fix them manually."
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                            fi
+
+                            # Enable and start Nginx
+                            systemctl enable nginx > /dev/null 2>&1
+                            systemctl start nginx
+
+                            if systemctl is-active --quiet nginx; then
+                                log_success "Nginx upgraded to nginx-extras and started successfully"
+                            else
+                                log_error "Nginx upgrade completed but service failed to start!"
+                                echo ""
+                                echo -e "${YELLOW}Checking service status:${NC}"
+                                systemctl status nginx.service --no-pager -l 2>&1 || true
+                                echo ""
+                                echo -e "${YELLOW}Error log:${NC}"
+                                tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
+                                echo ""
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                            fi
+                        else
+                            # Nginx has stream modules, just start it
+                            log_step "Starting Nginx service..."
+
+                            # Check if nginx.conf exists, create if missing
+                            if [ ! -f /etc/nginx/nginx.conf ]; then
+                                log_warning "Nginx configuration file not found, creating default config with stream support..."
+                                create_default_nginx_config
+                            fi
+
+                            # Test Nginx configuration before starting
+                            if ! nginx -t &>/dev/null; then
+                                log_error "Nginx configuration test failed!"
+                                echo ""
+                                echo -e "${YELLOW}Running configuration test:${NC}"
+                                nginx -t
+                                echo ""
+                                echo -e "${YELLOW}Common issues:${NC}"
+                                echo -e "  ${CYAN}1.${NC} Missing or incomplete stream block in /etc/nginx/nginx.conf"
+                                echo -e "  ${CYAN}2.${NC} Syntax errors in configuration files"
+                                echo -e "  ${CYAN}3.${NC} Conflicting server blocks or ports"
+                                echo -e "  ${CYAN}4.${NC} Missing SSL certificates referenced in config"
+                                echo ""
+                                echo -e "${YELLOW}To fix:${NC}"
+                                echo -e "  ${GREEN}•${NC} Check the configuration: ${CYAN}nginx -t${NC}"
+                                echo -e "  ${GREEN}•${NC} Review error messages above"
+                                echo -e "  ${GREEN}•${NC} Fix configuration files in /etc/nginx/"
+                                echo -e "  ${GREEN}•${NC} Try again after fixing the issues"
+                                echo ""
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                            fi
+
+                            systemctl start nginx
+
+                            if ! systemctl is-active --quiet nginx; then
+                                log_error "Nginx failed to start!"
+                                echo ""
+                                echo -e "${YELLOW}Checking status:${NC}"
+                                systemctl status nginx.service --no-pager -l 2>&1 || true
+                                echo ""
+                                echo -e "${YELLOW}Recent error logs:${NC}"
+                                tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
+                                echo ""
+                                echo -e "${YELLOW}To diagnose:${NC}"
+                                echo -e "  ${CYAN}•${NC} Check status: ${GREEN}systemctl status nginx${NC}"
+                                echo -e "  ${CYAN}•${NC} View logs: ${GREEN}journalctl -xeu nginx${NC}"
+                                echo -e "  ${CYAN}•${NC} Error log: ${GREEN}tail /var/log/nginx/error.log${NC}"
+                                echo ""
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                            fi
                         fi
                     fi
                 fi
