@@ -892,6 +892,18 @@ deploy_with_doh() {
                                 ;;
                         esac
 
+                        # Test configuration before starting
+                        if ! nginx -t &>/dev/null; then
+                            log_error "Nginx configuration test failed after upgrade!"
+                            echo ""
+                            echo -e "${YELLOW}Configuration test output:${NC}"
+                            nginx -t
+                            echo ""
+                            log_warning "The upgraded Nginx has configuration errors. Please fix them manually."
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+
                         # Enable and start Nginx
                         systemctl enable nginx > /dev/null 2>&1
                         systemctl start nginx
@@ -899,7 +911,14 @@ deploy_with_doh() {
                         if systemctl is-active --quiet nginx; then
                             log_success "Nginx upgraded to nginx-extras successfully"
                         else
-                            log_error "Nginx upgrade completed but service failed to start"
+                            log_error "Nginx upgrade completed but service failed to start!"
+                            echo ""
+                            echo -e "${YELLOW}Checking service status:${NC}"
+                            systemctl status nginx.service --no-pager -l 2>&1 || true
+                            echo ""
+                            echo -e "${YELLOW}Error log:${NC}"
+                            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
+                            echo ""
                             read -p "Press Enter to return to menu..."
                             return 1
                         fi
@@ -930,6 +949,18 @@ deploy_with_doh() {
                                 ;;
                         esac
 
+                        # Test configuration before starting
+                        if ! nginx -t &>/dev/null; then
+                            log_error "Nginx configuration test failed after installation!"
+                            echo ""
+                            echo -e "${YELLOW}Configuration test output:${NC}"
+                            nginx -t
+                            echo ""
+                            log_warning "The newly installed Nginx has configuration errors. Please fix them manually."
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+
                         # Enable and start Nginx
                         systemctl enable nginx > /dev/null 2>&1
                         systemctl start nginx
@@ -937,13 +968,62 @@ deploy_with_doh() {
                         if systemctl is-active --quiet nginx; then
                             log_success "Nginx installed and started successfully"
                         else
-                            log_error "Nginx installation completed but service failed to start"
+                            log_error "Nginx installation completed but service failed to start!"
+                            echo ""
+                            echo -e "${YELLOW}Checking service status:${NC}"
+                            systemctl status nginx.service --no-pager -l 2>&1 || true
+                            echo ""
+                            echo -e "${YELLOW}Error log:${NC}"
+                            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
+                            echo ""
                             read -p "Press Enter to return to menu..."
                             return 1
                         fi
                     else
                         log_step "Starting Nginx service..."
+
+                        # Test Nginx configuration before starting
+                        if ! nginx -t &>/dev/null; then
+                            log_error "Nginx configuration test failed!"
+                            echo ""
+                            echo -e "${YELLOW}Running configuration test:${NC}"
+                            nginx -t
+                            echo ""
+                            echo -e "${YELLOW}Common issues:${NC}"
+                            echo -e "  ${CYAN}1.${NC} Missing or incomplete stream block in /etc/nginx/nginx.conf"
+                            echo -e "  ${CYAN}2.${NC} Syntax errors in configuration files"
+                            echo -e "  ${CYAN}3.${NC} Conflicting server blocks or ports"
+                            echo -e "  ${CYAN}4.${NC} Missing SSL certificates referenced in config"
+                            echo ""
+                            echo -e "${YELLOW}To fix:${NC}"
+                            echo -e "  ${GREEN}•${NC} Check the configuration: ${CYAN}nginx -t${NC}"
+                            echo -e "  ${GREEN}•${NC} Review error messages above"
+                            echo -e "  ${GREEN}•${NC} Fix configuration files in /etc/nginx/"
+                            echo -e "  ${GREEN}•${NC} Try again after fixing the issues"
+                            echo ""
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
+
                         systemctl start nginx
+
+                        if ! systemctl is-active --quiet nginx; then
+                            log_error "Nginx failed to start!"
+                            echo ""
+                            echo -e "${YELLOW}Checking status:${NC}"
+                            systemctl status nginx.service --no-pager -l 2>&1 || true
+                            echo ""
+                            echo -e "${YELLOW}Recent error logs:${NC}"
+                            tail -20 /var/log/nginx/error.log 2>/dev/null || echo "  (No error log available)"
+                            echo ""
+                            echo -e "${YELLOW}To diagnose:${NC}"
+                            echo -e "  ${CYAN}•${NC} Check status: ${GREEN}systemctl status nginx${NC}"
+                            echo -e "  ${CYAN}•${NC} View logs: ${GREEN}journalctl -xeu nginx${NC}"
+                            echo -e "  ${CYAN}•${NC} Error log: ${GREEN}tail /var/log/nginx/error.log${NC}"
+                            echo ""
+                            read -p "Press Enter to return to menu..."
+                            return 1
+                        fi
                     fi
                 fi
 
