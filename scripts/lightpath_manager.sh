@@ -940,6 +940,22 @@ deploy_with_doh() {
     elif [ $nginx_status -eq 2 ]; then
         log_error "Nginx is installed but not running!"
         prerequisites_met=false
+
+        # Even if not running, check if it has stream module support
+        check_nginx_stream_support
+        local stream_status=$?
+
+        if [ $stream_status -eq 1 ]; then
+            current_nginx_variant=$(get_nginx_package_variant)
+            log_error "Nginx lacks required stream modules!"
+            echo -e "  ${YELLOW}Current variant:${NC} ${RED}${current_nginx_variant}${NC}"
+            echo -e "  ${YELLOW}Required modules:${NC} stream, stream_ssl_preread"
+            echo -e "  ${YELLOW}Recommended:${NC} nginx-extras or nginx-full"
+            nginx_needs_upgrade=true
+        else
+            current_nginx_variant=$(get_nginx_package_variant)
+            log_info "Stream module support: OK (${current_nginx_variant})"
+        fi
     else
         log_success "Nginx is installed and running"
 
@@ -987,8 +1003,14 @@ deploy_with_doh() {
             echo -e "  ${RED}✗${NC} Nginx - not installed"
             services_needed+=("Nginx")
         elif [ $nginx_status -eq 2 ]; then
-            echo -e "  ${YELLOW}○${NC} Nginx - installed but not running"
-            services_needed+=("Nginx")
+            if [ "$nginx_needs_upgrade" = true ]; then
+                echo -e "  ${RED}✗${NC} Nginx - installed but not running (missing stream modules)"
+                echo -e "      ${YELLOW}Current variant:${NC} ${current_nginx_variant}"
+                services_needed+=("Nginx (upgrade to nginx-extras)")
+            else
+                echo -e "  ${YELLOW}○${NC} Nginx - installed but not running"
+                services_needed+=("Nginx")
+            fi
         elif [ "$nginx_needs_upgrade" = true ]; then
             echo -e "  ${RED}✗${NC} Nginx - missing stream modules (current: ${current_nginx_variant})"
             services_needed+=("Nginx (upgrade to nginx-extras)")
