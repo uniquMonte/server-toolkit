@@ -820,6 +820,10 @@ show_menu() {
             else
                 echo -e "${RED}Status: Xray is installed but not running${NC}"
             fi
+            echo ""
+            echo -e "${CYAN}Configuration Files:${NC}"
+            echo -e "  Server: ${YELLOW}$XRAY_CONFIG_PATH${NC}"
+            echo -e "  Deploy: ${YELLOW}$LIGHTPATH_INFO_FILE${NC}"
         else
             echo -e "${YELLOW}Status: Xray is not installed${NC}"
         fi
