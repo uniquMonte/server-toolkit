@@ -262,10 +262,10 @@ test_menu() {
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
         echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network)"
-        echo -e "${GREEN}3.${NC} 📊 GeekBench 5 only test"
-        echo -e "${GREEN}4.${NC} 💿 Disk I/O only test"
-        echo -e "${GREEN}5.${NC} 🌐 Network speed only test"
-        echo -e "${GREEN}6.${NC} ⚡ Quick system info"
+        echo -e "${GREEN}3.${NC} 💿 Disk only"
+        echo -e "${GREEN}4.${NC} 🌐 Network only"
+        echo -e "${GREEN}5.${NC} 📊 GeekBench 5 only"
+        echo -e "${GREEN}6.${NC} ℹ️  System info only"
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
@@ -280,13 +280,13 @@ test_menu() {
                 run_basic_test
                 ;;
             3)
-                run_geekbench_only
-                ;;
-            4)
                 run_disk_only_test
                 ;;
-            5)
+            4)
                 run_network_only_test
+                ;;
+            5)
+                run_geekbench_only
                 ;;
             6)
                 run_quick_test
