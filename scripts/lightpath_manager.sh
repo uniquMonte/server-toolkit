@@ -159,7 +159,6 @@ get_random_dest() {
 # Create configuration directories
 create_config_dirs() {
     mkdir -p "$LIGHTPATH_CONFIG_DIR"
-    mkdir -p "$CLIENT_CONFIG_DIR"
     chmod 700 "$LIGHTPATH_CONFIG_DIR"
 }
 
@@ -610,15 +609,20 @@ generate_mihomo_config() {
         port="${external_port:-443}"
     fi
 
-    local config_file="${CLIENT_CONFIG_DIR}/mihomo_config.yaml"
+    # Get system hostname for node name
+    local hostname=$(hostname)
+    local node_name="${hostname}-Reality"
 
-    cat > "$config_file" <<EOF
+    log_success "Mihomo (Clash Meta) Configuration:"
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    cat <<EOF
 # Mihomo (Clash Meta) Configuration
 # Generated: $(date)
 # Deployment Type: $DEPLOYMENT_TYPE
 
 proxies:
-  - name: Lightpath-Reality
+  - name: $node_name
     type: vless
     server: $server_ip
     port: $port
@@ -637,11 +641,6 @@ proxies:
     client-fingerprint: random
     skip-cert-verify: false
 EOF
-
-    log_success "Mihomo configuration generated: $config_file"
-    echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    cat "$config_file"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
@@ -661,14 +660,15 @@ generate_shadowrocket_config() {
         port="${external_port:-443}"
     fi
 
+    # Get system hostname for node name
+    local hostname=$(hostname)
+    local node_name="${hostname}-Reality"
+
     # Build Shadowrocket URI
     # Format: vless://uuid@server:port?encryption=none&security=reality&sni=dest&fp=random&pbk=public_key&flow=xtls-rprx-vision&type=tcp#name
-    local uri="vless://${UUID}@${server_ip}:${port}?encryption=none&security=reality&sni=${DEST_DOMAIN}&fp=random&pbk=${PUBLIC_KEY}&flow=xtls-rprx-vision&type=tcp&headerType=none#Lightpath-Reality"
+    local uri="vless://${UUID}@${server_ip}:${port}?encryption=none&security=reality&sni=${DEST_DOMAIN}&fp=random&pbk=${PUBLIC_KEY}&flow=xtls-rprx-vision&type=tcp&headerType=none#${node_name}"
 
-    local config_file="${CLIENT_CONFIG_DIR}/shadowrocket_config.txt"
-    echo "$uri" > "$config_file"
-
-    log_success "Shadowrocket configuration generated: $config_file"
+    log_success "Shadowrocket Configuration:"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}Shadowrocket URI:${NC}"
@@ -723,8 +723,6 @@ generate_all_client_configs() {
     generate_shadowrocket_config
 
     log_success "All client configurations generated!"
-    echo ""
-    log_info "Configuration files saved in: $CLIENT_CONFIG_DIR"
 }
 
 # View current configuration
@@ -849,7 +847,7 @@ show_menu() {
         echo -e "${YELLOW} 0.${NC} Return to Main Menu"
         echo ""
 
-        read -p "Choose option [0-10]: " choice
+        read -p "Choose option [0-10, or press Enter to return]: " choice
 
         case $choice in
             1)
