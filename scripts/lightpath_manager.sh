@@ -515,7 +515,7 @@ modify_configuration() {
     echo "  0. Cancel"
     echo ""
 
-    read -p "Choose option [0-4]: " modify_choice
+    read -p "Choose option [0-4, or press Enter to return]: " modify_choice
 
     local new_uuid="$UUID"
     local new_dest="$DEST_DOMAIN"
