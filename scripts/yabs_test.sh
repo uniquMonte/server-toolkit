@@ -130,6 +130,32 @@ run_basic_test() {
     fi
 }
 
+# YABS disk + GeekBench 5 test (without network)
+run_disk_geekbench_test() {
+    log_info "Starting YABS disk and GeekBench 5 test..."
+    echo ""
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${PURPLE}Test content: Disk + GeekBench 5 (no Network)${NC}"
+    echo -e "${PURPLE}Estimated time: 10-15 minutes${NC}"
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log_warning "⚠️  This test will download and execute external scripts"
+    echo ""
+
+    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Test cancelled"
+        return
+    fi
+
+    # Use -5 to run GB5, -i to skip network
+    if run_yabs_safely "-5i"; then
+        log_success "Test complete!"
+    else
+        log_error "Test failed"
+    fi
+}
+
 # YABS GeekBench 5 only test
 run_geekbench_only() {
     log_info "Starting GeekBench 5 CPU benchmark test..."
@@ -262,14 +288,15 @@ test_menu() {
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
         echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network)"
-        echo -e "${GREEN}3.${NC} 💿 Disk only"
-        echo -e "${GREEN}4.${NC} 🌐 Network only"
-        echo -e "${GREEN}5.${NC} 📊 GeekBench 5 only"
-        echo -e "${GREEN}6.${NC} ℹ️  System info only"
+        echo -e "${GREEN}3.${NC} 💪 Disk + GeekBench 5"
+        echo -e "${GREEN}4.${NC} 💿 Disk only"
+        echo -e "${GREEN}5.${NC} 🌐 Network only"
+        echo -e "${GREEN}6.${NC} 📊 GeekBench 5 only"
+        echo -e "${GREEN}7.${NC} ℹ️  System info only"
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select test type [0-6] (press Enter for 1): " choice
+        read -p "Please select test type [0-7] (press Enter for 1): " choice
         choice="${choice:-1}"
 
         case $choice in
@@ -280,15 +307,18 @@ test_menu() {
                 run_basic_test
                 ;;
             3)
-                run_disk_only_test
+                run_disk_geekbench_test
                 ;;
             4)
-                run_network_only_test
+                run_disk_only_test
                 ;;
             5)
-                run_geekbench_only
+                run_network_only_test
                 ;;
             6)
+                run_geekbench_only
+                ;;
+            7)
                 run_quick_test
                 ;;
             0)
@@ -324,9 +354,9 @@ main() {
             show_test_info
             run_basic_test
             ;;
-        geekbench)
+        disk-geekbench)
             show_test_info
-            run_geekbench_only
+            run_disk_geekbench_test
             ;;
         disk)
             show_test_info
@@ -336,6 +366,10 @@ main() {
             show_test_info
             run_network_only_test
             ;;
+        geekbench)
+            show_test_info
+            run_geekbench_only
+            ;;
         quick)
             show_test_info
             run_quick_test
@@ -344,16 +378,17 @@ main() {
             test_menu
             ;;
         *)
-            echo "Usage: $0 {full|basic|geekbench|disk|network|quick|menu}"
+            echo "Usage: $0 {full|basic|disk-geekbench|disk|network|geekbench|quick|menu}"
             echo ""
             echo "Test types:"
-            echo "  full         - Full test (including GeekBench 5)"
-            echo "  basic        - Basic test (excluding GeekBench 5)"
-            echo "  geekbench    - GeekBench 5 only test"
-            echo "  disk         - Disk only test"
-            echo "  network      - Network only test"
-            echo "  quick        - Quick system info"
-            echo "  menu         - Show interactive menu (default)"
+            echo "  full           - Full test (Disk + Network + GeekBench 5)"
+            echo "  basic          - Basic test (Disk + Network)"
+            echo "  disk-geekbench - Disk + GeekBench 5 test"
+            echo "  disk           - Disk only test"
+            echo "  network        - Network only test"
+            echo "  geekbench      - GeekBench 5 only test"
+            echo "  quick          - Quick system info"
+            echo "  menu           - Show interactive menu (default)"
             echo ""
             exit 1
             ;;
