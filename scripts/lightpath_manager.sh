@@ -132,17 +132,14 @@ generate_uuid() {
 # Generate X25519 key pair
 generate_keypair() {
     if check_xray_installed; then
-        # Generate private key
+        # Generate keypair using xray x25519
+        # Output format:
+        #   PrivateKey: xxx (server-side privateKey)
+        #   Password: xxx   (client-side publicKey)
+        #   Hash32: xxx
         local output=$(xray x25519)
         local private_key=$(echo "$output" | grep "PrivateKey" | awk -F': ' '{print $2}' | tr -d ' \n')
-
-        # Generate public key from private key
-        local public_key=$(xray x25519 -i "$private_key" 2>/dev/null | grep "PublicKey" | awk -F': ' '{print $2}' | tr -d ' \n')
-
-        # If PublicKey not found, try alternative field names
-        if [ -z "$public_key" ]; then
-            public_key=$(xray x25519 -i "$private_key" 2>/dev/null | grep -i "public" | awk '{print $NF}' | tr -d ' \n')
-        fi
+        local public_key=$(echo "$output" | grep "Password" | awk -F': ' '{print $2}' | tr -d ' \n')
 
         # Output in a consistent format
         echo "Private key: $private_key"
