@@ -2,43 +2,6 @@
 
 Quickly install and configure common tools on newly purchased VPS servers.
 
-## Quick Start
-
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-Or using wget:
-```bash
-bash <(wget -qO- https://raw.githubusercontent.com/uniquMonte/server-toolkit/main/install.sh)
-```
-
-> **Note for Fresh VPS Systems:**
-> If you get `curl: command not found`, install curl first:
-> - Debian/Ubuntu: `apt update && apt install -y curl`
-> - CentOS/Rocky/AlmaLinux: `yum install -y curl`
-> - Fedora: `dnf install -y curl`
-
-## Menu Options
-
-```
-═══════════════════════════════════════
-           Main Menu
-═══════════════════════════════════════
-1. Install All Components
-2. System Update
-3. UFW Firewall Management
-4. Docker Management
-5. Nginx Management
-6. Fail2ban Anti-Brute Force
-7. SSH Security Configuration
-8. YABS Performance Test
-9. IP Quality Check
-10. Network Quality Test
-0. Exit
-═══════════════════════════════════════
-```
-
 ## Supported Systems
 
 Ubuntu • Debian • CentOS • Rocky Linux • AlmaLinux • Fedora
