@@ -386,6 +386,57 @@ setup_doh_permissions() {
     fi
 }
 
+# Update Nginx configuration for DoH deployment
+update_nginx_reality_sni() {
+    local dest_domain=$1
+    local nginx_conf="/etc/nginx/nginx.conf"
+
+    # Check if Nginx config exists
+    if [ ! -f "$nginx_conf" ]; then
+        log_warning "Nginx configuration not found at $nginx_conf"
+        log_info "Skipping Nginx SNI configuration update"
+        return 0
+    fi
+
+    log_step "Updating Nginx SNI routing for Reality..."
+
+    # Backup original config
+    cp "$nginx_conf" "${nginx_conf}.bak.$(date +%s)"
+
+    # Check if reality entry exists
+    if grep -q "reality;" "$nginx_conf"; then
+        # Update existing reality line
+        sed -i "/reality;/s/^[[:space:]]*[^[:space:]]*[[:space:]]*reality;/        ${dest_domain}            reality;/" "$nginx_conf"
+        log_success "Updated existing reality SNI: $dest_domain"
+    else
+        # Add reality line after finding the map block
+        # Look for the line with "default" and add reality line before it
+        if grep -q "default.*web;" "$nginx_conf"; then
+            sed -i "/default.*web;/i\        ${dest_domain}            reality;" "$nginx_conf"
+            log_success "Added new reality SNI: $dest_domain"
+        else
+            log_warning "Could not find appropriate location to add reality SNI"
+            log_info "Please manually add to nginx.conf: ${dest_domain}            reality;"
+            return 0
+        fi
+    fi
+
+    # Test Nginx configuration
+    if nginx -t &>/dev/null; then
+        log_success "Nginx configuration test passed"
+
+        # Reload Nginx
+        log_step "Reloading Nginx..."
+        systemctl reload nginx
+        log_success "Nginx reloaded successfully"
+    else
+        log_error "Nginx configuration test failed"
+        log_warning "Restoring original configuration..."
+        cp "${nginx_conf}.bak."* "$nginx_conf" 2>/dev/null || true
+        log_info "Please check Nginx configuration manually"
+    fi
+}
+
 # Deploy with no DoH
 deploy_no_doh() {
     log_step "Starting deployment (without DoH)..."
@@ -470,6 +521,9 @@ deploy_with_doh() {
     create_config_dirs
     local server_ip=$(get_server_ip)
     save_deployment_info "with-doh" "$uuid" "$dest" "$private_key" "$public_key" "$server_ip" "unix_socket"
+
+    # Update Nginx SNI routing configuration
+    update_nginx_reality_sni "$dest"
 
     # Restart Xray service
     log_step "Restarting Xray service..."
@@ -576,6 +630,11 @@ modify_configuration() {
         port="unix_socket"
     fi
     save_deployment_info "$DEPLOYMENT_TYPE" "$new_uuid" "$new_dest" "$new_private_key" "$new_public_key" "$SERVER_IP" "$port"
+
+    # Update Nginx SNI routing if DoH deployment
+    if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
+        update_nginx_reality_sni "$new_dest"
+    fi
 
     # Restart Xray service
     log_step "Restarting Xray service..."
