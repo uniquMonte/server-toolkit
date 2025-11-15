@@ -610,6 +610,10 @@ generate_mihomo_config() {
         port="${external_port:-443}"
     fi
 
+    # Get system hostname for node name
+    local hostname=$(hostname)
+    local node_name="${hostname}-Reality"
+
     local config_file="${CLIENT_CONFIG_DIR}/mihomo_config.yaml"
 
     cat > "$config_file" <<EOF
@@ -618,7 +622,7 @@ generate_mihomo_config() {
 # Deployment Type: $DEPLOYMENT_TYPE
 
 proxies:
-  - name: Lightpath-Reality
+  - name: $node_name
     type: vless
     server: $server_ip
     port: $port
@@ -661,9 +665,13 @@ generate_shadowrocket_config() {
         port="${external_port:-443}"
     fi
 
+    # Get system hostname for node name
+    local hostname=$(hostname)
+    local node_name="${hostname}-Reality"
+
     # Build Shadowrocket URI
     # Format: vless://uuid@server:port?encryption=none&security=reality&sni=dest&fp=random&pbk=public_key&flow=xtls-rprx-vision&type=tcp#name
-    local uri="vless://${UUID}@${server_ip}:${port}?encryption=none&security=reality&sni=${DEST_DOMAIN}&fp=random&pbk=${PUBLIC_KEY}&flow=xtls-rprx-vision&type=tcp&headerType=none#Lightpath-Reality"
+    local uri="vless://${UUID}@${server_ip}:${port}?encryption=none&security=reality&sni=${DEST_DOMAIN}&fp=random&pbk=${PUBLIC_KEY}&flow=xtls-rprx-vision&type=tcp&headerType=none#${node_name}"
 
     local config_file="${CLIENT_CONFIG_DIR}/shadowrocket_config.txt"
     echo "$uri" > "$config_file"
