@@ -761,9 +761,9 @@ view_configuration() {
 # Uninstall Xray and remove configurations
 uninstall() {
     log_warning "This will remove Xray and all Lightpath configurations"
-    read -p "Are you sure? (yes/no): " confirm
+    read -p "Are you sure? (yes/no, or press Enter to confirm): " confirm
 
-    if [ "$confirm" != "yes" ]; then
+    if [ "$confirm" != "yes" ] && [ -n "$confirm" ]; then
         log_info "Uninstallation cancelled"
         return 0
     fi
