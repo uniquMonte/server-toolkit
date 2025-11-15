@@ -132,7 +132,21 @@ generate_uuid() {
 # Generate X25519 key pair
 generate_keypair() {
     if check_xray_installed; then
-        xray x25519
+        # Generate private key
+        local output=$(xray x25519)
+        local private_key=$(echo "$output" | grep "PrivateKey" | awk -F': ' '{print $2}' | tr -d ' \n')
+
+        # Generate public key from private key
+        local public_key=$(xray x25519 -i "$private_key" 2>/dev/null | grep "PublicKey" | awk -F': ' '{print $2}' | tr -d ' \n')
+
+        # If PublicKey not found, try alternative field names
+        if [ -z "$public_key" ]; then
+            public_key=$(xray x25519 -i "$private_key" 2>/dev/null | grep -i "public" | awk '{print $NF}' | tr -d ' \n')
+        fi
+
+        # Output in a consistent format
+        echo "Private key: $private_key"
+        echo "Public key: $public_key"
     else
         log_error "Xray is not installed, cannot generate keypair"
         return 1
@@ -390,8 +404,8 @@ deploy_no_doh() {
 
     log_info "Generating X25519 keypair..."
     local keypair_output=$(generate_keypair)
-    local private_key=$(echo "$keypair_output" | grep -i "private" | awk '{print $NF}')
-    local public_key=$(echo "$keypair_output" | grep -i "public" | awk '{print $NF}')
+    local private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+    local public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
 
     log_info "UUID: $uuid"
     log_info "Destination: $dest"
@@ -440,8 +454,8 @@ deploy_with_doh() {
 
     log_info "Generating X25519 keypair..."
     local keypair_output=$(generate_keypair)
-    local private_key=$(echo "$keypair_output" | grep -i "private" | awk '{print $NF}')
-    local public_key=$(echo "$keypair_output" | grep -i "public" | awk '{print $NF}')
+    local private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+    local public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
 
     log_info "UUID: $uuid"
     log_info "Destination: $dest"
@@ -526,8 +540,8 @@ modify_configuration() {
         3)
             log_step "Regenerating keypair..."
             local keypair_output=$(generate_keypair)
-            new_private_key=$(echo "$keypair_output" | grep -i "private" | awk '{print $NF}')
-            new_public_key=$(echo "$keypair_output" | grep -i "public" | awk '{print $NF}')
+            new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+            new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
             log_info "New private key: $new_private_key"
             log_info "New public key: $new_public_key"
             ;;
@@ -536,8 +550,8 @@ modify_configuration() {
             new_uuid=$(generate_uuid)
             new_dest=$(get_random_dest)
             local keypair_output=$(generate_keypair)
-            new_private_key=$(echo "$keypair_output" | grep -i "private" | awk '{print $NF}')
-            new_public_key=$(echo "$keypair_output" | grep -i "public" | awk '{print $NF}')
+            new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+            new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
             log_info "New UUID: $new_uuid"
             log_info "New destination: $new_dest"
             log_info "New private key: $new_private_key"
