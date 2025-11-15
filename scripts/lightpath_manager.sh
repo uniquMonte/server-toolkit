@@ -431,6 +431,69 @@ update_nginx_reality_sni() {
         return 0
     fi
 
+    log_step "Checking Nginx configuration..."
+
+    # Check if Nginx has stream block
+    if ! grep -q "^stream {" "$nginx_conf"; then
+        log_warning "Nginx configuration does not contain 'stream' block for SNI routing"
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}⚠️  NGINX CONFIGURATION REQUIRED${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${YELLOW}DoH deployment requires Nginx stream module for SNI routing.${NC}"
+        echo -e "${YELLOW}Your current Nginx configuration is missing the stream block.${NC}"
+        echo ""
+        echo -e "${CYAN}Configuration file:${NC} ${YELLOW}${nginx_conf}${NC}"
+        echo ""
+        echo -e "${YELLOW}You need to manually add the following configuration:${NC}"
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        cat <<'EOF'
+stream {
+    map $ssl_preread_server_name $sni_backend {
+        cloud.983888.xyz        doh;
+        DEST_DOMAIN            reality;
+        default                 web;
+    }
+
+    upstream web {
+        server unix:/dev/shm/web.sock;
+    }
+
+    upstream doh {
+        server unix:/dev/shm/doh.sock;
+    }
+
+    upstream reality {
+        server unix:/dev/shm/reality.sock;
+    }
+
+    server {
+        listen 443 reuseport;
+        listen [::]:443 reuseport;
+        proxy_pass $sni_backend;
+        proxy_protocol on;
+        ssl_preread on;
+        tcp_nodelay on;
+    }
+}
+EOF
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${YELLOW}Replace 'DEST_DOMAIN' with:${NC} ${GREEN}${dest_domain}${NC}"
+        echo -e "${YELLOW}Replace 'cloud.983888.xyz' with your DoH domain${NC}"
+        echo ""
+        echo -e "${CYAN}Steps:${NC}"
+        echo -e "  ${GREEN}1.${NC} Edit Nginx config: ${CYAN}nano $nginx_conf${NC}"
+        echo -e "  ${GREEN}2.${NC} Add the stream block BEFORE the http block"
+        echo -e "  ${GREEN}3.${NC} Test configuration: ${CYAN}nginx -t${NC}"
+        echo -e "  ${GREEN}4.${NC} Reload Nginx: ${CYAN}systemctl reload nginx${NC}"
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        return 2  # Return code 2 = needs manual configuration
+    fi
+
     log_step "Updating Nginx SNI routing for Reality..."
 
     # Backup original config
@@ -462,17 +525,22 @@ update_nginx_reality_sni() {
         log_step "Reloading Nginx..."
         systemctl reload nginx
         log_success "Nginx reloaded successfully"
+        return 0  # Return code 0 = success
     else
         log_error "Nginx configuration test failed"
         log_warning "Restoring original configuration..."
         cp "${nginx_conf}.bak."* "$nginx_conf" 2>/dev/null || true
         log_info "Please check Nginx configuration manually"
+        return 1  # Return code 1 = failed
     fi
 }
 
 # Deploy with no DoH
 deploy_no_doh() {
     log_step "Starting deployment (without DoH)..."
+
+    # Track if switching from with-DoH for post-deployment notice
+    local was_with_doh=false
 
     # Check if there's an existing deployment
     if load_deployment_info 2>/dev/null; then
@@ -487,6 +555,7 @@ deploy_no_doh() {
 
         # Check if switching deployment type
         if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
+            was_with_doh=true
             echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo -e "${YELLOW}⚠️  DEPLOYMENT TYPE CHANGE DETECTED${NC}"
             echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -554,6 +623,30 @@ deploy_no_doh() {
     log_step "Generating client configurations..."
     echo ""
     generate_all_client_configs
+
+    # Show notice if switched from with-DoH
+    if [ "$was_with_doh" = true ]; then
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}ℹ️  Deployment Type Switched: with-DoH → no-DoH${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${YELLOW}You have switched from DoH to non-DoH deployment.${NC}"
+        echo ""
+        echo -e "${CYAN}Changes:${NC}"
+        echo -e "  ${GREEN}✓${NC} Xray now listens directly on port 443"
+        echo -e "  ${GREEN}✓${NC} No longer uses Unix socket"
+        echo ""
+        if systemctl is-active --quiet nginx 2>/dev/null; then
+            echo -e "${YELLOW}Note: Nginx is still running and may be using port 443.${NC}"
+            echo -e "${YELLOW}You may want to:${NC}"
+            echo -e "  ${CYAN}1.${NC} Stop Nginx if no longer needed: ${PURPLE}systemctl stop nginx${NC}"
+            echo -e "  ${CYAN}2.${NC} Or adjust Nginx configuration: ${PURPLE}nano /etc/nginx/nginx.conf${NC}"
+            echo -e "  ${CYAN}3.${NC} Remove stream block if not needed"
+            echo ""
+        fi
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    fi
 }
 
 # Deploy with DoH
@@ -840,9 +933,12 @@ deploy_with_doh() {
     save_deployment_info "with-doh" "$uuid" "$dest" "$private_key" "$public_key" "$server_ip" "unix_socket"
 
     # Update Nginx SNI routing configuration
+    echo ""
     update_nginx_reality_sni "$dest"
+    local nginx_config_status=$?
 
     # Restart Xray service
+    echo ""
     log_step "Restarting Xray service..."
     systemctl restart xray
     systemctl status xray --no-pager
@@ -854,6 +950,23 @@ deploy_with_doh() {
     log_step "Generating client configurations..."
     echo ""
     generate_all_client_configs
+
+    # Show post-deployment notice if Nginx needs manual configuration
+    if [ $nginx_config_status -eq 2 ]; then
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}⚠️  IMPORTANT: Nginx Configuration Required${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${YELLOW}Xray has been deployed successfully, but you need to configure Nginx${NC}"
+        echo -e "${YELLOW}stream module for SNI routing. Please refer to the instructions above.${NC}"
+        echo ""
+        echo -e "${CYAN}Configuration file:${NC} ${YELLOW}/etc/nginx/nginx.conf${NC}"
+        echo -e "${CYAN}Your destination domain:${NC} ${GREEN}${dest}${NC}"
+        echo ""
+        echo -e "${YELLOW}After configuring Nginx, your DoH deployment will be fully functional.${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    fi
 }
 
 # Modify existing configuration
