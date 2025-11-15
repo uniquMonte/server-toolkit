@@ -136,6 +136,17 @@ check_nginx_stream_support() {
         return 1
     fi
 
+    # If stream is dynamic, verify the .so file exists
+    if echo "$nginx_config" | grep -q -- "--with-stream=dynamic"; then
+        # Check common module paths
+        if [ ! -f /usr/lib/nginx/modules/ngx_stream_module.so ] && \
+           [ ! -f /usr/share/nginx/modules/ngx_stream_module.so ] && \
+           [ ! -f /etc/nginx/modules/ngx_stream_module.so ]; then
+            # Dynamic module declared but file doesn't exist
+            return 1
+        fi
+    fi
+
     return 0
 }
 
@@ -151,6 +162,24 @@ is_stream_module_dynamic() {
     else
         return 1
     fi
+}
+
+# Get path to stream module .so file if it exists
+get_stream_module_path() {
+    local paths=(
+        "/usr/lib/nginx/modules/ngx_stream_module.so"
+        "/usr/share/nginx/modules/ngx_stream_module.so"
+        "/etc/nginx/modules/ngx_stream_module.so"
+    )
+
+    for path in "${paths[@]}"; do
+        if [ -f "$path" ]; then
+            echo "$path"
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 # Get installed Nginx package variant
@@ -194,8 +223,14 @@ create_default_nginx_config() {
     # Check if we need to load stream module dynamically
     local load_stream_module=""
     if is_stream_module_dynamic; then
-        log_info "Detected dynamic stream module, adding load_module directive..."
-        load_stream_module="load_module modules/ngx_stream_module.so;"
+        local module_path
+        if module_path=$(get_stream_module_path); then
+            log_info "Detected dynamic stream module at: $module_path"
+            load_stream_module="load_module $module_path;"
+        else
+            log_warning "Dynamic stream module declared but .so file not found"
+            log_warning "Stream module loading will be skipped - this may cause errors"
+        fi
     fi
 
     # Create default nginx.conf with stream block for DoH
