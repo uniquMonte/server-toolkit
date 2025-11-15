@@ -106,10 +106,10 @@ run_full_test() {
 
 # YABS test (without GeekBench)
 run_basic_test() {
-    log_info "Starting YABS basic test (without GeekBench)..."
+    log_info "Starting YABS basic test (without GeekBench 5)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}Test content: Disk + Network (no GeekBench)${NC}"
+    echo -e "${PURPLE}Test content: Disk + Network (no GeekBench 5)${NC}"
     echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
@@ -261,16 +261,15 @@ test_menu() {
         echo -e "${CYAN}           YABS Test Options                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
-        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network, no GeekBench)"
-        echo -e "${GREEN}3.${NC} 💾 Disk + Network test (no GeekBench)"
-        echo -e "${GREEN}4.${NC} 📊 GeekBench 5 only test"
-        echo -e "${GREEN}5.${NC} 💿 Disk I/O only test"
-        echo -e "${GREEN}6.${NC} 🌐 Network speed only test"
-        echo -e "${GREEN}7.${NC} ⚡ Quick system info"
+        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network, no GeekBench 5)"
+        echo -e "${GREEN}3.${NC} 📊 GeekBench 5 only test"
+        echo -e "${GREEN}4.${NC} 💿 Disk I/O only test"
+        echo -e "${GREEN}5.${NC} 🌐 Network speed only test"
+        echo -e "${GREEN}6.${NC} ⚡ Quick system info"
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Please select test type [0-7] (press Enter for 1): " choice
+        read -p "Please select test type [0-6] (press Enter for 1): " choice
         choice="${choice:-1}"
 
         case $choice in
@@ -281,18 +280,15 @@ test_menu() {
                 run_basic_test
                 ;;
             3)
-                run_disk_network_test
-                ;;
-            4)
                 run_geekbench_only
                 ;;
-            5)
+            4)
                 run_disk_only_test
                 ;;
-            6)
+            5)
                 run_network_only_test
                 ;;
-            7)
+            6)
                 run_quick_test
                 ;;
             0)
@@ -328,10 +324,6 @@ main() {
             show_test_info
             run_basic_test
             ;;
-        disk-network)
-            show_test_info
-            run_disk_network_test
-            ;;
         geekbench)
             show_test_info
             run_geekbench_only
@@ -352,16 +344,15 @@ main() {
             test_menu
             ;;
         *)
-            echo "Usage: $0 {full|basic|disk-network|geekbench|disk|network|quick|menu}"
+            echo "Usage: $0 {full|basic|geekbench|disk|network|quick|menu}"
             echo ""
             echo "Test types:"
             echo "  full         - Full test (including GeekBench 5)"
             echo "  basic        - Basic test (excluding GeekBench 5)"
-            echo "  disk-network - Disk and network test"
             echo "  geekbench    - GeekBench 5 only test"
             echo "  disk         - Disk only test"
             echo "  network      - Network only test"
-            echo "  quick        - Quick CPU test"
+            echo "  quick        - Quick system info"
             echo "  menu         - Show interactive menu (default)"
             echo ""
             exit 1
