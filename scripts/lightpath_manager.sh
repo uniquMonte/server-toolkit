@@ -600,15 +600,6 @@ generate_mihomo_config() {
     local server_ip="$SERVER_IP"
     local port="443"
 
-    # For DoH deployment, port is still 443 from client perspective
-    # (unless you're using a reverse proxy on a different port)
-    if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
-        echo -e "${YELLOW}Note: For DoH deployment, you need to configure your reverse proxy${NC}"
-        echo -e "${YELLOW}to forward traffic to the Unix socket. Enter the external port:${NC}"
-        read -p "External port (default: 443): " external_port
-        port="${external_port:-443}"
-    fi
-
     # Get system hostname for node name
     local hostname=$(hostname)
     local node_name="${hostname}-Reality"
@@ -653,12 +644,6 @@ generate_shadowrocket_config() {
 
     local server_ip="$SERVER_IP"
     local port="443"
-
-    if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
-        echo -e "${YELLOW}Note: For DoH deployment, enter the external port of your reverse proxy:${NC}"
-        read -p "External port (default: 443): " external_port
-        port="${external_port:-443}"
-    fi
 
     # Get system hostname for node name
     local hostname=$(hostname)
