@@ -684,17 +684,48 @@ deploy_with_doh() {
                 if [ $nginx_status -ne 0 ]; then
                     if [ $nginx_status -eq 1 ]; then
                         log_step "Installing Nginx..."
-                        # Download Nginx manager if needed
-                        local nginx_script="${SCRIPT_DIR}/nginx_manager.sh"
-                        if [ ! -f "$nginx_script" ]; then
-                            log_error "Nginx manager script not found at $nginx_script"
-                            log_info "Please install Nginx manually using main menu option 6"
+
+                        # Detect OS
+                        if [ -f /etc/os-release ]; then
+                            . /etc/os-release
+                            OS=$ID
+                        else
+                            log_error "Unable to detect operating system"
                             read -p "Press Enter to return to menu..."
                             return 1
                         fi
-                        bash "$nginx_script" install
-                        if [ $? -ne 0 ]; then
-                            log_error "Failed to install Nginx"
+
+                        # Install Nginx based on OS
+                        case $OS in
+                            ubuntu|debian)
+                                log_info "Installing Nginx on Ubuntu/Debian..."
+                                export DEBIAN_FRONTEND=noninteractive
+                                apt-get update -y > /dev/null 2>&1
+                                apt-get install -y nginx > /dev/null 2>&1
+                                ;;
+                            centos|rhel|rocky|almalinux|fedora)
+                                log_info "Installing Nginx on CentOS/RHEL/Rocky/AlmaLinux/Fedora..."
+                                if command -v dnf &> /dev/null; then
+                                    dnf install -y nginx > /dev/null 2>&1
+                                else
+                                    yum install -y nginx > /dev/null 2>&1
+                                fi
+                                ;;
+                            *)
+                                log_error "Unsupported operating system: $OS"
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                                ;;
+                        esac
+
+                        # Enable and start Nginx
+                        systemctl enable nginx > /dev/null 2>&1
+                        systemctl start nginx
+
+                        if systemctl is-active --quiet nginx; then
+                            log_success "Nginx installed and started successfully"
+                        else
+                            log_error "Nginx installation completed but service failed to start"
                             read -p "Press Enter to return to menu..."
                             return 1
                         fi
