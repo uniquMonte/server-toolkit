@@ -1,19 +1,19 @@
-# 系统文件
+# System files
 .DS_Store
 Thumbs.db
 
-# 临时文件
+# Temporary files
 *.tmp
 *.log
 *.swp
 *.bak
 *~
 
-# 编辑器
+# Editors
 .vscode/
 .idea/
 *.sublime-*
 
-# 测试文件
+# Test files
 test/
 *.test.sh
