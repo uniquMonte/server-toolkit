@@ -865,9 +865,25 @@ show_menu() {
                 echo -e "${RED}Status: Xray is installed but not running${NC}"
             fi
             echo ""
+
+            # Load deployment info to show deployment type
+            if load_deployment_info 2>/dev/null; then
+                if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
+                    echo -e "${CYAN}Deployment Type: ${YELLOW}with DoH${NC} ${PURPLE}(Nginx SNI routing enabled)${NC}"
+                else
+                    echo -e "${CYAN}Deployment Type: ${YELLOW}without DoH${NC} ${PURPLE}(Direct port 443)${NC}"
+                fi
+                echo ""
+            fi
+
             echo -e "${CYAN}Configuration Files:${NC}"
             echo -e "  Server: ${YELLOW}$XRAY_CONFIG_PATH${NC}"
             echo -e "  Deploy: ${YELLOW}$LIGHTPATH_INFO_FILE${NC}"
+
+            # Show Nginx config path for DoH deployment
+            if [ "${DEPLOYMENT_TYPE:-}" = "with-doh" ]; then
+                echo -e "  Nginx:  ${YELLOW}/etc/nginx/nginx.conf${NC} ${PURPLE}(auto-updates reality SNI)${NC}"
+            fi
         else
             echo -e "${YELLOW}Status: Xray is not installed${NC}"
         fi
