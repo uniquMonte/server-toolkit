@@ -507,7 +507,7 @@ deploy_no_doh() {
             echo ""
         fi
 
-        read -p "Do you want to continue? [y/N]: " confirm
+        read -p "Do you want to continue? [y/N, or press Enter to cancel]: " confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Deployment cancelled"
             read -p "Press Enter to return to menu..."
@@ -594,7 +594,7 @@ deploy_with_doh() {
             echo ""
         fi
 
-        read -p "Do you want to continue? [y/N]: " confirm
+        read -p "Do you want to continue? [y/N, or press Enter to cancel]: " confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Deployment cancelled"
             read -p "Press Enter to return to menu..."
