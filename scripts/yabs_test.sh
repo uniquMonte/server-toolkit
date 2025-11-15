@@ -90,12 +90,6 @@ run_full_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -5 parameter to run GeekBench 5 instead of GeekBench 6
     if run_yabs_safely "-5"; then
         log_success "Test complete!"
@@ -106,24 +100,38 @@ run_full_test() {
 
 # YABS test (without GeekBench)
 run_basic_test() {
-    log_info "Starting YABS basic test (without GeekBench)..."
+    log_info "Starting YABS basic test (without GeekBench 5)..."
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}Test content: Disk + Network (no GeekBench)${NC}"
+    echo -e "${PURPLE}Test content: Disk + Network (no GeekBench 5)${NC}"
     echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -g parameter to disable GeekBench (system performance tests)
     if run_yabs_safely "-g"; then
+        log_success "Test complete!"
+    else
+        log_error "Test failed"
+    fi
+}
+
+# YABS disk + GeekBench 5 test (without network)
+run_disk_geekbench_test() {
+    log_info "Starting YABS disk and GeekBench 5 test..."
+    echo ""
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${PURPLE}Test content: Disk + GeekBench 5 (no Network)${NC}"
+    echo -e "${PURPLE}Estimated time: 10-15 minutes${NC}"
+    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log_warning "⚠️  This test will download and execute external scripts"
+    echo ""
+
+    # Use -5 to run GB5, -i to skip network
+    if run_yabs_safely "-5i"; then
         log_success "Test complete!"
     else
         log_error "Test failed"
@@ -139,12 +147,6 @@ run_geekbench_only() {
     echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
 
     # Use -5 to run GB5, -f to skip disk, -i to skip network
     if run_yabs_safely "-5fi"; then
@@ -163,12 +165,6 @@ run_disk_network_test() {
     echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
 
     # Use -g to disable GeekBench (system performance tests)
     if run_yabs_safely "-g"; then
@@ -189,12 +185,6 @@ run_disk_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -g to disable GeekBench, -i to disable network, -n to skip network info
     if run_yabs_safely "-gin"; then
         log_success "Test complete!"
@@ -214,12 +204,6 @@ run_network_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -f to disable disk, -g to disable GeekBench
     if run_yabs_safely "-fg"; then
         log_success "Test complete!"
@@ -238,12 +222,6 @@ run_quick_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -f to disable disk, -g to disable GeekBench, -i to disable network, -n to skip network info
     if run_yabs_safely "-fgin"; then
         log_success "Test complete!"
@@ -261,12 +239,12 @@ test_menu() {
         echo -e "${CYAN}           YABS Test Options                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
-        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network, no GeekBench)"
-        echo -e "${GREEN}3.${NC} 💾 Disk + Network test (no GeekBench)"
-        echo -e "${GREEN}4.${NC} 📊 GeekBench 5 only test"
-        echo -e "${GREEN}5.${NC} 💿 Disk I/O only test"
-        echo -e "${GREEN}6.${NC} 🌐 Network speed only test"
-        echo -e "${GREEN}7.${NC} ⚡ Quick system info"
+        echo -e "${GREEN}2.${NC} ⚡ Basic test (Disk + Network)"
+        echo -e "${GREEN}3.${NC} 💪 Disk + GeekBench 5"
+        echo -e "${GREEN}4.${NC} 💿 Disk only"
+        echo -e "${GREEN}5.${NC} 🌐 Network only"
+        echo -e "${GREEN}6.${NC} 📊 GeekBench 5 only"
+        echo -e "${GREEN}7.${NC} ℹ️  System info only"
         echo -e "${RED}0.${NC} Return to main menu"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo ""
@@ -281,16 +259,16 @@ test_menu() {
                 run_basic_test
                 ;;
             3)
-                run_disk_network_test
+                run_disk_geekbench_test
                 ;;
             4)
-                run_geekbench_only
-                ;;
-            5)
                 run_disk_only_test
                 ;;
-            6)
+            5)
                 run_network_only_test
+                ;;
+            6)
+                run_geekbench_only
                 ;;
             7)
                 run_quick_test
@@ -328,13 +306,9 @@ main() {
             show_test_info
             run_basic_test
             ;;
-        disk-network)
+        disk-geekbench)
             show_test_info
-            run_disk_network_test
-            ;;
-        geekbench)
-            show_test_info
-            run_geekbench_only
+            run_disk_geekbench_test
             ;;
         disk)
             show_test_info
@@ -344,6 +318,10 @@ main() {
             show_test_info
             run_network_only_test
             ;;
+        geekbench)
+            show_test_info
+            run_geekbench_only
+            ;;
         quick)
             show_test_info
             run_quick_test
@@ -352,17 +330,17 @@ main() {
             test_menu
             ;;
         *)
-            echo "Usage: $0 {full|basic|disk-network|geekbench|disk|network|quick|menu}"
+            echo "Usage: $0 {full|basic|disk-geekbench|disk|network|geekbench|quick|menu}"
             echo ""
             echo "Test types:"
-            echo "  full         - Full test (including GeekBench 5)"
-            echo "  basic        - Basic test (excluding GeekBench 5)"
-            echo "  disk-network - Disk and network test"
-            echo "  geekbench    - GeekBench 5 only test"
-            echo "  disk         - Disk only test"
-            echo "  network      - Network only test"
-            echo "  quick        - Quick CPU test"
-            echo "  menu         - Show interactive menu (default)"
+            echo "  full           - Full test (Disk + Network + GeekBench 5)"
+            echo "  basic          - Basic test (Disk + Network)"
+            echo "  disk-geekbench - Disk + GeekBench 5 test"
+            echo "  disk           - Disk only test"
+            echo "  network        - Network only test"
+            echo "  geekbench      - GeekBench 5 only test"
+            echo "  quick          - Quick system info"
+            echo "  menu           - Show interactive menu (default)"
             echo ""
             exit 1
             ;;
