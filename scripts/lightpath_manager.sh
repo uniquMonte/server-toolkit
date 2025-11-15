@@ -115,6 +115,45 @@ check_adguardhome_installed() {
     return 0  # Installed and running
 }
 
+# Check if Nginx has required stream modules for DoH deployment
+# Returns: 0 = has required modules, 1 = missing modules, 2 = nginx not installed
+check_nginx_stream_support() {
+    # Check if nginx is installed
+    if ! command -v nginx &> /dev/null; then
+        return 2
+    fi
+
+    # Check nginx compile-time configuration
+    local nginx_config=$(nginx -V 2>&1)
+
+    # Check for stream module
+    if ! echo "$nginx_config" | grep -q -- "--with-stream"; then
+        return 1
+    fi
+
+    # Check for ssl_preread module (required for SNI-based routing)
+    if ! echo "$nginx_config" | grep -q -- "--with-stream_ssl_preread_module"; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Get installed Nginx package variant
+get_nginx_package_variant() {
+    if dpkg -l 2>/dev/null | grep -q "^ii.*nginx-extras"; then
+        echo "nginx-extras"
+    elif dpkg -l 2>/dev/null | grep -q "^ii.*nginx-full"; then
+        echo "nginx-full"
+    elif dpkg -l 2>/dev/null | grep -q "^ii.*nginx-core"; then
+        echo "nginx-core"
+    elif dpkg -l 2>/dev/null | grep -q "^ii.*nginx-light"; then
+        echo "nginx-light"
+    else
+        echo "unknown"
+    fi
+}
+
 # Get server public IP
 get_server_ip() {
     local ip
@@ -707,6 +746,9 @@ deploy_with_doh() {
     check_nginx_installed
     nginx_status=$?
 
+    local nginx_needs_upgrade=false
+    local current_nginx_variant=""
+
     if [ $nginx_status -eq 1 ]; then
         log_error "Nginx is not installed!"
         prerequisites_met=false
@@ -715,6 +757,23 @@ deploy_with_doh() {
         prerequisites_met=false
     else
         log_success "Nginx is installed and running"
+
+        # Check if Nginx has stream module support
+        check_nginx_stream_support
+        local stream_status=$?
+
+        if [ $stream_status -eq 1 ]; then
+            current_nginx_variant=$(get_nginx_package_variant)
+            log_error "Nginx lacks required stream modules!"
+            echo -e "  ${YELLOW}Current variant:${NC} ${RED}${current_nginx_variant}${NC}"
+            echo -e "  ${YELLOW}Required modules:${NC} stream, stream_ssl_preread"
+            echo -e "  ${YELLOW}Recommended:${NC} nginx-extras or nginx-full"
+            nginx_needs_upgrade=true
+            prerequisites_met=false
+        else
+            current_nginx_variant=$(get_nginx_package_variant)
+            log_success "Nginx has required stream modules (${current_nginx_variant})"
+        fi
     fi
 
     # Check AdGuardHome
@@ -745,6 +804,9 @@ deploy_with_doh() {
         elif [ $nginx_status -eq 2 ]; then
             echo -e "  ${YELLOW}○${NC} Nginx - installed but not running"
             services_needed+=("Nginx")
+        elif [ "$nginx_needs_upgrade" = true ]; then
+            echo -e "  ${RED}✗${NC} Nginx - missing stream modules (current: ${current_nginx_variant})"
+            services_needed+=("Nginx (upgrade to nginx-extras)")
         fi
 
         if [ $adguard_status -eq 1 ]; then
@@ -773,28 +835,85 @@ deploy_with_doh() {
                 log_step "Installing required services automatically..."
                 echo ""
 
-                # Install/start Nginx if needed
-                if [ $nginx_status -ne 0 ]; then
-                    if [ $nginx_status -eq 1 ]; then
-                        log_step "Installing Nginx..."
+                # Install/upgrade/start Nginx if needed
+                if [ $nginx_status -ne 0 ] || [ "$nginx_needs_upgrade" = true ]; then
+                    # Detect OS first
+                    if [ -f /etc/os-release ]; then
+                        . /etc/os-release
+                        OS=$ID
+                    else
+                        log_error "Unable to detect operating system"
+                        read -p "Press Enter to return to menu..."
+                        return 1
+                    fi
 
-                        # Detect OS
-                        if [ -f /etc/os-release ]; then
-                            . /etc/os-release
-                            OS=$ID
+                    if [ "$nginx_needs_upgrade" = true ]; then
+                        log_step "Upgrading Nginx to nginx-extras..."
+
+                        case $OS in
+                            ubuntu|debian)
+                                export DEBIAN_FRONTEND=noninteractive
+
+                                # Stop nginx service
+                                systemctl stop nginx > /dev/null 2>&1
+
+                                # Backup nginx configuration
+                                if [ -d /etc/nginx ]; then
+                                    log_info "Backing up Nginx configuration..."
+                                    cp -r /etc/nginx /etc/nginx.backup.$(date +%s) 2>/dev/null || true
+                                fi
+
+                                # Remove current nginx packages
+                                log_info "Removing current Nginx packages..."
+                                local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+                                if [ -n "$nginx_packages" ]; then
+                                    apt-get purge -y $nginx_packages > /dev/null 2>&1
+                                fi
+
+                                # Install nginx-extras
+                                log_info "Installing nginx-extras..."
+                                apt-get update -y > /dev/null 2>&1
+                                apt-get install -y nginx-extras > /dev/null 2>&1
+                                ;;
+                            centos|rhel|rocky|almalinux|fedora)
+                                log_warning "On RHEL-based systems, nginx from EPEL usually includes stream modules"
+                                log_info "Reinstalling Nginx..."
+                                systemctl stop nginx > /dev/null 2>&1
+                                if command -v dnf &> /dev/null; then
+                                    dnf reinstall -y nginx > /dev/null 2>&1
+                                else
+                                    yum reinstall -y nginx > /dev/null 2>&1
+                                fi
+                                ;;
+                            *)
+                                log_error "Unsupported operating system: $OS"
+                                read -p "Press Enter to return to menu..."
+                                return 1
+                                ;;
+                        esac
+
+                        # Enable and start Nginx
+                        systemctl enable nginx > /dev/null 2>&1
+                        systemctl start nginx
+
+                        if systemctl is-active --quiet nginx; then
+                            log_success "Nginx upgraded to nginx-extras successfully"
                         else
-                            log_error "Unable to detect operating system"
+                            log_error "Nginx upgrade completed but service failed to start"
                             read -p "Press Enter to return to menu..."
                             return 1
                         fi
 
+                    elif [ $nginx_status -eq 1 ]; then
+                        log_step "Installing Nginx (nginx-extras)..."
+
                         # Install Nginx based on OS
                         case $OS in
                             ubuntu|debian)
-                                log_info "Installing Nginx on Ubuntu/Debian..."
+                                log_info "Installing nginx-extras on Ubuntu/Debian..."
                                 export DEBIAN_FRONTEND=noninteractive
                                 apt-get update -y > /dev/null 2>&1
-                                apt-get install -y nginx > /dev/null 2>&1
+                                apt-get install -y nginx-extras > /dev/null 2>&1
                                 ;;
                             centos|rhel|rocky|almalinux|fedora)
                                 log_info "Installing Nginx on CentOS/RHEL/Rocky/AlmaLinux/Fedora..."
