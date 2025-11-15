@@ -238,7 +238,7 @@ test_menu() {
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
         echo -e "${CYAN}           YABS Test Options                   ${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}1.${NC} 🔥 Full test (Disk + Network + GeekBench 5)"
+        echo -e "${GREEN}1.${NC} 🔥 Disk + Network + GeekBench 5"
         echo -e "${GREEN}2.${NC} 🚀 Disk + Network"
         echo -e "${GREEN}3.${NC} 💪 Disk + GeekBench 5"
         echo -e "${GREEN}4.${NC} 💿 Disk only"
