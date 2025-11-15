@@ -154,6 +154,133 @@ get_nginx_package_variant() {
     fi
 }
 
+# Create default Nginx configuration with stream support for DoH
+create_default_nginx_config() {
+    local nginx_conf="/etc/nginx/nginx.conf"
+
+    log_info "Creating default Nginx configuration with stream support..."
+
+    # Create www-data user if it doesn't exist
+    if ! id -u www-data &>/dev/null; then
+        log_info "Creating www-data user..."
+        useradd -r -s /usr/sbin/nologin www-data 2>/dev/null || true
+    fi
+
+    # Create nginx config directory if it doesn't exist
+    mkdir -p /etc/nginx/conf.d
+    mkdir -p /etc/nginx/sites-enabled
+    mkdir -p /etc/nginx/sites-available
+    mkdir -p /var/log/nginx
+    mkdir -p /var/lib/nginx
+    mkdir -p /dev/shm
+
+    # Set ownership for log directory
+    chown -R www-data:www-data /var/log/nginx 2>/dev/null || true
+
+    # Create default nginx.conf with stream block for DoH
+    cat > "$nginx_conf" <<'EOF'
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log;
+
+events {
+    worker_connections 768;
+}
+
+stream {
+    # SNI-based routing for DoH deployment
+    # This will be updated during Lightpath deployment
+    map $ssl_preread_server_name $sni_backend {
+        # doh.example.com        doh;
+        # www.example.com        reality;
+        default                 web;
+    }
+
+    upstream web {
+        server unix:/dev/shm/web.sock;
+    }
+
+    upstream doh {
+        server unix:/dev/shm/doh.sock;
+    }
+
+    upstream reality {
+        server unix:/dev/shm/reality.sock;
+    }
+
+    server {
+        listen 443 reuseport;
+        listen [::]:443 reuseport;
+        proxy_pass $sni_backend;
+        proxy_protocol on;
+        ssl_preread on;
+        tcp_nodelay on;
+    }
+}
+
+http {
+    ##
+    # Basic Settings
+    ##
+    sendfile on;
+    tcp_nopush on;
+    types_hash_max_size 2048;
+
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    ##
+    # SSL Settings
+    ##
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    ##
+    # Logging Settings
+    ##
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    ##
+    # Gzip Settings
+    ##
+    gzip on;
+
+    ##
+    # Virtual Host Configs
+    ##
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}
+EOF
+
+    # Create mime.types if it doesn't exist
+    if [ ! -f /etc/nginx/mime.types ]; then
+        cat > /etc/nginx/mime.types <<'EOF'
+types {
+    text/html                             html htm shtml;
+    text/css                              css;
+    text/xml                              xml;
+    application/javascript                js;
+    application/json                      json;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    image/png                             png;
+    application/x-font-ttf                ttc ttf;
+    font/woff                             woff;
+    font/woff2                            woff2;
+}
+EOF
+    fi
+
+    # Set proper permissions
+    chown -R root:root /etc/nginx
+    chmod 644 "$nginx_conf"
+
+    log_success "Default Nginx configuration created"
+}
+
 # Get server public IP
 get_server_ip() {
     local ip
@@ -892,6 +1019,12 @@ deploy_with_doh() {
                                 ;;
                         esac
 
+                        # Check if nginx.conf exists, create if missing
+                        if [ ! -f /etc/nginx/nginx.conf ]; then
+                            log_warning "Nginx configuration file not found, creating default config with stream support..."
+                            create_default_nginx_config
+                        fi
+
                         # Test configuration before starting
                         if ! nginx -t &>/dev/null; then
                             log_error "Nginx configuration test failed after upgrade!"
@@ -949,6 +1082,12 @@ deploy_with_doh() {
                                 ;;
                         esac
 
+                        # Check if nginx.conf exists, create if missing
+                        if [ ! -f /etc/nginx/nginx.conf ]; then
+                            log_warning "Nginx configuration file not found, creating default config with stream support..."
+                            create_default_nginx_config
+                        fi
+
                         # Test configuration before starting
                         if ! nginx -t &>/dev/null; then
                             log_error "Nginx configuration test failed after installation!"
@@ -981,6 +1120,12 @@ deploy_with_doh() {
                         fi
                     else
                         log_step "Starting Nginx service..."
+
+                        # Check if nginx.conf exists, create if missing
+                        if [ ! -f /etc/nginx/nginx.conf ]; then
+                            log_warning "Nginx configuration file not found, creating default config with stream support..."
+                            create_default_nginx_config
+                        fi
 
                         # Test Nginx configuration before starting
                         if ! nginx -t &>/dev/null; then
