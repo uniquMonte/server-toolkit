@@ -474,6 +474,48 @@ update_nginx_reality_sni() {
 deploy_no_doh() {
     log_step "Starting deployment (without DoH)..."
 
+    # Check if there's an existing deployment
+    if load_deployment_info 2>/dev/null; then
+        echo ""
+        log_warning "Existing deployment detected!"
+        echo ""
+        echo -e "${CYAN}Current Deployment:${NC}"
+        echo -e "  Type: ${YELLOW}${DEPLOYMENT_TYPE}${NC}"
+        echo -e "  UUID: ${UUID}"
+        echo -e "  Destination: ${DEST_DOMAIN}"
+        echo ""
+
+        # Check if switching deployment type
+        if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${YELLOW}⚠️  DEPLOYMENT TYPE CHANGE DETECTED${NC}"
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${YELLOW}You are switching from:${NC}"
+            echo -e "  ${CYAN}with DoH${NC} (Unix socket + Nginx) ${RED}→${NC} ${CYAN}without DoH${NC} (Direct port 443)"
+            echo ""
+            echo -e "${YELLOW}This will:${NC}"
+            echo -e "  ${RED}✗${NC} Regenerate all configuration (UUID, keys, destination)"
+            echo -e "  ${RED}✗${NC} Change listening from Unix socket to port 443"
+            echo -e "  ${RED}✗${NC} Invalidate all existing client configurations"
+            echo -e "  ${RED}✗${NC} Require clients to update their configurations"
+            echo ""
+        else
+            echo -e "${YELLOW}⚠️  This will regenerate the configuration:${NC}"
+            echo -e "  ${RED}✗${NC} New UUID, keypair, and destination domain"
+            echo -e "  ${RED}✗${NC} Existing client configurations will stop working"
+            echo ""
+        fi
+
+        read -p "Do you want to continue? [y/N]: " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "Deployment cancelled"
+            read -p "Press Enter to return to menu..."
+            return 1
+        fi
+        echo ""
+    fi
+
     # Install Xray
     install_xray || return 1
 
@@ -517,6 +559,49 @@ deploy_no_doh() {
 # Deploy with DoH
 deploy_with_doh() {
     log_step "Starting deployment (with DoH)..."
+
+    # Check if there's an existing deployment
+    if load_deployment_info 2>/dev/null; then
+        echo ""
+        log_warning "Existing deployment detected!"
+        echo ""
+        echo -e "${CYAN}Current Deployment:${NC}"
+        echo -e "  Type: ${YELLOW}${DEPLOYMENT_TYPE}${NC}"
+        echo -e "  UUID: ${UUID}"
+        echo -e "  Destination: ${DEST_DOMAIN}"
+        echo ""
+
+        # Check if switching deployment type
+        if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${YELLOW}⚠️  DEPLOYMENT TYPE CHANGE DETECTED${NC}"
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${YELLOW}You are switching from:${NC}"
+            echo -e "  ${CYAN}without DoH${NC} (Direct port 443) ${RED}→${NC} ${CYAN}with DoH${NC} (Unix socket + Nginx)"
+            echo ""
+            echo -e "${YELLOW}This will:${NC}"
+            echo -e "  ${RED}✗${NC} Regenerate all configuration (UUID, keys, destination)"
+            echo -e "  ${RED}✗${NC} Change listening from port 443 to Unix socket"
+            echo -e "  ${RED}✗${NC} Update Nginx SNI routing configuration"
+            echo -e "  ${RED}✗${NC} Invalidate all existing client configurations"
+            echo -e "  ${RED}✗${NC} Require clients to update their configurations"
+            echo ""
+        else
+            echo -e "${YELLOW}⚠️  This will regenerate the configuration:${NC}"
+            echo -e "  ${RED}✗${NC} New UUID, keypair, and destination domain"
+            echo -e "  ${RED}✗${NC} Existing client configurations will stop working"
+            echo ""
+        fi
+
+        read -p "Do you want to continue? [y/N]: " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "Deployment cancelled"
+            read -p "Press Enter to return to menu..."
+            return 1
+        fi
+        echo ""
+    fi
 
     # Check prerequisites for DoH deployment
     log_step "Checking prerequisites..."
