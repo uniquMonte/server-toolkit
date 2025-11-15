@@ -271,7 +271,19 @@ uninstall_nginx() {
     case $OS in
         ubuntu|debian)
             log_info "Uninstalling Nginx using APT..."
-            apt-get purge -y nginx nginx-common nginx-core
+
+            # Detect all installed Nginx packages
+            log_info "Detecting installed Nginx packages..."
+            local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+
+            if [ -n "$nginx_packages" ]; then
+                log_info "Found Nginx packages: $nginx_packages"
+                apt-get purge -y $nginx_packages
+            else
+                log_warning "No Nginx packages found via dpkg, trying default packages..."
+                apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light 2>/dev/null || true
+            fi
+
             apt-get autoremove -y
             ;;
 
@@ -410,7 +422,19 @@ uninstall_nginx_and_certbot() {
         case $OS in
             ubuntu|debian)
                 log_info "Uninstalling Nginx using APT..."
-                apt-get purge -y nginx nginx-common nginx-core
+
+                # Detect all installed Nginx packages
+                log_info "Detecting installed Nginx packages..."
+                local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+
+                if [ -n "$nginx_packages" ]; then
+                    log_info "Found Nginx packages: $nginx_packages"
+                    apt-get purge -y $nginx_packages
+                else
+                    log_warning "No Nginx packages found via dpkg, trying default packages..."
+                    apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light 2>/dev/null || true
+                fi
+
                 apt-get autoremove -y
                 ;;
 
