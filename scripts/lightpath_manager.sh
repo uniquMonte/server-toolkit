@@ -416,7 +416,11 @@ deploy_no_doh() {
 
     log_success "Deployment completed successfully!"
     echo ""
-    log_info "Next step: Generate client configuration using option 4 in the menu"
+
+    # Auto-generate client configurations
+    log_step "Generating client configurations..."
+    echo ""
+    generate_all_client_configs
 }
 
 # Deploy with DoH
@@ -467,7 +471,11 @@ deploy_with_doh() {
 
     log_success "Deployment completed successfully!"
     echo ""
-    log_info "Next step: Generate client configuration using option 4 in the menu"
+
+    # Auto-generate client configurations
+    log_step "Generating client configurations..."
+    echo ""
+    generate_all_client_configs
 }
 
 # Modify existing configuration
@@ -568,7 +576,11 @@ modify_configuration() {
 
     log_success "Configuration updated successfully!"
     echo ""
-    log_warning "Please regenerate client configurations to use the new settings"
+
+    # Auto-generate client configurations
+    log_step "Generating updated client configurations..."
+    echo ""
+    generate_all_client_configs
 }
 
 # Generate client configuration for Mihomo (Clash Meta)
