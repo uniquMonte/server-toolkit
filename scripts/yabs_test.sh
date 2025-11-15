@@ -90,12 +90,6 @@ run_full_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -5 parameter to run GeekBench 5 instead of GeekBench 6
     if run_yabs_safely "-5"; then
         log_success "Test complete!"
@@ -115,12 +109,6 @@ run_basic_test() {
     echo ""
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
-
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
 
     # Use -g parameter to disable GeekBench (system performance tests)
     if run_yabs_safely "-g"; then
@@ -142,12 +130,6 @@ run_disk_geekbench_test() {
     log_warning "⚠️  This test will download and execute external scripts"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -5 to run GB5, -i to skip network
     if run_yabs_safely "-5i"; then
         log_success "Test complete!"
@@ -166,12 +148,6 @@ run_geekbench_only() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -5 to run GB5, -f to skip disk, -i to skip network
     if run_yabs_safely "-5fi"; then
         log_success "Test complete!"
@@ -189,12 +165,6 @@ run_disk_network_test() {
     echo -e "${PURPLE}Estimated time: 5-10 minutes${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
 
     # Use -g to disable GeekBench (system performance tests)
     if run_yabs_safely "-g"; then
@@ -215,12 +185,6 @@ run_disk_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -g to disable GeekBench, -i to disable network, -n to skip network info
     if run_yabs_safely "-gin"; then
         log_success "Test complete!"
@@ -240,12 +204,6 @@ run_network_only_test() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
-
     # Use -f to disable disk, -g to disable GeekBench
     if run_yabs_safely "-fg"; then
         log_success "Test complete!"
@@ -263,12 +221,6 @@ run_quick_test() {
     echo -e "${PURPLE}Estimated time: < 1 minute${NC}"
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-
-    read -p "Confirm to start test? [Y/n] (press Enter to test): " confirm
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        log_info "Test cancelled"
-        return
-    fi
 
     # Use -f to disable disk, -g to disable GeekBench, -i to disable network, -n to skip network info
     if run_yabs_safely "-fgin"; then
