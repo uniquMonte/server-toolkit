@@ -709,11 +709,6 @@ generate_qr_code() {
     qrencode -t ANSIUTF8 "$uri"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-    # Also save QR code to file
-    local qr_file="${CLIENT_CONFIG_DIR}/shadowrocket_qr.png"
-    qrencode -t PNG -o "$qr_file" "$uri"
-    log_success "QR code image saved to: $qr_file"
 }
 
 # Generate all client configurations
