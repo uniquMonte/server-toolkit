@@ -82,6 +82,36 @@ check_xray_installed() {
     fi
 }
 
+# Check if Nginx is installed and running
+check_nginx_installed() {
+    # Check if nginx command exists
+    if ! command -v nginx &> /dev/null; then
+        return 1
+    fi
+
+    # Check if nginx service is running
+    if ! systemctl is-active --quiet nginx; then
+        return 2  # Installed but not running
+    fi
+
+    return 0  # Installed and running
+}
+
+# Check if AdGuardHome is installed and running
+check_adguardhome_installed() {
+    # Check if AdGuardHome service exists
+    if ! systemctl list-unit-files | grep -q "AdGuardHome.service"; then
+        return 1
+    fi
+
+    # Check if AdGuardHome service is running
+    if ! systemctl is-active --quiet AdGuardHome; then
+        return 2  # Installed but not running
+    fi
+
+    return 0  # Installed and running
+}
+
 # Get server public IP
 get_server_ip() {
     local ip
@@ -484,6 +514,72 @@ deploy_no_doh() {
 # Deploy with DoH
 deploy_with_doh() {
     log_step "Starting deployment (with DoH)..."
+
+    # Check prerequisites for DoH deployment
+    log_step "Checking prerequisites..."
+
+    local nginx_status=0
+    local adguard_status=0
+    local prerequisites_met=true
+
+    # Check Nginx
+    check_nginx_installed
+    nginx_status=$?
+
+    if [ $nginx_status -eq 1 ]; then
+        log_error "Nginx is not installed!"
+        prerequisites_met=false
+    elif [ $nginx_status -eq 2 ]; then
+        log_error "Nginx is installed but not running!"
+        prerequisites_met=false
+    else
+        log_success "Nginx is installed and running"
+    fi
+
+    # Check AdGuardHome
+    check_adguardhome_installed
+    adguard_status=$?
+
+    if [ $adguard_status -eq 1 ]; then
+        log_error "AdGuardHome is not installed!"
+        prerequisites_met=false
+    elif [ $adguard_status -eq 2 ]; then
+        log_error "AdGuardHome is installed but not running!"
+        prerequisites_met=false
+    else
+        log_success "AdGuardHome is installed and running"
+    fi
+
+    # If prerequisites are not met, show guidance and exit
+    if [ "$prerequisites_met" = false ]; then
+        echo ""
+        log_error "Prerequisites not met for DoH deployment!"
+        echo ""
+        echo -e "${YELLOW}Please install and start the required services first:${NC}"
+
+        if [ $nginx_status -ne 0 ]; then
+            echo -e "  ${CYAN}1.${NC} Install/Start Nginx:"
+            echo -e "     ${PURPLE}Use menu option 6 (Nginx Proxy Manager)${NC}"
+            if [ $nginx_status -eq 2 ]; then
+                echo -e "     ${PURPLE}Or run: systemctl start nginx${NC}"
+            fi
+        fi
+
+        if [ $adguard_status -ne 0 ]; then
+            echo -e "  ${CYAN}2.${NC} Install/Start AdGuardHome:"
+            echo -e "     ${PURPLE}Use menu option 7 (AdGuardHome DNS)${NC}"
+            if [ $adguard_status -eq 2 ]; then
+                echo -e "     ${PURPLE}Or run: systemctl start AdGuardHome${NC}"
+            fi
+        fi
+
+        echo ""
+        echo -e "${YELLOW}After installing both services, you can proceed with DoH deployment.${NC}"
+        echo ""
+        return 1
+    fi
+
+    echo ""
 
     # Check if this is first time deployment
     local is_first_deploy=false
