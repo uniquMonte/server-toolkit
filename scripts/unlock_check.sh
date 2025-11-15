@@ -37,7 +37,6 @@ show_unlock_check_info() {
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                        ║${NC}"
     echo -e "${CYAN}║      Streaming & AI Unlock Detection Tool             ║${NC}"
-    echo -e "${CYAN}║      流媒体及AI解锁检测工具                              ║${NC}"
     echo -e "${CYAN}║                                                        ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
     echo ""
