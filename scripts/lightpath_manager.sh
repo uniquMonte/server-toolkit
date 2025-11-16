@@ -132,20 +132,15 @@ check_firewall_port() {
         fi
     fi
 
-    # Check iptables
-    if command -v iptables &>/dev/null; then
+    # Check iptables (only if UFW didn't already determine the status)
+    # Note: UFW is a frontend for iptables, so if UFW is active, trust UFW's result
+    if [ "$is_open" = false ] && command -v iptables &>/dev/null; then
         # Check if there are any filter rules
         if iptables -L INPUT -n 2>/dev/null | grep -q "^Chain INPUT"; then
             has_firewall=true
-            # Check if port is explicitly allowed
+            # Check if port is explicitly allowed in iptables
             if iptables -L INPUT -n 2>/dev/null | grep -E "dpt:${port}[[:space:]]" | grep -q "ACCEPT"; then
                 is_open=true
-            fi
-            # If there's a default DROP/REJECT policy and port is not explicitly allowed, it's blocked
-            if iptables -L INPUT -n 2>/dev/null | head -1 | grep -q "DROP\|REJECT"; then
-                if ! iptables -L INPUT -n 2>/dev/null | grep -E "dpt:${port}[[:space:]]" | grep -q "ACCEPT"; then
-                    return 1  # Blocked
-                fi
             fi
         fi
     fi
