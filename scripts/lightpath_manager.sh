@@ -2314,7 +2314,9 @@ update_xray() {
     log_step "Checking for latest version..."
     local latest_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/' || echo "unknown")
     if [ "$latest_version" != "unknown" ] && [ -n "$latest_version" ]; then
-        log_info "Latest version: $latest_version"
+        # Display without 'v' prefix
+        local display_version=$(echo "$latest_version" | sed 's/^v//')
+        log_info "Latest version: $display_version"
     else
         log_info "Latest version: Unable to fetch (will install latest available)"
     fi
