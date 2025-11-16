@@ -178,23 +178,37 @@ EOF
 }
 
 # Create SmartDNS configuration
+# Parameters:
+#   $1 - auto_overwrite: if set to "auto", will automatically overwrite existing config during installation
 create_smartdns_config() {
     log_step "Creating SmartDNS configuration..."
 
     local config_file="/etc/smartdns/smartdns.conf"
+    local auto_overwrite="$1"
 
     if [ -f "$config_file" ]; then
-        log_warning "Configuration file already exists"
-        read -p "Overwrite existing configuration? [y/N] (press Enter to skip): " overwrite
+        if [ "$auto_overwrite" = "auto" ]; then
+            # During installation, automatically use optimized configuration
+            log_info "Detected existing default configuration"
+            log_info "Replacing with optimized configuration (cache, logging, upstream DNS)"
 
-        if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
-            log_info "Keeping existing configuration"
-            return 0
+            # Backup existing config
+            cp "$config_file" "${config_file}.backup.$(date +%Y%m%d_%H%M%S)"
+            log_info "Original config backed up"
+        else
+            # Manual configuration change, ask for confirmation
+            log_warning "Configuration file already exists"
+            read -p "Overwrite existing configuration? [y/N] (press Enter to skip): " overwrite
+
+            if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
+                log_info "Keeping existing configuration"
+                return 0
+            fi
+
+            # Backup existing config
+            cp "$config_file" "${config_file}.backup.$(date +%Y%m%d_%H%M%S)"
+            log_info "Existing config backed up"
         fi
-
-        # Backup existing config
-        cp "$config_file" "${config_file}.backup.$(date +%Y%m%d_%H%M%S)"
-        log_info "Existing config backed up"
     fi
 
     # Create configuration
@@ -309,8 +323,8 @@ install_smartdns() {
 
     echo ""
 
-    # Create configuration
-    create_smartdns_config
+    # Create configuration (auto mode - will replace default config without asking)
+    create_smartdns_config "auto"
 
     echo ""
 
@@ -735,6 +749,12 @@ main_menu() {
                 echo -e "${YELLOW}Status: SmartDNS is installed but not running${NC}"
                 echo -e "${CYAN}Version:${NC} $(get_smartdns_version)"
             fi
+            echo ""
+            echo -e "${CYAN}Important Paths:${NC}"
+            echo -e "  ${CYAN}Config:${NC}  /etc/smartdns/smartdns.conf"
+            echo -e "  ${CYAN}Cache:${NC}   /var/cache/smartdns/smartdns.cache"
+            echo -e "  ${CYAN}Logs:${NC}    /var/log/smartdns/smartdns.log"
+            echo -e "           /var/log/smartdns/smartdns-audit.log"
         else
             echo -e "${YELLOW}Status: SmartDNS is not installed${NC}"
         fi
