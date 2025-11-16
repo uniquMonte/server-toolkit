@@ -1868,12 +1868,16 @@ modify_configuration() {
     echo ""
 
     echo -e "${YELLOW}What would you like to modify?${NC}"
-    echo "  1. Regenerate UUID"
-    echo "  2. Change destination domain"
-    echo "  3. Regenerate keypair"
-    echo "  4. Regenerate all (UUID + destination + keypair)"
+    echo "  1. Change destination domain"
     if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
-        echo "  5. Change port (currently: $PORT)"
+        echo "  2. Change port (currently: $PORT)"
+        echo "  3. Regenerate UUID"
+        echo "  4. Regenerate keypair"
+        echo "  5. Regenerate all (UUID + destination + keypair)"
+    else
+        echo "  2. Regenerate UUID"
+        echo "  3. Regenerate keypair"
+        echo "  4. Regenerate all (UUID + destination + keypair)"
     fi
     echo "  0. Cancel"
     echo ""
@@ -1892,24 +1896,139 @@ modify_configuration() {
 
     case $modify_choice in
         1)
-            log_step "Regenerating UUID..."
-            new_uuid=$(generate_uuid)
-            log_info "New UUID: $new_uuid"
-            ;;
-        2)
+            # Option 1: Change destination domain (both deployment types)
             log_step "Selecting new destination domain..."
             echo ""
             new_dest=$(select_dest_interactive)
             ;;
+        2)
+            # Option 2: Different for no-doh vs with-doh
+            if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+                # no-doh: Change port
+                log_step "Changing port..."
+                echo ""
+                echo -e "${CYAN}Current port: ${YELLOW}${PORT}${NC}"
+                echo ""
+                echo -e "${YELLOW}Common ports:${NC}"
+                echo "  443  - HTTPS (default, recommended)"
+                echo "  8443 - Alternative HTTPS"
+                echo "  2053 - Common proxy port"
+                echo "  2083 - Common proxy port"
+                echo "  2087 - Common proxy port"
+                echo "  2096 - Common proxy port"
+                echo ""
+                echo -e "${YELLOW}Note:${NC} Port must be between 1-65535"
+                echo -e "${YELLOW}Warning:${NC} Using non-standard ports may require additional firewall configuration"
+                echo ""
+
+                read -p "Enter new port (or press Enter to cancel): " input_port
+
+                if [ -z "$input_port" ]; then
+                    log_info "Port change cancelled"
+                    return 0
+                fi
+
+                # Validate port number
+                if ! [[ "$input_port" =~ ^[0-9]+$ ]] || [ "$input_port" -lt 1 ] || [ "$input_port" -gt 65535 ]; then
+                    log_error "Invalid port number. Must be between 1-65535"
+                    return 1
+                fi
+
+                new_port="$input_port"
+                echo ""
+                log_info "New port: $new_port"
+
+                # Check if new port is open in firewall
+                echo ""
+                log_step "Checking firewall status for port $new_port..."
+                get_firewall_status_message "$new_port"
+                check_firewall_port "$new_port"
+                local fw_status=$?
+
+                if [ $fw_status -eq 1 ]; then
+                    echo ""
+                    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                    echo -e "${RED}⚠  WARNING: Port $new_port is BLOCKED by firewall${NC}"
+                    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                    echo ""
+                    echo -e "${YELLOW}To open the port, run one of the following commands:${NC}"
+
+                    if command -v ufw &>/dev/null; then
+                        echo -e "  ${CYAN}UFW:${NC}       sudo ufw allow ${new_port}/tcp"
+                    fi
+                    if command -v iptables &>/dev/null; then
+                        echo -e "  ${CYAN}iptables:${NC}  sudo iptables -I INPUT -p tcp --dport ${new_port} -j ACCEPT"
+                    fi
+                    if command -v firewall-cmd &>/dev/null; then
+                        echo -e "  ${CYAN}firewalld:${NC} sudo firewall-cmd --permanent --add-port=${new_port}/tcp && sudo firewall-cmd --reload"
+                    fi
+                    echo ""
+                    echo -e "${YELLOW}Also check your cloud provider's security group/firewall settings!${NC}"
+                    echo ""
+
+                    read -p "Continue anyway? [y/N]: " confirm
+                    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                        log_info "Port change cancelled"
+                        return 0
+                    fi
+                fi
+            else
+                # with-doh: Regenerate UUID
+                log_step "Regenerating UUID..."
+                new_uuid=$(generate_uuid)
+                log_info "New UUID: $new_uuid"
+            fi
+            ;;
         3)
-            log_step "Regenerating keypair..."
-            local keypair_output=$(generate_keypair)
-            new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
-            new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
-            log_info "New private key: $new_private_key"
-            log_info "New public key: $new_public_key"
+            # Option 3: Different for no-doh vs with-doh
+            if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+                # no-doh: Regenerate UUID
+                log_step "Regenerating UUID..."
+                new_uuid=$(generate_uuid)
+                log_info "New UUID: $new_uuid"
+            else
+                # with-doh: Regenerate keypair
+                log_step "Regenerating keypair..."
+                local keypair_output=$(generate_keypair)
+                new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+                new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
+                log_info "New private key: $new_private_key"
+                log_info "New public key: $new_public_key"
+            fi
             ;;
         4)
+            # Option 4: Different for no-doh vs with-doh
+            if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+                # no-doh: Regenerate keypair
+                log_step "Regenerating keypair..."
+                local keypair_output=$(generate_keypair)
+                new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+                new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
+                log_info "New private key: $new_private_key"
+                log_info "New public key: $new_public_key"
+            else
+                # with-doh: Regenerate all
+                log_step "Regenerating all parameters..."
+                new_uuid=$(generate_uuid)
+                echo ""
+                new_dest=$(get_best_dest)
+                log_info "Generating X25519 keypair..."
+                local keypair_output=$(generate_keypair)
+                new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
+                new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
+                log_info "New UUID: $new_uuid"
+                log_info "New private key: $new_private_key"
+                log_info "New public key: $new_public_key"
+            fi
+            ;;
+        5)
+            # Option 5: Only available for no-doh (Regenerate all)
+            if [ "$DEPLOYMENT_TYPE" != "no-doh" ]; then
+                log_error "Invalid option for DoH deployment"
+                return 1
+            fi
+
+            # no-doh: Regenerate all
             log_step "Regenerating all parameters..."
             new_uuid=$(generate_uuid)
             echo ""
@@ -1921,80 +2040,6 @@ modify_configuration() {
             log_info "New UUID: $new_uuid"
             log_info "New private key: $new_private_key"
             log_info "New public key: $new_public_key"
-            ;;
-        5)
-            if [ "$DEPLOYMENT_TYPE" != "no-doh" ]; then
-                log_error "Port modification is only available for non-DoH deployment"
-                return 1
-            fi
-
-            log_step "Changing port..."
-            echo ""
-            echo -e "${CYAN}Current port: ${YELLOW}${PORT}${NC}"
-            echo ""
-            echo -e "${YELLOW}Common ports:${NC}"
-            echo "  443  - HTTPS (default, recommended)"
-            echo "  8443 - Alternative HTTPS"
-            echo "  2053 - Common proxy port"
-            echo "  2083 - Common proxy port"
-            echo "  2087 - Common proxy port"
-            echo "  2096 - Common proxy port"
-            echo ""
-            echo -e "${YELLOW}Note:${NC} Port must be between 1-65535"
-            echo -e "${YELLOW}Warning:${NC} Using non-standard ports may require additional firewall configuration"
-            echo ""
-
-            read -p "Enter new port (or press Enter to cancel): " input_port
-
-            if [ -z "$input_port" ]; then
-                log_info "Port change cancelled"
-                return 0
-            fi
-
-            # Validate port number
-            if ! [[ "$input_port" =~ ^[0-9]+$ ]] || [ "$input_port" -lt 1 ] || [ "$input_port" -gt 65535 ]; then
-                log_error "Invalid port number. Must be between 1-65535"
-                return 1
-            fi
-
-            new_port="$input_port"
-            echo ""
-            log_info "New port: $new_port"
-
-            # Check if new port is open in firewall
-            echo ""
-            log_step "Checking firewall status for port $new_port..."
-            get_firewall_status_message "$new_port"
-            check_firewall_port "$new_port"
-            local fw_status=$?
-
-            if [ $fw_status -eq 1 ]; then
-                echo ""
-                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-                echo -e "${RED}⚠  WARNING: Port $new_port is BLOCKED by firewall${NC}"
-                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-                echo ""
-                echo -e "${YELLOW}To open the port, run one of the following commands:${NC}"
-
-                if command -v ufw &>/dev/null; then
-                    echo -e "  ${CYAN}UFW:${NC}       sudo ufw allow ${new_port}/tcp"
-                fi
-                if command -v iptables &>/dev/null; then
-                    echo -e "  ${CYAN}iptables:${NC}  sudo iptables -I INPUT -p tcp --dport ${new_port} -j ACCEPT"
-                fi
-                if command -v firewall-cmd &>/dev/null; then
-                    echo -e "  ${CYAN}firewalld:${NC} sudo firewall-cmd --permanent --add-port=${new_port}/tcp && sudo firewall-cmd --reload"
-                fi
-                echo ""
-                echo -e "${YELLOW}Also check your cloud provider's security group/firewall settings!${NC}"
-                echo ""
-
-                read -p "Continue anyway? [y/N]: " confirm
-                if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-                    log_info "Port change cancelled"
-                    return 0
-                fi
-            fi
             ;;
         0|"")
             log_info "Modification cancelled"
