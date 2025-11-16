@@ -2272,11 +2272,15 @@ show_menu() {
                 if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
                     echo -e "${CYAN}Port: ${YELLOW}${PORT}${NC}"
                     echo -n "  "
+                    # Don't let firewall check exit the script with set -e
+                    set +e
                     get_firewall_status_message "$PORT"
+                    check_firewall_port "$PORT"
+                    local fw_check_status=$?
+                    set -e
 
                     # Additional warning if port is blocked
-                    check_firewall_port "$PORT"
-                    if [ $? -eq 1 ]; then
+                    if [ $fw_check_status -eq 1 ]; then
                         echo -e "  ${YELLOW}⚠  Action needed: Open port $PORT in firewall${NC}"
                     fi
                 fi
