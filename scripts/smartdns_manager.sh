@@ -259,6 +259,31 @@ EOF
     log_success "SmartDNS configuration created at $config_file"
 }
 
+# Create required directories for SmartDNS
+create_smartdns_directories() {
+    log_step "Creating SmartDNS directories..."
+
+    # Create cache directory
+    if [ ! -d /var/cache/smartdns ]; then
+        mkdir -p /var/cache/smartdns
+        log_info "Created cache directory: /var/cache/smartdns"
+    fi
+
+    # Create log directory
+    if [ ! -d /var/log/smartdns ]; then
+        mkdir -p /var/log/smartdns
+        log_info "Created log directory: /var/log/smartdns"
+    fi
+
+    # Set proper permissions
+    chown -R root:root /var/cache/smartdns
+    chown -R root:root /var/log/smartdns
+    chmod 755 /var/cache/smartdns
+    chmod 755 /var/log/smartdns
+
+    log_success "SmartDNS directories created"
+}
+
 # Configure system to use SmartDNS
 configure_system_dns() {
     log_step "Configuring system to use SmartDNS..."
@@ -325,6 +350,11 @@ install_smartdns() {
 
     # Create configuration (auto mode - will replace default config without asking)
     create_smartdns_config "auto"
+
+    echo ""
+
+    # Create required directories
+    create_smartdns_directories
 
     echo ""
 
@@ -614,24 +644,42 @@ view_cache_stats() {
 
     local cache_file="/var/cache/smartdns/smartdns.cache"
 
-    if [ ! -f "$cache_file" ]; then
-        log_warning "Cache file not found: $cache_file"
-        log_info "SmartDNS may be running but hasn't cached any domains yet"
-        return 0
-    fi
-
-    log_info "Counting cached domains..."
-    local cache_count=$(smartdns --cache-print "$cache_file" 2>/dev/null | wc -l)
-
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}Cache Statistics${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}Cached domains:${NC} $cache_count"
 
-    # Show cache file size
+    if [ ! -f "$cache_file" ]; then
+        echo -e "${YELLOW}Cache file:${NC} Not created yet"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        log_info "SmartDNS is running but hasn't cached any domains yet"
+        log_info "Try making some DNS queries first, then check again"
+        return 0
+    fi
+
+    # Show cache file info
     local cache_size=$(du -h "$cache_file" 2>/dev/null | awk '{print $1}')
-    echo -e "${GREEN}Cache file size:${NC} $cache_size"
+    local cache_modified=$(stat -c %y "$cache_file" 2>/dev/null | cut -d'.' -f1)
+
+    echo -e "${GREEN}Cache file:${NC} $cache_file"
+    echo -e "${GREEN}File size:${NC} $cache_size"
+    echo -e "${GREEN}Last modified:${NC} $cache_modified"
+
+    # Try to count entries using --cache-print (works on GitHub releases)
+    local cache_count=$(smartdns --cache-print "$cache_file" 2>/dev/null | wc -l)
+
+    if [ "$cache_count" -gt 0 ]; then
+        echo -e "${GREEN}Cached domains:${NC} $cache_count"
+    else
+        # Fallback for Debian version that doesn't support --cache-print
+        log_warning "Note: Domain count unavailable (Debian apt version limitation)"
+        echo ""
+        log_info "Debian apt SmartDNS (v40) doesn't support --cache-print command"
+        log_info "For full features, consider using the latest GitHub release"
+        log_info "GitHub: https://github.com/pymumu/smartdns/releases"
+    fi
+
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
