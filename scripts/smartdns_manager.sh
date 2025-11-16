@@ -62,6 +62,40 @@ get_smartdns_version() {
     fi
 }
 
+# Get cache count for status display
+get_cache_count() {
+    local cache_file="/var/cache/smartdns/smartdns.cache"
+
+    if [ ! -f "$cache_file" ]; then
+        echo "0"
+        return
+    fi
+
+    # Try to count entries using cache-show (GitHub releases support this)
+    local cache_count=$(smartdns cache-show "$cache_file" 2>/dev/null | wc -l)
+
+    if [ "$cache_count" -gt 0 ]; then
+        echo "$cache_count"
+    else
+        # Try alternative method
+        cache_count=$(smartdns --cache-print "$cache_file" 2>/dev/null | wc -l)
+        if [ "$cache_count" -gt 0 ]; then
+            echo "$cache_count"
+        else
+            echo "N/A"
+        fi
+    fi
+}
+
+# Get system DNS configuration
+get_system_dns() {
+    if [ -f /etc/resolv.conf ]; then
+        grep "^nameserver" /etc/resolv.conf | awk '{print $2}' | tr '\n' ', ' | sed 's/,$//'
+    else
+        echo "Not configured"
+    fi
+}
+
 # Get latest SmartDNS version from GitHub
 get_latest_version() {
     local latest_version=$(curl -s https://api.github.com/repos/pymumu/smartdns/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -769,6 +803,36 @@ view_logs() {
     esac
 }
 
+# View configuration file
+view_config() {
+    log_step "Viewing SmartDNS configuration..."
+    echo ""
+
+    if ! check_smartdns_installed; then
+        log_error "SmartDNS is not installed"
+        return 1
+    fi
+
+    local config_file="/etc/smartdns/smartdns.conf"
+
+    if [ ! -f "$config_file" ]; then
+        log_error "Configuration file not found: $config_file"
+        return 1
+    fi
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}SmartDNS Configuration${NC}"
+    echo -e "${CYAN}File: $config_file${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    cat -n "$config_file"
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log_info "To edit this file, use: nano $config_file"
+    log_info "After editing, restart SmartDNS: systemctl restart smartdns"
+}
+
 # View cache statistics
 view_cache_stats() {
     log_step "Viewing cache statistics..."
@@ -939,10 +1003,25 @@ main_menu() {
             if check_smartdns_running; then
                 echo -e "${GREEN}Status: SmartDNS is installed and running${NC}"
                 echo -e "${CYAN}Version:${NC} $(get_smartdns_version)"
+
+                # Show cache statistics
+                local cache_count=$(get_cache_count)
+                if [ "$cache_count" = "N/A" ]; then
+                    echo -e "${CYAN}Cached Domains:${NC} ${YELLOW}$cache_count${NC} (counting not supported)"
+                elif [ "$cache_count" = "0" ]; then
+                    echo -e "${CYAN}Cached Domains:${NC} ${YELLOW}$cache_count${NC} (no cache yet)"
+                else
+                    echo -e "${CYAN}Cached Domains:${NC} ${GREEN}$cache_count${NC}"
+                fi
             else
                 echo -e "${YELLOW}Status: SmartDNS is installed but not running${NC}"
                 echo -e "${CYAN}Version:${NC} $(get_smartdns_version)"
             fi
+
+            # Show system DNS configuration
+            local system_dns=$(get_system_dns)
+            echo -e "${CYAN}System DNS:${NC} $system_dns"
+
             echo ""
             echo -e "${CYAN}Important Paths:${NC}"
             echo -e "  ${CYAN}Config:${NC}  /etc/smartdns/smartdns.conf"
@@ -965,25 +1044,26 @@ main_menu() {
         echo -e "${YELLOW} 5.${NC} Restart service"
         echo -e "${YELLOW} 6.${NC} View status"
         echo -e "${YELLOW} 7.${NC} View logs"
+        echo -e "${YELLOW} 8.${NC} View configuration"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Cache Management ───────────────────────────────┐${NC}"
-        echo -e "${PURPLE} 8.${NC} View cache statistics"
-        echo -e "${PURPLE} 9.${NC} Clear cache"
+        echo -e "${PURPLE} 9.${NC} View cache statistics"
+        echo -e "${PURPLE}10.${NC} Clear cache"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Testing & Diagnostics ──────────────────────────┐${NC}"
-        echo -e "${BLUE}10.${NC} Test DNS resolution"
+        echo -e "${BLUE}11.${NC} Test DNS resolution"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${CYAN}┌─ Advanced ───────────────────────────────────────┐${NC}"
-        echo -e "${RED}11.${NC} Uninstall SmartDNS"
+        echo -e "${RED}12.${NC} Uninstall SmartDNS"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${YELLOW} 0.${NC} Return to Main Menu"
         echo ""
 
-        read -p "Please select an option [0-11, or press Enter to exit]: " choice
+        read -p "Please select an option [0-12, or press Enter to exit]: " choice
 
         case $choice in
             1)
@@ -1008,15 +1088,18 @@ main_menu() {
                 view_logs
                 ;;
             8)
-                view_cache_stats
+                view_config
                 ;;
             9)
-                clear_cache
+                view_cache_stats
                 ;;
             10)
-                test_dns
+                clear_cache
                 ;;
             11)
+                test_dns
+                ;;
+            12)
                 uninstall_smartdns
                 ;;
             0|"")
@@ -1024,7 +1107,7 @@ main_menu() {
                 break
                 ;;
             *)
-                log_error "Invalid option. Please select 0-11"
+                log_error "Invalid option. Please select 0-12"
                 ;;
         esac
 
