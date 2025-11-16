@@ -269,7 +269,7 @@ update_adguardhome() {
 
     # Download and run update script
     log_info "Downloading latest version..."
-    curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
+    curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
 
     if [ $? -eq 0 ]; then
         log_success "AdGuardHome updated successfully"
