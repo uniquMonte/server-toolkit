@@ -2309,6 +2309,15 @@ update_xray() {
     # Get current version
     local current_version=$(xray version 2>/dev/null | head -1 || echo "unknown")
     log_info "Current version: $current_version"
+
+    # Get latest version from GitHub
+    log_step "Checking for latest version..."
+    local latest_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/' || echo "unknown")
+    if [ "$latest_version" != "unknown" ] && [ -n "$latest_version" ]; then
+        log_info "Latest version: $latest_version"
+    else
+        log_info "Latest version: Unable to fetch (will install latest available)"
+    fi
     echo ""
 
     # Confirm update
