@@ -54,18 +54,21 @@ CLIENT_CONFIG_DIR="${LIGHTPATH_CONFIG_DIR}/client_configs"
 # Destination domain pool (符合 Reality 协议要求的域名)
 # 要求: 国外网站, 支持 TLSv1.3 与 H2, 非跳转域名
 DEST_DOMAINS=(
-    "www.ebay.com"
-    "music.apple.com"
-    "www.amazon.com"
-    "www.microsoft.com"
+    "www.office.com"
     "www.apple.com"
-    "www.bing.com"
-    "www.tesla.com"
-    "addons.mozilla.org"
-    "www.lovelive-anime.jp"
-    "www.swift.org"
+    "www.icloud.com"
     "www.cisco.com"
-    "www.amd.com"
+    "www.ebay.com"
+    "www.openssl.org"
+    "www.nasa.gov"
+    "code.visualstudio.com"
+    "www.kernel.org"
+    "arxiv.org"
+    "www.php.net"
+    "www.python.org"
+    "www.postgresql.org"
+    "www.debian.org"
+    "www.apache.org"
 )
 
 # Check root permission
@@ -494,7 +497,115 @@ generate_keypair() {
     fi
 }
 
-# Get random destination domain
+# Test TLS handshake latency for a single domain
+# Returns: average latency in seconds (as a decimal), or 999999 if failed
+test_domain_latency() {
+    local domain=$1
+    local test_count=${2:-3}  # Default to 3 tests
+    local total_time=0
+    local success_count=0
+
+    for i in $(seq 1 $test_count); do
+        # Use timeout to prevent hanging
+        # Extract 'real' time from output
+        local time_output=$(timeout 10 bash -c "time openssl s_client -connect ${domain}:443 -servername ${domain} </dev/null >/dev/null 2>&1" 2>&1)
+
+        if [ $? -eq 0 ]; then
+            # Extract the 'real' time value (format: 0m0.XXXs)
+            local real_time=$(echo "$time_output" | grep "^real" | awk '{print $2}')
+
+            if [ -n "$real_time" ]; then
+                # Convert time format "0m0.XXXs" to seconds
+                # Remove 'm' and 's', convert to seconds
+                local minutes=$(echo "$real_time" | sed 's/m.*//')
+                local seconds=$(echo "$real_time" | sed 's/.*m//' | sed 's/s//')
+
+                # Calculate total seconds using bc if available, otherwise use awk
+                if command -v bc &> /dev/null; then
+                    local time_in_seconds=$(echo "$minutes * 60 + $seconds" | bc)
+                else
+                    local time_in_seconds=$(awk "BEGIN {print $minutes * 60 + $seconds}")
+                fi
+
+                total_time=$(awk "BEGIN {print $total_time + $time_in_seconds}")
+                success_count=$((success_count + 1))
+            fi
+        fi
+    done
+
+    # Return average or failure indicator
+    if [ $success_count -gt 0 ]; then
+        awk "BEGIN {printf \"%.3f\", $total_time / $success_count}"
+    else
+        echo "999999"
+    fi
+}
+
+# Smart selection: test all domains and select the one with lowest latency
+# Returns: best domain name
+get_best_dest() {
+    log_step "Testing TLS handshake latency for all destination domains..."
+    log_info "This may take a moment (testing each domain 3 times)..."
+    echo ""
+
+    local best_domain=""
+    local best_latency=999999
+    local test_results=()
+
+    # Test each domain
+    for domain in "${DEST_DOMAINS[@]}"; do
+        log_info "Testing ${CYAN}${domain}${NC}..."
+
+        local avg_latency=$(test_domain_latency "$domain" 3)
+
+        # Store result for display
+        test_results+=("${domain}:${avg_latency}")
+
+        # Check if this is the best so far
+        local is_better=$(awk "BEGIN {print ($avg_latency < $best_latency)}")
+        if [ "$is_better" = "1" ]; then
+            best_latency=$avg_latency
+            best_domain=$domain
+        fi
+
+        # Display result
+        if [ "$avg_latency" = "999999" ]; then
+            echo -e "  ${RED}✗${NC} Failed to connect"
+        else
+            echo -e "  ${GREEN}✓${NC} Average latency: ${YELLOW}${avg_latency}s${NC}"
+        fi
+    done
+
+    echo ""
+    log_success "Best domain selected: ${GREEN}${best_domain}${NC} (${YELLOW}${best_latency}s${NC})"
+    echo ""
+
+    # Display summary
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}Latency Test Results Summary:${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Sort and display results
+    for result in "${test_results[@]}"; do
+        local d=$(echo "$result" | cut -d':' -f1)
+        local lat=$(echo "$result" | cut -d':' -f2)
+
+        if [ "$lat" = "999999" ]; then
+            echo -e "  ${RED}✗${NC} ${d}: ${RED}Failed${NC}"
+        elif [ "$d" = "$best_domain" ]; then
+            echo -e "  ${GREEN}★${NC} ${d}: ${GREEN}${lat}s${NC} ${YELLOW}(Selected)${NC}"
+        else
+            echo -e "  ${BLUE}○${NC} ${d}: ${lat}s"
+        fi
+    done
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    echo "$best_domain"
+}
+
+# Get random destination domain (fallback method)
 get_random_dest() {
     local random_index=$((RANDOM % ${#DEST_DOMAINS[@]}))
     echo "${DEST_DOMAINS[$random_index]}"
@@ -883,7 +994,8 @@ deploy_no_doh() {
     # Generate configuration parameters
     log_step "Generating configuration parameters..."
     local uuid=$(generate_uuid)
-    local dest=$(get_random_dest)
+    echo ""
+    local dest=$(get_best_dest)
 
     log_info "Generating X25519 keypair..."
     local keypair_output=$(generate_keypair)
@@ -1478,7 +1590,8 @@ deploy_with_doh() {
     # Generate configuration parameters
     log_step "Generating configuration parameters..."
     local uuid=$(generate_uuid)
-    local dest=$(get_random_dest)
+    echo ""
+    local dest=$(get_best_dest)
 
     log_info "Generating X25519 keypair..."
     local keypair_output=$(generate_keypair)
@@ -1585,8 +1698,8 @@ modify_configuration() {
             ;;
         2)
             log_step "Selecting new destination domain..."
-            new_dest=$(get_random_dest)
-            log_info "New destination: $new_dest"
+            echo ""
+            new_dest=$(get_best_dest)
             ;;
         3)
             log_step "Regenerating keypair..."
@@ -1599,12 +1712,13 @@ modify_configuration() {
         4)
             log_step "Regenerating all parameters..."
             new_uuid=$(generate_uuid)
-            new_dest=$(get_random_dest)
+            echo ""
+            new_dest=$(get_best_dest)
+            log_info "Generating X25519 keypair..."
             local keypair_output=$(generate_keypair)
             new_private_key=$(echo "$keypair_output" | grep "Private key:" | awk -F': ' '{print $2}')
             new_public_key=$(echo "$keypair_output" | grep "Public key:" | awk -F': ' '{print $2}')
             log_info "New UUID: $new_uuid"
-            log_info "New destination: $new_dest"
             log_info "New private key: $new_private_key"
             log_info "New public key: $new_public_key"
             ;;
