@@ -1,0 +1,657 @@
+#!/bin/bash
+
+#######################################
+# Nginx and Certbot Management Script
+# Supports installation, configuration, and uninstallation of Nginx and SSL certificate tools
+#######################################
+
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Detect operating system
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+        OS_VERSION=$VERSION_ID
+    else
+        log_error "Unable to detect operating system"
+        exit 1
+    fi
+}
+
+# Check if Nginx is installed
+check_nginx_installed() {
+    if command -v nginx &> /dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if Certbot is installed
+check_certbot_installed() {
+    if command -v certbot &> /dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Install Nginx (Ubuntu/Debian)
+install_nginx_debian() {
+    log_info "Installing Nginx on Ubuntu/Debian..."
+
+    # Update package index
+    apt-get update
+
+    # Install Nginx
+    apt-get install -y nginx
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+}
+
+# Install Nginx-Extras with stream support (Ubuntu/Debian)
+install_nginx_extras_debian() {
+    log_info "Installing Nginx-Extras with stream module support on Ubuntu/Debian..."
+
+    # Update package index
+    apt-get update
+
+    # Install Nginx-Extras (includes stream module and other modules)
+    apt-get install -y nginx-extras
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+
+    log_success "Nginx-Extras installed successfully with stream module support"
+    log_info "Stream module is available for DoH/Reality protocol deployments"
+}
+
+# Install Nginx (CentOS/RHEL/Rocky/AlmaLinux)
+install_nginx_rhel() {
+    log_info "Installing Nginx on CentOS/RHEL/Rocky/AlmaLinux..."
+
+    if command -v dnf &> /dev/null; then
+        dnf install -y nginx
+    else
+        # EPEL repository may be needed
+        yum install -y epel-release
+        yum install -y nginx
+    fi
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+}
+
+# Install Nginx with stream module (CentOS/RHEL/Rocky/AlmaLinux)
+install_nginx_stream_rhel() {
+    log_info "Installing Nginx with stream module on CentOS/RHEL/Rocky/AlmaLinux..."
+
+    if command -v dnf &> /dev/null; then
+        dnf install -y nginx nginx-mod-stream
+    else
+        # EPEL repository may be needed
+        yum install -y epel-release
+        yum install -y nginx nginx-mod-stream
+    fi
+
+    # Start and enable on boot
+    systemctl start nginx
+    systemctl enable nginx
+
+    log_success "Nginx installed successfully with stream module support"
+    log_info "Stream module is available for DoH/Reality protocol deployments"
+}
+
+# Configure Nginx
+configure_nginx() {
+    log_info "Configuring Nginx..."
+
+    log_info "Keeping Nginx default configuration (no optimization applied)"
+
+    # Create default site directory
+    log_info "Creating default site directory..."
+    mkdir -p /var/www/html
+
+    # Detect and use correct web server user
+    if id www-data &>/dev/null; then
+        web_user="www-data"
+        log_info "Using www-data user for web directory"
+    elif id nginx &>/dev/null; then
+        web_user="nginx"
+        log_info "Using nginx user for web directory"
+    elif id apache &>/dev/null; then
+        web_user="apache"
+        log_info "Using apache user for web directory"
+    else
+        log_warning "No web server user found, using root (not recommended)"
+        web_user="root"
+    fi
+
+    chown -R ${web_user}:${web_user} /var/www/html
+
+    # Verify installation
+    log_info "Verifying Nginx installation..."
+    nginx -t
+
+    if systemctl is-active --quiet nginx; then
+        log_success "Nginx is running normally"
+        nginx -v
+        echo ""
+        log_info "Nginx status:"
+        systemctl status nginx --no-pager -l
+    else
+        log_error "Nginx is not running properly"
+    fi
+}
+
+# Install Nginx
+install_nginx() {
+    log_info "Starting Nginx installation..."
+
+    if check_nginx_installed; then
+        log_warning "Nginx is already installed"
+        nginx -v
+        return
+    fi
+
+    detect_os
+
+    case $OS in
+        ubuntu|debian)
+            install_nginx_debian
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            install_nginx_rhel
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    configure_nginx
+    log_success "Nginx installation complete!"
+}
+
+# Install Certbot
+install_certbot() {
+    log_info "Installing Certbot (Let's Encrypt certificate tool)..."
+
+    if check_certbot_installed; then
+        log_success "Certbot is already installed"
+        certbot --version
+        return
+    fi
+
+    detect_os
+
+    case $OS in
+        ubuntu|debian)
+            log_info "Installing Certbot on Ubuntu/Debian..."
+            apt-get update
+            apt-get install -y certbot python3-certbot-nginx
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            log_info "Installing Certbot on CentOS/RHEL/Rocky/AlmaLinux..."
+            if command -v dnf &> /dev/null; then
+                dnf install -y certbot python3-certbot-nginx
+            else
+                yum install -y certbot python3-certbot-nginx
+            fi
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    if check_certbot_installed; then
+        log_success "Certbot installed successfully"
+        certbot --version
+
+        # Configure automatic renewal
+        log_info "Configuring automatic certificate renewal..."
+        if systemctl enable certbot-renew.timer 2>/dev/null; then
+            log_success "Enabled certbot renewal timer"
+        else
+            # If no timer, create cron job (check for duplicates first)
+            local cron_cmd="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
+            if ! crontab -l 2>/dev/null | grep -qF "certbot renew"; then
+                (crontab -l 2>/dev/null; echo "$cron_cmd") | crontab -
+                log_success "Added certbot renewal cron job"
+            else
+                log_info "Certbot renewal cron job already exists"
+            fi
+        fi
+
+        echo ""
+        log_info "Usage instructions:"
+        log_info "Request certificate: certbot --nginx -d your-domain.com"
+        log_info "Renew certificate: certbot renew"
+        log_info "View certificates: certbot certificates"
+    else
+        log_error "Certbot installation failed"
+    fi
+}
+
+# Install Nginx and Certbot
+install_nginx_and_certbot() {
+    install_nginx
+    echo ""
+    install_certbot
+}
+
+# Install Nginx-Extras (with stream module) + Certbot
+install_nginx_extras() {
+    log_info "Starting Nginx-Extras installation (with stream module support)..."
+
+    if check_nginx_installed; then
+        log_warning "Nginx is already installed"
+        nginx -v
+        echo ""
+        log_info "To upgrade to nginx-extras, please uninstall current Nginx first"
+        return
+    fi
+
+    detect_os
+
+    case $OS in
+        ubuntu|debian)
+            install_nginx_extras_debian
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            install_nginx_stream_rhel
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    configure_nginx
+    log_success "Nginx-Extras installation complete!"
+    echo ""
+    log_info "Stream module features:"
+    log_info "  • TCP/UDP load balancing"
+    log_info "  • SSL/TLS SNI routing (for DoH deployments)"
+    log_info "  • Advanced proxy protocol support"
+}
+
+# Install Nginx-Extras + Certbot
+install_nginx_extras_and_certbot() {
+    install_nginx_extras
+    echo ""
+    install_certbot
+}
+
+# Install Certbot only (requires Nginx to be pre-installed)
+install_certbot_only() {
+    if ! check_nginx_installed; then
+        log_error "Nginx is not installed!"
+        log_info "Please install Nginx first (option 1 or 3)"
+        return 1
+    fi
+
+    install_certbot
+}
+
+# Uninstall Nginx
+uninstall_nginx() {
+    log_warning "Starting Nginx uninstallation..."
+
+    if ! check_nginx_installed; then
+        log_warning "Nginx is not installed, no need to uninstall"
+        return
+    fi
+
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Nginx packages and service"
+    echo -e "  ${RED}•${NC} Configuration files (/etc/nginx)"
+    echo -e "  ${RED}•${NC} Website data (/var/www)"
+    echo -e "  ${RED}•${NC} Log files (/var/log/nginx)"
+    if check_certbot_installed; then
+        echo -e "  ${YELLOW}Note:${NC} Certbot will NOT be removed (use separate menu option)"
+    fi
+    echo ""
+
+    read -p "Are you sure you want to uninstall Nginx? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled"
+        return
+    fi
+
+    detect_os
+
+    # Stop Nginx service
+    log_info "Stopping Nginx service..."
+    systemctl stop nginx
+    systemctl disable nginx
+
+    # Uninstall Nginx
+    case $OS in
+        ubuntu|debian)
+            log_info "Uninstalling Nginx using APT..."
+
+            # Detect all installed Nginx packages
+            log_info "Detecting installed Nginx packages..."
+            local nginx_packages=$(dpkg -l 2>/dev/null | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+
+            if [ -n "$nginx_packages" ]; then
+                log_info "Found Nginx packages: $nginx_packages"
+                # Purge detected packages
+                apt-get purge -y $nginx_packages 2>/dev/null || true
+            fi
+
+            # Also try to purge all common Nginx variants to ensure complete removal
+            # This covers both nginx-extras and standard nginx installations
+            log_info "Ensuring all Nginx variants are removed..."
+            apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light libnginx-mod-* 2>/dev/null || true
+
+            apt-get autoremove -y
+            apt-get autoclean -y
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            log_info "Uninstalling Nginx using YUM/DNF..."
+            if command -v dnf &> /dev/null; then
+                # Remove all nginx packages and modules
+                dnf remove -y nginx nginx-mod-* 2>/dev/null || true
+            else
+                yum remove -y nginx nginx-mod-* 2>/dev/null || true
+            fi
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    # Delete Nginx configuration and data automatically (user already confirmed uninstall)
+    log_info "Deleting Nginx configuration and data..."
+    rm -rf /etc/nginx
+    rm -rf /var/www
+    rm -rf /var/log/nginx
+
+    if check_nginx_installed; then
+        log_error "Nginx uninstallation failed"
+        exit 1
+    else
+        log_success "Nginx uninstallation complete!"
+    fi
+}
+
+# Uninstall Certbot only
+uninstall_certbot() {
+    log_warning "Starting Certbot uninstallation..."
+
+    if ! check_certbot_installed; then
+        log_warning "Certbot is not installed, no need to uninstall"
+        return
+    fi
+
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    echo -e "  ${RED}•${NC} Certbot package"
+    echo -e "  ${RED}•${NC} SSL certificates (/etc/letsencrypt)"
+    echo -e "  ${RED}•${NC} Certbot data (/var/lib/letsencrypt)"
+    echo ""
+
+    read -p "Are you sure you want to uninstall Certbot? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled"
+        return
+    fi
+
+    detect_os
+
+    # Uninstall Certbot
+    case $OS in
+        ubuntu|debian)
+            log_info "Uninstalling Certbot using APT..."
+            apt-get purge -y certbot python3-certbot-nginx
+            apt-get autoremove -y
+            ;;
+
+        centos|rhel|rocky|almalinux|fedora)
+            log_info "Uninstalling Certbot using YUM/DNF..."
+            if command -v dnf &> /dev/null; then
+                dnf remove -y certbot python3-certbot-nginx
+            else
+                yum remove -y certbot python3-certbot-nginx
+            fi
+            ;;
+
+        *)
+            log_error "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
+
+    # Delete Let's Encrypt data automatically
+    log_info "Deleting SSL certificate data..."
+    rm -rf /etc/letsencrypt
+    rm -rf /var/lib/letsencrypt
+
+    if check_certbot_installed; then
+        log_error "Certbot uninstallation failed"
+        exit 1
+    else
+        log_success "Certbot uninstallation complete!"
+    fi
+}
+
+# Uninstall Nginx and Certbot
+uninstall_nginx_and_certbot() {
+    log_warning "Starting Nginx + Certbot uninstallation..."
+
+    local has_nginx=$(check_nginx_installed && echo "yes" || echo "no")
+    local has_certbot=$(check_certbot_installed && echo "yes" || echo "no")
+
+    if [ "$has_nginx" = "no" ] && [ "$has_certbot" = "no" ]; then
+        log_warning "Neither Nginx nor Certbot is installed, no need to uninstall"
+        return
+    fi
+
+    # Show what will be removed
+    echo ""
+    log_warning "The following will be removed:"
+    if [ "$has_nginx" = "yes" ]; then
+        echo -e "  ${RED}•${NC} Nginx packages and service"
+        echo -e "  ${RED}•${NC} Configuration files (/etc/nginx)"
+        echo -e "  ${RED}•${NC} Website data (/var/www)"
+        echo -e "  ${RED}•${NC} Log files (/var/log/nginx)"
+    fi
+    if [ "$has_certbot" = "yes" ]; then
+        echo -e "  ${RED}•${NC} Certbot package"
+        echo -e "  ${RED}•${NC} SSL certificates (/etc/letsencrypt)"
+        echo -e "  ${RED}•${NC} Certbot data (/var/lib/letsencrypt)"
+    fi
+    echo ""
+
+    read -p "Are you sure you want to uninstall Nginx and Certbot? (Y/n) (press Enter to confirm): " confirm
+    if [[ $confirm =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled"
+        return
+    fi
+
+    detect_os
+
+    # Uninstall Nginx if installed
+    if [ "$has_nginx" = "yes" ]; then
+        log_info "Stopping Nginx service..."
+        systemctl stop nginx
+        systemctl disable nginx
+
+        case $OS in
+            ubuntu|debian)
+                log_info "Uninstalling Nginx using APT..."
+
+                # Detect all installed Nginx packages
+                log_info "Detecting installed Nginx packages..."
+                local nginx_packages=$(dpkg -l | grep -E '^ii\s+nginx' | awk '{print $2}' | tr '\n' ' ')
+
+                if [ -n "$nginx_packages" ]; then
+                    log_info "Found Nginx packages: $nginx_packages"
+                    apt-get purge -y $nginx_packages
+                else
+                    log_warning "No Nginx packages found via dpkg, trying default packages..."
+                    apt-get purge -y nginx nginx-common nginx-core nginx-full nginx-extras nginx-light 2>/dev/null || true
+                fi
+
+                apt-get autoremove -y
+                ;;
+
+            centos|rhel|rocky|almalinux|fedora)
+                log_info "Uninstalling Nginx using YUM/DNF..."
+                if command -v dnf &> /dev/null; then
+                    dnf remove -y nginx
+                else
+                    yum remove -y nginx
+                fi
+                ;;
+
+            *)
+                log_error "Unsupported operating system: $OS"
+                exit 1
+                ;;
+        esac
+
+        log_info "Deleting Nginx configuration and data..."
+        rm -rf /etc/nginx
+        rm -rf /var/www
+        rm -rf /var/log/nginx
+    fi
+
+    # Uninstall Certbot if installed
+    if [ "$has_certbot" = "yes" ]; then
+        log_info "Uninstalling Certbot..."
+
+        case $OS in
+            ubuntu|debian)
+                apt-get purge -y certbot python3-certbot-nginx
+                apt-get autoremove -y
+                ;;
+
+            centos|rhel|rocky|almalinux|fedora)
+                if command -v dnf &> /dev/null; then
+                    dnf remove -y certbot python3-certbot-nginx
+                else
+                    yum remove -y certbot python3-certbot-nginx
+                fi
+                ;;
+        esac
+
+        log_info "Deleting SSL certificate data..."
+        rm -rf /etc/letsencrypt
+        rm -rf /var/lib/letsencrypt
+    fi
+
+    # Check results
+    local final_nginx=$(check_nginx_installed && echo "yes" || echo "no")
+    local final_certbot=$(check_certbot_installed && echo "yes" || echo "no")
+
+    if [ "$has_nginx" = "yes" ] && [ "$final_nginx" = "yes" ]; then
+        log_error "Nginx uninstallation failed"
+        exit 1
+    fi
+
+    if [ "$has_certbot" = "yes" ] && [ "$final_certbot" = "yes" ]; then
+        log_error "Certbot uninstallation failed"
+        exit 1
+    fi
+
+    log_success "Nginx and Certbot uninstallation complete!"
+}
+
+# Display help
+show_help() {
+    echo "Usage: $0 {install|install-certbot|install-extras|install-extras-certbot|install-certbot-only|uninstall|uninstall-all|uninstall-certbot}"
+    echo ""
+    echo "Commands:"
+    echo "  install                  - Install Nginx (standard)"
+    echo "  install-certbot          - Install Nginx + Certbot"
+    echo "  install-extras           - Install Nginx-Extras (with stream module for DoH)"
+    echo "  install-extras-certbot   - Install Nginx-Extras + Certbot"
+    echo "  install-certbot-only     - Install Certbot only (requires existing Nginx)"
+    echo "  uninstall-all            - Uninstall both Nginx and Certbot"
+    echo "  uninstall                - Uninstall Nginx only (keeps Certbot)"
+    echo "  uninstall-certbot        - Uninstall Certbot only"
+    echo ""
+}
+
+# Main function
+main() {
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Please run this script with root privileges"
+        exit 1
+    fi
+
+    case "$1" in
+        install)
+            install_nginx
+            ;;
+        install-certbot)
+            install_nginx_and_certbot
+            ;;
+        install-extras)
+            install_nginx_extras
+            ;;
+        install-extras-certbot)
+            install_nginx_extras_and_certbot
+            ;;
+        install-certbot-only)
+            install_certbot_only
+            ;;
+        uninstall-all)
+            uninstall_nginx_and_certbot
+            ;;
+        uninstall)
+            uninstall_nginx
+            ;;
+        uninstall-certbot)
+            uninstall_certbot
+            ;;
+        *)
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
