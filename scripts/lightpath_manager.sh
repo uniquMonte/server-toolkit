@@ -771,7 +771,9 @@ select_dest_interactive() {
                     echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency}s${NC}" >&2
                     echo "" >&2
 
-                    read -p "Use custom domain '${custom_domain}'? [Y/n]: " confirm
+                    read -p "Use custom domain '${custom_domain}'? [Y/n, or press Enter to confirm]: " confirm
+                    # Default to yes if Enter is pressed (empty input)
+                    confirm=${confirm:-y}
                     if [[ "$confirm" =~ ^[Nn]$ ]]; then
                         log_info "Using recommended domain: ${recommended_dest}" >&2
                         echo "$recommended_dest"
@@ -1168,7 +1170,9 @@ deploy_no_doh() {
             echo ""
         fi
 
-        read -p "Do you want to continue? [y/N, or press Enter to cancel]: " confirm
+        read -p "Do you want to continue? [Y/n, or press Enter to confirm]: " confirm
+        # Default to yes if Enter is pressed (empty input)
+        confirm=${confirm:-y}
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Deployment cancelled"
             read -p "Press Enter to return to menu..."
@@ -1280,7 +1284,9 @@ deploy_with_doh() {
             echo ""
         fi
 
-        read -p "Do you want to continue? [y/N, or press Enter to cancel]: " confirm
+        read -p "Do you want to continue? [Y/n, or press Enter to confirm]: " confirm
+        # Default to yes if Enter is pressed (empty input)
+        confirm=${confirm:-y}
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "Deployment cancelled"
             read -p "Press Enter to return to menu..."
