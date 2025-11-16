@@ -62,6 +62,44 @@ get_smartdns_version() {
     fi
 }
 
+# Get latest SmartDNS version from GitHub
+get_latest_version() {
+    local latest_version=$(curl -s https://api.github.com/repos/pymumu/smartdns/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$latest_version" ]; then
+        echo ""
+    else
+        echo "$latest_version"
+    fi
+}
+
+# Check if wget is installed
+check_wget_installed() {
+    if command -v wget &> /dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Install wget if needed
+install_wget() {
+    if check_wget_installed; then
+        return 0
+    fi
+
+    log_info "wget is not installed, installing..."
+    apt-get update -qq
+    apt-get install -y wget
+
+    if check_wget_installed; then
+        log_success "wget installed successfully"
+        return 0
+    else
+        log_error "Failed to install wget"
+        return 1
+    fi
+}
+
 # Check if dnsutils is installed
 check_dnsutils_installed() {
     if command -v dig &> /dev/null && command -v nslookup &> /dev/null; then
@@ -302,9 +340,9 @@ EOF
     log_info "/etc/resolv.conf is now protected (immutable)"
 }
 
-# Install SmartDNS
+# Install SmartDNS from GitHub releases
 install_smartdns() {
-    log_step "Installing SmartDNS..."
+    log_step "Installing SmartDNS from GitHub releases..."
     echo ""
 
     if check_smartdns_installed; then
@@ -319,7 +357,13 @@ install_smartdns() {
         return 0
     fi
 
-    # Install dnsutils first
+    # Install wget first
+    if ! install_wget; then
+        log_error "Failed to install wget"
+        return 1
+    fi
+
+    # Install dnsutils
     if ! install_dnsutils; then
         log_error "Failed to install required dnsutils package"
         return 1
@@ -334,17 +378,64 @@ install_smartdns() {
 
     echo ""
 
-    # Install SmartDNS from official repository
-    log_info "Updating package list..."
-    apt-get update -qq
+    # Get latest version from GitHub
+    log_info "Fetching latest SmartDNS version from GitHub..."
+    local latest_version=$(get_latest_version)
 
+    if [ -z "$latest_version" ]; then
+        log_error "Failed to fetch latest version from GitHub"
+        log_error "Please check your internet connection"
+        return 1
+    fi
+
+    log_success "Latest version: $latest_version"
+
+    # Construct download URL
+    local download_url="https://github.com/pymumu/smartdns/releases/download/${latest_version}/smartdns.1.2025.03.02-1533.x86_64-debian-all.deb"
+    local deb_file="/tmp/smartdns-${latest_version}.deb"
+
+    # Try to get the actual download URL from the release page
+    log_info "Downloading SmartDNS ${latest_version}..."
+
+    # Get the correct download URL from GitHub releases API
+    local actual_url=$(curl -s "https://api.github.com/repos/pymumu/smartdns/releases/latest" | grep "browser_download_url.*x86_64-debian-all.deb" | cut -d '"' -f 4)
+
+    if [ -n "$actual_url" ]; then
+        download_url="$actual_url"
+    fi
+
+    log_info "Downloading from: $download_url"
+
+    # Download the .deb package
+    if ! wget -O "$deb_file" "$download_url" 2>&1 | grep -v "^$"; then
+        log_error "Failed to download SmartDNS package"
+        return 1
+    fi
+
+    if [ ! -f "$deb_file" ]; then
+        log_error "Downloaded file not found: $deb_file"
+        return 1
+    fi
+
+    log_success "Download completed"
+
+    echo ""
+
+    # Install using dpkg
     log_info "Installing SmartDNS..."
-    if apt-get install -y smartdns; then
+    if dpkg -i "$deb_file"; then
         log_success "SmartDNS installed successfully"
     else
         log_error "Failed to install SmartDNS"
+        # Try to fix dependencies
+        log_info "Attempting to fix dependencies..."
+        apt-get install -f -y
+        rm -f "$deb_file"
         return 1
     fi
+
+    # Clean up
+    rm -f "$deb_file"
 
     echo ""
 
@@ -408,37 +499,88 @@ update_smartdns() {
     log_info "Current version: $current_version"
 
     echo ""
-    log_info "Checking for updates..."
-    apt-get update -qq
+    log_info "Checking for latest version from GitHub..."
+    local latest_version=$(get_latest_version)
 
-    # Check if updates are available
-    local update_available=$(apt-cache policy smartdns | grep -A1 "Installed:" | grep "Candidate:" | awk '{print $2}')
-    local installed=$(apt-cache policy smartdns | grep "Installed:" | awk '{print $2}')
+    if [ -z "$latest_version" ]; then
+        log_error "Failed to fetch latest version from GitHub"
+        log_error "Please check your internet connection"
+        return 1
+    fi
 
-    if [ "$installed" = "$update_available" ]; then
+    log_info "Latest version: $latest_version"
+
+    # Check if already up to date
+    if [[ "$current_version" == *"$latest_version"* ]]; then
         log_success "SmartDNS is already up to date!"
         return 0
     fi
 
     echo ""
-    log_info "Update available: $update_available"
+    log_info "New version available, updating..."
+
+    # Ensure wget is installed
+    if ! check_wget_installed; then
+        install_wget
+    fi
+
+    # Get the download URL
+    local actual_url=$(curl -s "https://api.github.com/repos/pymumu/smartdns/releases/latest" | grep "browser_download_url.*x86_64-debian-all.deb" | cut -d '"' -f 4)
+
+    if [ -z "$actual_url" ]; then
+        log_error "Failed to get download URL"
+        return 1
+    fi
+
+    local deb_file="/tmp/smartdns-${latest_version}.deb"
+
+    log_info "Downloading SmartDNS ${latest_version}..."
+
+    if ! wget -O "$deb_file" "$actual_url" 2>&1 | grep -v "^$"; then
+        log_error "Failed to download SmartDNS package"
+        return 1
+    fi
+
+    if [ ! -f "$deb_file" ]; then
+        log_error "Downloaded file not found: $deb_file"
+        return 1
+    fi
+
+    log_success "Download completed"
+
+    echo ""
+
+    # Stop service before update
+    log_info "Stopping SmartDNS service..."
+    systemctl stop smartdns
+
+    # Install using dpkg
     log_info "Installing update..."
-
-    if apt-get upgrade -y smartdns; then
+    if dpkg -i "$deb_file"; then
         log_success "SmartDNS updated successfully"
-
-        # Restart service
-        systemctl restart smartdns
-
-        if check_smartdns_running; then
-            log_success "SmartDNS service restarted successfully"
-            log_info "New version: $(get_smartdns_version)"
-        else
-            log_warning "SmartDNS service failed to restart"
-            log_info "Please check: systemctl status smartdns"
-        fi
     else
-        log_error "SmartDNS update failed"
+        log_error "Failed to install update"
+        # Try to fix dependencies
+        log_info "Attempting to fix dependencies..."
+        apt-get install -f -y
+        rm -f "$deb_file"
+        systemctl start smartdns
+        return 1
+    fi
+
+    # Clean up
+    rm -f "$deb_file"
+
+    # Restart service
+    log_info "Starting SmartDNS service..."
+    systemctl start smartdns
+
+    if check_smartdns_running; then
+        log_success "SmartDNS service started successfully"
+        log_info "Updated to version: $(get_smartdns_version)"
+    else
+        log_warning "SmartDNS service failed to start"
+        log_info "Please check: systemctl status smartdns"
         return 1
     fi
 }
@@ -666,21 +808,25 @@ view_cache_stats() {
     echo -e "${GREEN}File size:${NC} $cache_size"
     echo -e "${GREEN}Last modified:${NC} $cache_modified"
 
-    # Try to count entries using --cache-print (works on GitHub releases)
-    local cache_count=$(smartdns --cache-print "$cache_file" 2>/dev/null | wc -l)
+    # Try to count entries using cache-show (GitHub releases support this)
+    local cache_count=$(smartdns cache-show "$cache_file" 2>/dev/null | wc -l)
 
     if [ "$cache_count" -gt 0 ]; then
         echo -e "${GREEN}Cached domains:${NC} $cache_count"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     else
-        # Fallback for Debian version that doesn't support --cache-print
-        log_warning "Note: Domain count unavailable (Debian apt version limitation)"
-        echo ""
-        log_info "Debian apt SmartDNS (v40) doesn't support --cache-print command"
-        log_info "For full features, consider using the latest GitHub release"
-        log_info "GitHub: https://github.com/pymumu/smartdns/releases"
+        # Try alternative method
+        cache_count=$(smartdns --cache-print "$cache_file" 2>/dev/null | wc -l)
+        if [ "$cache_count" -gt 0 ]; then
+            echo -e "${GREEN}Cached domains:${NC} $cache_count"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        else
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            log_warning "Domain count unavailable"
+            log_info "Note: This feature requires GitHub release version"
+        fi
     fi
-
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 # Clear cache
