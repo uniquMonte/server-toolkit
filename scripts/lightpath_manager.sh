@@ -1966,7 +1966,9 @@ modify_configuration() {
                     echo -e "${YELLOW}Also check your cloud provider's security group/firewall settings!${NC}"
                     echo ""
 
-                    read -p "Continue anyway? [y/N]: " confirm
+                    read -p "Continue anyway? [Y/n, or press Enter to confirm]: " confirm
+                    # Default to yes if Enter is pressed (empty input)
+                    confirm=${confirm:-y}
                     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
                         log_info "Port change cancelled"
                         return 0
