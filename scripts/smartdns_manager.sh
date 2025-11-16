@@ -1009,7 +1009,7 @@ main_menu() {
                 if [ "$cache_count" = "N/A" ]; then
                     echo -e "${CYAN}Cached Domains:${NC} ${YELLOW}$cache_count${NC} (counting not supported)"
                 elif [ "$cache_count" = "0" ]; then
-                    echo -e "${CYAN}Cached Domains:${NC} ${YELLOW}$cache_count${NC} (no cache yet)"
+                    echo -e "${CYAN}Cached Domains:${NC} ${YELLOW}$cache_count${NC} (newly installed, use DNS to build cache)"
                 else
                     echo -e "${CYAN}Cached Domains:${NC} ${GREEN}$cache_count${NC}"
                 fi
