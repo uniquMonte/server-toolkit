@@ -659,7 +659,20 @@ EOF
 
     # Uninstall package
     log_info "Removing SmartDNS package..."
-    apt-get remove --purge -y smartdns
+
+    # Try to remove package
+    if ! apt-get remove --purge -y smartdns 2>&1 | tee /tmp/smartdns_uninstall.log; then
+        # Check if dpkg was interrupted
+        if grep -q "dpkg was interrupted" /tmp/smartdns_uninstall.log; then
+            log_warning "dpkg was interrupted, attempting to fix..."
+            dpkg --configure -a
+            log_info "Retrying package removal..."
+            apt-get remove --purge -y smartdns
+        fi
+    fi
+
+    # Clean up temp log
+    rm -f /tmp/smartdns_uninstall.log
 
     # Clean up cache and log files
     log_info "Removing cache and log files..."
