@@ -629,7 +629,12 @@ uninstall_smartdns() {
     fi
 
     echo ""
-    log_warning "This will remove SmartDNS and restore DNS configuration"
+    log_warning "This will completely remove SmartDNS, including:"
+    echo -e "  ${YELLOW}•${NC} SmartDNS service and package"
+    echo -e "  ${YELLOW}•${NC} Configuration files"
+    echo -e "  ${YELLOW}•${NC} Cache and log files"
+    echo -e "  ${YELLOW}•${NC} DNS configuration will be restored to 8.8.8.8 and 1.1.1.1"
+    echo ""
     read -p "Are you sure you want to continue? [y/N] (press Enter to cancel): " confirm
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
@@ -656,16 +661,12 @@ EOF
     log_info "Removing SmartDNS package..."
     apt-get remove --purge -y smartdns
 
-    # Clean up cache directory (optional)
-    read -p "Remove cache and log files? [y/N] (press Enter to keep): " remove_data
+    # Clean up cache and log files
+    log_info "Removing cache and log files..."
+    rm -rf /var/cache/smartdns
+    rm -rf /var/log/smartdns
 
-    if [[ "$remove_data" =~ ^[Yy]$ ]]; then
-        rm -rf /var/cache/smartdns
-        rm -rf /var/log/smartdns
-        log_info "Cache and log files removed"
-    fi
-
-    log_success "SmartDNS has been uninstalled"
+    log_success "SmartDNS has been completely uninstalled"
     log_info "DNS configuration restored to use 8.8.8.8 and 1.1.1.1"
 }
 
