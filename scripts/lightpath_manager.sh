@@ -641,12 +641,14 @@ get_best_dest() {
         if [ "$avg_latency" = "999999" ]; then
             echo -e "  ${RED}✗${NC} Failed to connect" >&2
         else
-            echo -e "  ${GREEN}✓${NC} Average latency: ${YELLOW}${avg_latency}s${NC}" >&2
+            local latency_ms=$(awk "BEGIN {printf \"%.1f\", $avg_latency * 1000}")
+            echo -e "  ${GREEN}✓${NC} Average latency: ${YELLOW}${latency_ms}ms${NC}" >&2
         fi
     done
 
     echo "" >&2
-    log_success "Best domain selected: ${GREEN}${best_domain}${NC} (${YELLOW}${best_latency}s${NC})" >&2
+    local best_latency_ms=$(awk "BEGIN {printf \"%.1f\", $best_latency * 1000}")
+    log_success "Best domain selected: ${GREEN}${best_domain}${NC} (${YELLOW}${best_latency_ms}ms${NC})" >&2
     echo "" >&2
 
     # Display summary
@@ -666,9 +668,11 @@ get_best_dest() {
         if [ "$lat" = "999999" ]; then
             echo -e "  ${RED}✗${NC} ${d}: ${RED}Failed${NC}" >&2
         elif [ "$d" = "$best_domain" ]; then
-            echo -e "  ${GREEN}★ #${rank}${NC} ${GREEN}${d}${NC}: ${GREEN}${lat}s${NC} ${YELLOW}← Selected as Best Domain${NC}" >&2
+            local lat_ms=$(awk "BEGIN {printf \"%.1f\", $lat * 1000}")
+            echo -e "  ${GREEN}★ #${rank}${NC} ${GREEN}${d}${NC}: ${GREEN}${lat_ms}ms${NC} ${YELLOW}← Selected as Best Domain${NC}" >&2
         else
-            echo -e "  ${BLUE}○ #${rank}${NC} ${d}: ${lat}s" >&2
+            local lat_ms=$(awk "BEGIN {printf \"%.1f\", $lat * 1000}")
+            echo -e "  ${BLUE}○ #${rank}${NC} ${d}: ${lat_ms}ms" >&2
         fi
 
         # Only increment rank for successful tests
@@ -764,11 +768,12 @@ select_dest_interactive() {
                     echo "$recommended_dest"
                 else
                     echo "" >&2
-                    log_success "Custom domain test result: ${YELLOW}${custom_latency}s${NC}" >&2
+                    local custom_latency_ms=$(awk "BEGIN {printf \"%.1f\", $custom_latency * 1000}")
+                    log_success "Custom domain test result: ${YELLOW}${custom_latency_ms}ms${NC}" >&2
                     echo "" >&2
                     echo -e "${CYAN}Comparison:${NC}" >&2
                     echo -e "  Recommended (${recommended_dest}): from test results above" >&2
-                    echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency}s${NC}" >&2
+                    echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency_ms}ms${NC}" >&2
                     echo "" >&2
 
                     read -p "Use custom domain '${custom_domain}'? [Y/n, or press Enter to confirm]: " confirm
