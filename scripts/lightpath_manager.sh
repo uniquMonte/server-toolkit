@@ -2323,8 +2323,10 @@ update_xray() {
     echo ""
 
     # Inform user about update scope
-    log_info "Note: This will only update the Xray kernel binary"
-    log_info "      All existing configurations will remain unchanged"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}Note: This will only update the Xray kernel binary${NC}"
+    echo -e "${YELLOW}      All existing configurations will remain unchanged${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
     # Compare versions
