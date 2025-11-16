@@ -1,0 +1,19 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*.bak
+*~
+
+# Editors
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+test/
+*.test.sh
