@@ -2099,7 +2099,11 @@ generate_mihomo_config() {
     fi
 
     local server_ip="$SERVER_IP"
-    local port="${PORT:-443}"  # Use configured port or default to 443
+    # Client port: with-doh always uses 443 (Nginx), no-doh uses configured port
+    local port="443"
+    if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+        port="${PORT:-443}"
+    fi
 
     # Get system hostname for node name
     local hostname=$(hostname)
@@ -2144,7 +2148,11 @@ generate_shadowrocket_config() {
     fi
 
     local server_ip="$SERVER_IP"
-    local port="${PORT:-443}"  # Use configured port or default to 443
+    # Client port: with-doh always uses 443 (Nginx), no-doh uses configured port
+    local port="443"
+    if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+        port="${PORT:-443}"
+    fi
 
     # Get system hostname for node name
     local hostname=$(hostname)
