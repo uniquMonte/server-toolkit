@@ -582,22 +582,31 @@ get_best_dest() {
 
     # Display summary
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}Latency Test Results Summary:${NC}"
+    echo -e "${YELLOW}Latency Test Results (Sorted by Latency - Lower is Better):${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    # Sort and display results
-    for result in "${test_results[@]}"; do
+    # Sort results by latency (numerical sort)
+    # Separate successful and failed tests
+    local sorted_results=$(printf '%s\n' "${test_results[@]}" | sort -t':' -k2 -n)
+
+    local rank=1
+    while IFS= read -r result; do
         local d=$(echo "$result" | cut -d':' -f1)
         local lat=$(echo "$result" | cut -d':' -f2)
 
         if [ "$lat" = "999999" ]; then
             echo -e "  ${RED}✗${NC} ${d}: ${RED}Failed${NC}"
         elif [ "$d" = "$best_domain" ]; then
-            echo -e "  ${GREEN}★${NC} ${d}: ${GREEN}${lat}s${NC} ${YELLOW}(Selected)${NC}"
+            echo -e "  ${GREEN}★ #${rank}${NC} ${GREEN}${d}${NC}: ${GREEN}${lat}s${NC} ${YELLOW}← Selected as Best Domain${NC}"
         else
-            echo -e "  ${BLUE}○${NC} ${d}: ${lat}s"
+            echo -e "  ${BLUE}○ #${rank}${NC} ${d}: ${lat}s"
         fi
-    done
+
+        # Only increment rank for successful tests
+        if [ "$lat" != "999999" ]; then
+            rank=$((rank + 1))
+        fi
+    done <<< "$sorted_results"
 
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
