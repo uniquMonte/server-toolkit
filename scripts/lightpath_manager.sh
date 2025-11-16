@@ -2320,6 +2320,24 @@ update_xray() {
     fi
     echo ""
 
+    # Compare versions
+    if [ "$latest_version" != "unknown" ] && [ -n "$latest_version" ]; then
+        # Extract version number from current version (e.g., "Xray 25.10.15 ..." -> "25.10.15")
+        local current_ver=$(echo "$current_version" | grep -oP '\d+\.\d+\.\d+' | head -1)
+        # Remove 'v' prefix from latest version (e.g., "v25.10.15" -> "25.10.15")
+        local latest_ver=$(echo "$latest_version" | sed 's/^v//')
+
+        if [ "$current_ver" = "$latest_ver" ]; then
+            log_info "You are already running the latest version ($latest_ver)"
+            read -p "Do you want to reinstall anyway? [y/N, or press Enter to cancel]: " confirm
+            confirm=${confirm:-n}
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                log_info "Update cancelled"
+                return 0
+            fi
+        fi
+    fi
+
     # Confirm update
     read -p "Proceed with Xray kernel update? [Y/n, or press Enter to confirm]: " confirm
     confirm=${confirm:-y}
