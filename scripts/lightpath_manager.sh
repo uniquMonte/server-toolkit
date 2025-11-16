@@ -2322,6 +2322,11 @@ update_xray() {
     fi
     echo ""
 
+    # Inform user about update scope
+    log_info "Note: This will only update the Xray kernel binary"
+    log_info "      All existing configurations will remain unchanged"
+    echo ""
+
     # Compare versions
     if [ "$latest_version" != "unknown" ] && [ -n "$latest_version" ]; then
         # Extract version number from current version (e.g., "Xray 25.10.15 ..." -> "25.10.15")
