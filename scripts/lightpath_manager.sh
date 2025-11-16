@@ -544,9 +544,9 @@ test_domain_latency() {
 # Smart selection: test all domains and select the one with lowest latency
 # Returns: best domain name
 get_best_dest() {
-    log_step "Testing TLS handshake latency for all destination domains..."
-    log_info "This may take a moment (testing each domain 3 times)..."
-    echo ""
+    log_step "Testing TLS handshake latency for all destination domains..." >&2
+    log_info "This may take a moment (testing each domain 3 times)..." >&2
+    echo "" >&2
 
     local best_domain=""
     local best_latency=999999
@@ -554,7 +554,7 @@ get_best_dest() {
 
     # Test each domain
     for domain in "${DEST_DOMAINS[@]}"; do
-        log_info "Testing ${CYAN}${domain}${NC}..."
+        log_info "Testing ${CYAN}${domain}${NC}..." >&2
 
         local avg_latency=$(test_domain_latency "$domain" 3)
 
@@ -570,20 +570,20 @@ get_best_dest() {
 
         # Display result
         if [ "$avg_latency" = "999999" ]; then
-            echo -e "  ${RED}✗${NC} Failed to connect"
+            echo -e "  ${RED}✗${NC} Failed to connect" >&2
         else
-            echo -e "  ${GREEN}✓${NC} Average latency: ${YELLOW}${avg_latency}s${NC}"
+            echo -e "  ${GREEN}✓${NC} Average latency: ${YELLOW}${avg_latency}s${NC}" >&2
         fi
     done
 
-    echo ""
-    log_success "Best domain selected: ${GREEN}${best_domain}${NC} (${YELLOW}${best_latency}s${NC})"
-    echo ""
+    echo "" >&2
+    log_success "Best domain selected: ${GREEN}${best_domain}${NC} (${YELLOW}${best_latency}s${NC})" >&2
+    echo "" >&2
 
     # Display summary
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}Latency Test Results (Sorted by Latency - Lower is Better):${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo -e "${YELLOW}Latency Test Results (Sorted by Latency - Lower is Better):${NC}" >&2
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
 
     # Sort results by latency (numerical sort)
     # Separate successful and failed tests
@@ -595,11 +595,11 @@ get_best_dest() {
         local lat=$(echo "$result" | cut -d':' -f2)
 
         if [ "$lat" = "999999" ]; then
-            echo -e "  ${RED}✗${NC} ${d}: ${RED}Failed${NC}"
+            echo -e "  ${RED}✗${NC} ${d}: ${RED}Failed${NC}" >&2
         elif [ "$d" = "$best_domain" ]; then
-            echo -e "  ${GREEN}★ #${rank}${NC} ${GREEN}${d}${NC}: ${GREEN}${lat}s${NC} ${YELLOW}← Selected as Best Domain${NC}"
+            echo -e "  ${GREEN}★ #${rank}${NC} ${GREEN}${d}${NC}: ${GREEN}${lat}s${NC} ${YELLOW}← Selected as Best Domain${NC}" >&2
         else
-            echo -e "  ${BLUE}○ #${rank}${NC} ${d}: ${lat}s"
+            echo -e "  ${BLUE}○ #${rank}${NC} ${d}: ${lat}s" >&2
         fi
 
         # Only increment rank for successful tests
@@ -608,8 +608,8 @@ get_best_dest() {
         fi
     done <<< "$sorted_results"
 
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo "" >&2
 
     echo "$best_domain"
 }
@@ -620,19 +620,19 @@ select_dest_interactive() {
     # First, get the best domain (this will display test results)
     local recommended_dest=$(get_best_dest)
 
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}Destination Domain Selection${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo -e "${GREEN}Recommended domain:${NC} ${YELLOW}${recommended_dest}${NC} (lowest latency)"
-    echo ""
-    echo -e "${YELLOW}What would you like to do?${NC}"
-    echo -e "  ${GREEN}1.${NC} Use recommended domain (${recommended_dest})"
-    echo -e "  ${CYAN}2.${NC} Select from tested domains list"
-    echo -e "  ${BLUE}3.${NC} Enter custom domain (will be tested)"
-    echo -e "  ${YELLOW}0.${NC} Cancel"
-    echo ""
+    echo "" >&2
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo -e "${CYAN}Destination Domain Selection${NC}" >&2
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo "" >&2
+    echo -e "${GREEN}Recommended domain:${NC} ${YELLOW}${recommended_dest}${NC} (lowest latency)" >&2
+    echo "" >&2
+    echo -e "${YELLOW}What would you like to do?${NC}" >&2
+    echo -e "  ${GREEN}1.${NC} Use recommended domain (${recommended_dest})" >&2
+    echo -e "  ${CYAN}2.${NC} Select from tested domains list" >&2
+    echo -e "  ${BLUE}3.${NC} Enter custom domain (will be tested)" >&2
+    echo -e "  ${YELLOW}0.${NC} Cancel" >&2
+    echo "" >&2
 
     read -p "Choose option [0-3, or press Enter to use recommended]: " choice
 
@@ -641,15 +641,15 @@ select_dest_interactive() {
 
     case $choice in
         1|"")
-            echo ""
-            log_success "Using recommended domain: ${GREEN}${recommended_dest}${NC}"
+            echo "" >&2
+            log_success "Using recommended domain: ${GREEN}${recommended_dest}${NC}" >&2
             echo "$recommended_dest"
             ;;
         2)
             # Let user select from the list
-            echo ""
-            echo -e "${CYAN}Available domains (sorted by latency):${NC}"
-            echo ""
+            echo "" >&2
+            echo -e "${CYAN}Available domains (sorted by latency):${NC}" >&2
+            echo "" >&2
 
             local index=1
             local domain_list=()
@@ -657,68 +657,68 @@ select_dest_interactive() {
             # Build the list from DEST_DOMAINS (we should use the test results from get_best_dest)
             for domain in "${DEST_DOMAINS[@]}"; do
                 domain_list+=("$domain")
-                echo -e "  ${GREEN}${index}.${NC} ${domain}"
+                echo -e "  ${GREEN}${index}.${NC} ${domain}" >&2
                 index=$((index + 1))
             done
 
-            echo ""
+            echo "" >&2
             read -p "Enter number (1-${#DEST_DOMAINS[@]}): " domain_choice
 
             if [[ "$domain_choice" =~ ^[0-9]+$ ]] && [ "$domain_choice" -ge 1 ] && [ "$domain_choice" -le "${#DEST_DOMAINS[@]}" ]; then
                 local selected_domain="${domain_list[$((domain_choice - 1))]}"
-                echo ""
-                log_success "Selected domain: ${GREEN}${selected_domain}${NC}"
+                echo "" >&2
+                log_success "Selected domain: ${GREEN}${selected_domain}${NC}" >&2
                 echo "$selected_domain"
             else
-                log_error "Invalid selection, using recommended domain"
+                log_error "Invalid selection, using recommended domain" >&2
                 echo "$recommended_dest"
             fi
             ;;
         3)
             # Let user enter custom domain
-            echo ""
+            echo "" >&2
             read -p "Enter custom domain (e.g., www.example.com): " custom_domain
 
             if [ -z "$custom_domain" ]; then
-                log_error "No domain entered, using recommended domain"
+                log_error "No domain entered, using recommended domain" >&2
                 echo "$recommended_dest"
             else
-                echo ""
-                log_step "Testing custom domain: ${custom_domain}..."
+                echo "" >&2
+                log_step "Testing custom domain: ${custom_domain}..." >&2
 
                 local custom_latency=$(test_domain_latency "$custom_domain" 3)
 
                 if [ "$custom_latency" = "999999" ]; then
-                    echo ""
-                    log_error "Failed to connect to ${custom_domain}"
-                    log_warning "Using recommended domain instead: ${recommended_dest}"
+                    echo "" >&2
+                    log_error "Failed to connect to ${custom_domain}" >&2
+                    log_warning "Using recommended domain instead: ${recommended_dest}" >&2
                     echo "$recommended_dest"
                 else
-                    echo ""
-                    log_success "Custom domain test result: ${YELLOW}${custom_latency}s${NC}"
-                    echo ""
-                    echo -e "${CYAN}Comparison:${NC}"
-                    echo -e "  Recommended (${recommended_dest}): from test results above"
-                    echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency}s${NC}"
-                    echo ""
+                    echo "" >&2
+                    log_success "Custom domain test result: ${YELLOW}${custom_latency}s${NC}" >&2
+                    echo "" >&2
+                    echo -e "${CYAN}Comparison:${NC}" >&2
+                    echo -e "  Recommended (${recommended_dest}): from test results above" >&2
+                    echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency}s${NC}" >&2
+                    echo "" >&2
 
                     read -p "Use custom domain '${custom_domain}'? [Y/n]: " confirm
                     if [[ "$confirm" =~ ^[Nn]$ ]]; then
-                        log_info "Using recommended domain: ${recommended_dest}"
+                        log_info "Using recommended domain: ${recommended_dest}" >&2
                         echo "$recommended_dest"
                     else
-                        log_success "Using custom domain: ${GREEN}${custom_domain}${NC}"
+                        log_success "Using custom domain: ${GREEN}${custom_domain}${NC}" >&2
                         echo "$custom_domain"
                     fi
                 fi
             fi
             ;;
         0)
-            log_info "Selection cancelled, using recommended domain"
+            log_info "Selection cancelled, using recommended domain" >&2
             echo "$recommended_dest"
             ;;
         *)
-            log_error "Invalid option, using recommended domain"
+            log_error "Invalid option, using recommended domain" >&2
             echo "$recommended_dest"
             ;;
     esac
