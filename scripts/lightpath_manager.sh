@@ -2138,14 +2138,15 @@ show_menu() {
         echo -e "${CYAN}┌─ Management ─────────────────────────────────────┐${NC}"
         echo -e "${GREEN} 7.${NC} View Current Configuration"
         echo -e "${GREEN} 8.${NC} Test Configuration"
-        echo -e "${GREEN} 9.${NC} Restart Xray Service"
-        echo -e "${RED}10.${NC} Uninstall"
+        echo -e "${GREEN} 9.${NC} Run Connection Diagnostics"
+        echo -e "${GREEN}10.${NC} Restart Xray Service"
+        echo -e "${RED}11.${NC} Uninstall"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${YELLOW} 0.${NC} Return to Main Menu"
         echo ""
 
-        read -p "Choose option [0-10, or press Enter to return]: " choice
+        read -p "Choose option [0-11, or press Enter to return]: " choice
 
         # Track if we need to pause after the operation
         local need_pause=true
@@ -2176,11 +2177,16 @@ show_menu() {
                 test_configuration
                 ;;
             9)
+                log_step "Running connection diagnostics..."
+                echo ""
+                bash "${SCRIPT_DIR}/diagnose_xray.sh"
+                ;;
+            10)
                 log_step "Restarting Xray service..."
                 systemctl restart xray
                 systemctl status xray --no-pager
                 ;;
-            10)
+            11)
                 uninstall
                 ;;
             0|"")
@@ -2227,11 +2233,14 @@ main() {
             test)
                 test_configuration
                 ;;
+            diagnose)
+                bash "${SCRIPT_DIR}/diagnose_xray.sh"
+                ;;
             uninstall)
                 uninstall
                 ;;
             *)
-                echo "Usage: $0 {deploy-no-doh|deploy-with-doh|modify|generate-client|view|test|uninstall}"
+                echo "Usage: $0 {deploy-no-doh|deploy-with-doh|modify|generate-client|view|test|diagnose|uninstall}"
                 exit 1
                 ;;
         esac
