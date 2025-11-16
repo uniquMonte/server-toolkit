@@ -2297,6 +2297,53 @@ test_configuration() {
     fi
 }
 
+# Update Xray kernel while preserving all configurations
+update_xray() {
+    log_step "Updating Xray kernel..."
+
+    if ! check_xray_installed; then
+        log_error "Xray is not installed"
+        return 1
+    fi
+
+    # Get current version
+    local current_version=$(xray version 2>/dev/null | head -1 || echo "unknown")
+    log_info "Current version: $current_version"
+    echo ""
+
+    # Confirm update
+    read -p "Proceed with Xray kernel update? [Y/n, or press Enter to confirm]: " confirm
+    confirm=${confirm:-y}
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        log_info "Update cancelled"
+        return 0
+    fi
+
+    # Run official Xray install script
+    log_step "Downloading and installing latest Xray version..."
+    if bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install; then
+        log_success "Xray kernel updated successfully"
+
+        # Get new version
+        local new_version=$(xray version 2>/dev/null | head -1 || echo "unknown")
+        log_info "New version: $new_version"
+        echo ""
+
+        # Restart Xray service
+        log_step "Restarting Xray service..."
+        if systemctl restart xray; then
+            log_success "Xray service restarted successfully"
+            systemctl status xray --no-pager | head -15
+        else
+            log_error "Failed to restart Xray service"
+            return 1
+        fi
+    else
+        log_error "Failed to update Xray kernel"
+        return 1
+    fi
+}
+
 # Main menu
 show_menu() {
     while true; do
@@ -2371,14 +2418,15 @@ show_menu() {
         echo -e "${CYAN}┌─ Management ─────────────────────────────────────┐${NC}"
         echo -e "${GREEN} 7.${NC} View Current Configuration"
         echo -e "${GREEN} 8.${NC} Test Configuration"
-        echo -e "${GREEN} 9.${NC} Restart Xray Service"
-        echo -e "${RED}10.${NC} Uninstall"
+        echo -e "${GREEN} 9.${NC} Update Xray Kernel"
+        echo -e "${GREEN}10.${NC} Restart Xray Service"
+        echo -e "${RED}11.${NC} Uninstall"
         echo -e "${CYAN}└──────────────────────────────────────────────────┘${NC}"
         echo ""
         echo -e "${YELLOW} 0.${NC} Return to Main Menu"
         echo ""
 
-        read -p "Choose option [0-10, or press Enter to return]: " choice
+        read -p "Choose option [0-11, or press Enter to return]: " choice
 
         # Track if we need to pause after the operation
         local need_pause=true
@@ -2409,11 +2457,14 @@ show_menu() {
                 test_configuration
                 ;;
             9)
+                update_xray
+                ;;
+            10)
                 log_step "Restarting Xray service..."
                 systemctl restart xray
                 systemctl status xray --no-pager
                 ;;
-            10)
+            11)
                 uninstall
                 ;;
             0|"")
