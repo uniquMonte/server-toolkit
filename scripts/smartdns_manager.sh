@@ -749,6 +749,12 @@ main_menu() {
                 echo -e "${YELLOW}Status: SmartDNS is installed but not running${NC}"
                 echo -e "${CYAN}Version:${NC} $(get_smartdns_version)"
             fi
+            echo ""
+            echo -e "${CYAN}Important Paths:${NC}"
+            echo -e "  ${CYAN}Config:${NC}  /etc/smartdns/smartdns.conf"
+            echo -e "  ${CYAN}Cache:${NC}   /var/cache/smartdns/smartdns.cache"
+            echo -e "  ${CYAN}Logs:${NC}    /var/log/smartdns/smartdns.log"
+            echo -e "           /var/log/smartdns/smartdns-audit.log"
         else
             echo -e "${YELLOW}Status: SmartDNS is not installed${NC}"
         fi
