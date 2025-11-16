@@ -2333,6 +2333,8 @@ update_xray() {
         log_step "Restarting Xray service..."
         if systemctl restart xray; then
             log_success "Xray service restarted successfully"
+            # Wait for service to stabilize before showing status
+            sleep 2
             systemctl status xray --no-pager | head -15
         else
             log_error "Failed to restart Xray service"
