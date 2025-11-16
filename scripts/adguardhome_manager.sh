@@ -264,11 +264,30 @@ update_adguardhome() {
         return 1
     fi
 
-    log_info "Current version: $(get_adguardhome_version)"
-    echo ""
+    local current_version=$(get_adguardhome_version)
+    log_info "Current version: $current_version"
 
+    # Get latest version from GitHub API
+    log_info "Checking for latest version..."
+    local latest_version=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [ -z "$latest_version" ]; then
+        log_warning "Could not fetch latest version information"
+        log_info "Proceeding with update anyway..."
+    else
+        log_info "Latest version: AdGuard Home, version $latest_version"
+        echo ""
+
+        # Compare versions
+        if [[ "$current_version" == *"$latest_version"* ]]; then
+            log_success "You are already running the latest version!"
+            return 0
+        fi
+    fi
+
+    echo ""
     # Download and run update script
-    log_info "Downloading latest version..."
+    log_info "Downloading and installing latest version..."
     curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
 
     if [ $? -eq 0 ]; then
