@@ -117,6 +117,81 @@ check_adguardhome_installed() {
     return 0  # Installed and running
 }
 
+# Check if a specific port is allowed in firewall
+# Returns: 0 = open, 1 = blocked, 2 = unknown/no firewall
+check_firewall_port() {
+    local port=$1
+    local is_open=false
+    local has_firewall=false
+
+    # Check UFW
+    if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+        has_firewall=true
+        if ufw status 2>/dev/null | grep -E "^${port}(/tcp)?[[:space:]]+" | grep -q "ALLOW"; then
+            is_open=true
+        fi
+    fi
+
+    # Check iptables
+    if command -v iptables &>/dev/null; then
+        # Check if there are any filter rules
+        if iptables -L INPUT -n 2>/dev/null | grep -q "^Chain INPUT"; then
+            has_firewall=true
+            # Check if port is explicitly allowed
+            if iptables -L INPUT -n 2>/dev/null | grep -E "dpt:${port}[[:space:]]" | grep -q "ACCEPT"; then
+                is_open=true
+            fi
+            # If there's a default DROP/REJECT policy and port is not explicitly allowed, it's blocked
+            if iptables -L INPUT -n 2>/dev/null | head -1 | grep -q "DROP\|REJECT"; then
+                if ! iptables -L INPUT -n 2>/dev/null | grep -E "dpt:${port}[[:space:]]" | grep -q "ACCEPT"; then
+                    return 1  # Blocked
+                fi
+            fi
+        fi
+    fi
+
+    # Check firewalld
+    if command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld 2>/dev/null; then
+        has_firewall=true
+        if firewall-cmd --list-ports 2>/dev/null | grep -q "${port}/tcp"; then
+            is_open=true
+        elif firewall-cmd --list-services 2>/dev/null | grep -q "https" && [ "$port" = "443" ]; then
+            is_open=true
+        fi
+    fi
+
+    # If we found a firewall and port is explicitly open
+    if [ "$has_firewall" = true ] && [ "$is_open" = true ]; then
+        return 0  # Open
+    elif [ "$has_firewall" = true ] && [ "$is_open" = false ]; then
+        return 1  # Blocked
+    else
+        return 2  # No firewall detected or unknown
+    fi
+}
+
+# Get firewall status message for a port
+get_firewall_status_message() {
+    local port=$1
+    check_firewall_port "$port"
+    local status=$?
+
+    case $status in
+        0)
+            echo -e "${GREEN}✓ Port $port is open in firewall${NC}"
+            return 0
+            ;;
+        1)
+            echo -e "${RED}✗ Port $port is BLOCKED by firewall${NC}"
+            return 1
+            ;;
+        2)
+            echo -e "${YELLOW}? Firewall status unknown (no active firewall detected)${NC}"
+            return 2
+            ;;
+    esac
+}
+
 # Check if Nginx has required stream modules for DoH deployment
 # Returns: 0 = has required modules, 1 = missing modules, 2 = nginx not installed
 check_nginx_stream_support() {
@@ -777,6 +852,7 @@ generate_config_no_doh() {
     local uuid=$1
     local dest=$2
     local private_key=$3
+    local port=${4:-443}  # Default to 443 if not specified
 
     cat > "$XRAY_CONFIG_PATH" <<EOF
 {
@@ -785,7 +861,7 @@ generate_config_no_doh() {
     },
     "inbounds": [
         {
-            "port": 443,
+            "port": $port,
             "protocol": "vless",
             "settings": {
                 "clients": [
@@ -1791,6 +1867,9 @@ modify_configuration() {
     echo "  UUID: $UUID"
     echo "  Destination: $DEST_DOMAIN"
     echo "  Public Key: $PUBLIC_KEY"
+    if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+        echo "  Port: $PORT"
+    fi
     echo ""
 
     echo -e "${YELLOW}What would you like to modify?${NC}"
@@ -1798,15 +1877,23 @@ modify_configuration() {
     echo "  2. Change destination domain"
     echo "  3. Regenerate keypair"
     echo "  4. Regenerate all (UUID + destination + keypair)"
+    if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+        echo "  5. Change port (currently: $PORT)"
+    fi
     echo "  0. Cancel"
     echo ""
 
-    read -p "Choose option [0-4, or press Enter to return]: " modify_choice
+    if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+        read -p "Choose option [0-5, or press Enter to return]: " modify_choice
+    else
+        read -p "Choose option [0-4, or press Enter to return]: " modify_choice
+    fi
 
     local new_uuid="$UUID"
     local new_dest="$DEST_DOMAIN"
     local new_private_key="$PRIVATE_KEY"
     local new_public_key="$PUBLIC_KEY"
+    local new_port="$PORT"
 
     case $modify_choice in
         1)
@@ -1840,6 +1927,80 @@ modify_configuration() {
             log_info "New private key: $new_private_key"
             log_info "New public key: $new_public_key"
             ;;
+        5)
+            if [ "$DEPLOYMENT_TYPE" != "no-doh" ]; then
+                log_error "Port modification is only available for non-DoH deployment"
+                return 1
+            fi
+
+            log_step "Changing port..."
+            echo ""
+            echo -e "${CYAN}Current port: ${YELLOW}${PORT}${NC}"
+            echo ""
+            echo -e "${YELLOW}Common ports:${NC}"
+            echo "  443  - HTTPS (default, recommended)"
+            echo "  8443 - Alternative HTTPS"
+            echo "  2053 - Common proxy port"
+            echo "  2083 - Common proxy port"
+            echo "  2087 - Common proxy port"
+            echo "  2096 - Common proxy port"
+            echo ""
+            echo -e "${YELLOW}Note:${NC} Port must be between 1-65535"
+            echo -e "${YELLOW}Warning:${NC} Using non-standard ports may require additional firewall configuration"
+            echo ""
+
+            read -p "Enter new port (or press Enter to cancel): " input_port
+
+            if [ -z "$input_port" ]; then
+                log_info "Port change cancelled"
+                return 0
+            fi
+
+            # Validate port number
+            if ! [[ "$input_port" =~ ^[0-9]+$ ]] || [ "$input_port" -lt 1 ] || [ "$input_port" -gt 65535 ]; then
+                log_error "Invalid port number. Must be between 1-65535"
+                return 1
+            fi
+
+            new_port="$input_port"
+            echo ""
+            log_info "New port: $new_port"
+
+            # Check if new port is open in firewall
+            echo ""
+            log_step "Checking firewall status for port $new_port..."
+            get_firewall_status_message "$new_port"
+            check_firewall_port "$new_port"
+            local fw_status=$?
+
+            if [ $fw_status -eq 1 ]; then
+                echo ""
+                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                echo -e "${RED}⚠  WARNING: Port $new_port is BLOCKED by firewall${NC}"
+                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                echo ""
+                echo -e "${YELLOW}To open the port, run one of the following commands:${NC}"
+
+                if command -v ufw &>/dev/null; then
+                    echo -e "  ${CYAN}UFW:${NC}       sudo ufw allow ${new_port}/tcp"
+                fi
+                if command -v iptables &>/dev/null; then
+                    echo -e "  ${CYAN}iptables:${NC}  sudo iptables -I INPUT -p tcp --dport ${new_port} -j ACCEPT"
+                fi
+                if command -v firewall-cmd &>/dev/null; then
+                    echo -e "  ${CYAN}firewalld:${NC} sudo firewall-cmd --permanent --add-port=${new_port}/tcp && sudo firewall-cmd --reload"
+                fi
+                echo ""
+                echo -e "${YELLOW}Also check your cloud provider's security group/firewall settings!${NC}"
+                echo ""
+
+                read -p "Continue anyway? [y/N]: " confirm
+                if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                    log_info "Port change cancelled"
+                    return 0
+                fi
+            fi
+            ;;
         0|"")
             log_info "Modification cancelled"
             return 0
@@ -1852,13 +2013,13 @@ modify_configuration() {
 
     # Generate new configuration based on deployment type
     if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
-        generate_config_no_doh "$new_uuid" "$new_dest" "$new_private_key"
+        generate_config_no_doh "$new_uuid" "$new_dest" "$new_private_key" "$new_port"
     else
         generate_config_with_doh "$new_uuid" "$new_dest" "$new_private_key"
     fi
 
     # Save updated deployment info
-    local port="443"
+    local port="$new_port"
     if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
         port="unix_socket"
     fi
@@ -1890,7 +2051,7 @@ generate_mihomo_config() {
     fi
 
     local server_ip="$SERVER_IP"
-    local port="443"
+    local port="${PORT:-443}"  # Use configured port or default to 443
 
     # Get system hostname for node name
     local hostname=$(hostname)
@@ -1935,7 +2096,7 @@ generate_shadowrocket_config() {
     fi
 
     local server_ip="$SERVER_IP"
-    local port="443"
+    local port="${PORT:-443}"  # Use configured port or default to 443
 
     # Get system hostname for node name
     local hostname=$(hostname)
@@ -2104,7 +2265,20 @@ show_menu() {
                 if [ "$DEPLOYMENT_TYPE" = "with-doh" ]; then
                     echo -e "${CYAN}Deployment Type: ${YELLOW}with DoH${NC} ${PURPLE}(Nginx SNI routing enabled)${NC}"
                 else
-                    echo -e "${CYAN}Deployment Type: ${YELLOW}without DoH${NC} ${PURPLE}(Direct port 443)${NC}"
+                    echo -e "${CYAN}Deployment Type: ${YELLOW}without DoH${NC} ${PURPLE}(Direct port ${PORT})${NC}"
+                fi
+
+                # Show port and firewall status
+                if [ "$DEPLOYMENT_TYPE" = "no-doh" ]; then
+                    echo -e "${CYAN}Port: ${YELLOW}${PORT}${NC}"
+                    echo -n "  "
+                    get_firewall_status_message "$PORT"
+
+                    # Additional warning if port is blocked
+                    check_firewall_port "$PORT"
+                    if [ $? -eq 1 ]; then
+                        echo -e "  ${YELLOW}⚠  Action needed: Open port $PORT in firewall${NC}"
+                    fi
                 fi
                 echo ""
             fi
