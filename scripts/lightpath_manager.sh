@@ -614,6 +614,116 @@ get_best_dest() {
     echo "$best_domain"
 }
 
+# Interactive destination domain selection
+# Shows test results and allows user to choose
+select_dest_interactive() {
+    # First, get the best domain (this will display test results)
+    local recommended_dest=$(get_best_dest)
+
+    echo ""
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Destination Domain Selection${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}Recommended domain:${NC} ${YELLOW}${recommended_dest}${NC} (lowest latency)"
+    echo ""
+    echo -e "${YELLOW}What would you like to do?${NC}"
+    echo -e "  ${GREEN}1.${NC} Use recommended domain (${recommended_dest})"
+    echo -e "  ${CYAN}2.${NC} Select from tested domains list"
+    echo -e "  ${BLUE}3.${NC} Enter custom domain (will be tested)"
+    echo -e "  ${YELLOW}0.${NC} Cancel"
+    echo ""
+
+    read -p "Choose option [0-3, or press Enter to use recommended]: " choice
+
+    # Default to option 1 if Enter is pressed
+    choice=${choice:-1}
+
+    case $choice in
+        1|"")
+            echo ""
+            log_success "Using recommended domain: ${GREEN}${recommended_dest}${NC}"
+            echo "$recommended_dest"
+            ;;
+        2)
+            # Let user select from the list
+            echo ""
+            echo -e "${CYAN}Available domains (sorted by latency):${NC}"
+            echo ""
+
+            local index=1
+            local domain_list=()
+
+            # Build the list from DEST_DOMAINS (we should use the test results from get_best_dest)
+            for domain in "${DEST_DOMAINS[@]}"; do
+                domain_list+=("$domain")
+                echo -e "  ${GREEN}${index}.${NC} ${domain}"
+                index=$((index + 1))
+            done
+
+            echo ""
+            read -p "Enter number (1-${#DEST_DOMAINS[@]}): " domain_choice
+
+            if [[ "$domain_choice" =~ ^[0-9]+$ ]] && [ "$domain_choice" -ge 1 ] && [ "$domain_choice" -le "${#DEST_DOMAINS[@]}" ]; then
+                local selected_domain="${domain_list[$((domain_choice - 1))]}"
+                echo ""
+                log_success "Selected domain: ${GREEN}${selected_domain}${NC}"
+                echo "$selected_domain"
+            else
+                log_error "Invalid selection, using recommended domain"
+                echo "$recommended_dest"
+            fi
+            ;;
+        3)
+            # Let user enter custom domain
+            echo ""
+            read -p "Enter custom domain (e.g., www.example.com): " custom_domain
+
+            if [ -z "$custom_domain" ]; then
+                log_error "No domain entered, using recommended domain"
+                echo "$recommended_dest"
+            else
+                echo ""
+                log_step "Testing custom domain: ${custom_domain}..."
+
+                local custom_latency=$(test_domain_latency "$custom_domain" 3)
+
+                if [ "$custom_latency" = "999999" ]; then
+                    echo ""
+                    log_error "Failed to connect to ${custom_domain}"
+                    log_warning "Using recommended domain instead: ${recommended_dest}"
+                    echo "$recommended_dest"
+                else
+                    echo ""
+                    log_success "Custom domain test result: ${YELLOW}${custom_latency}s${NC}"
+                    echo ""
+                    echo -e "${CYAN}Comparison:${NC}"
+                    echo -e "  Recommended (${recommended_dest}): from test results above"
+                    echo -e "  Custom (${custom_domain}): ${YELLOW}${custom_latency}s${NC}"
+                    echo ""
+
+                    read -p "Use custom domain '${custom_domain}'? [Y/n]: " confirm
+                    if [[ "$confirm" =~ ^[Nn]$ ]]; then
+                        log_info "Using recommended domain: ${recommended_dest}"
+                        echo "$recommended_dest"
+                    else
+                        log_success "Using custom domain: ${GREEN}${custom_domain}${NC}"
+                        echo "$custom_domain"
+                    fi
+                fi
+            fi
+            ;;
+        0)
+            log_info "Selection cancelled, using recommended domain"
+            echo "$recommended_dest"
+            ;;
+        *)
+            log_error "Invalid option, using recommended domain"
+            echo "$recommended_dest"
+            ;;
+    esac
+}
+
 # Get random destination domain (fallback method)
 get_random_dest() {
     local random_index=$((RANDOM % ${#DEST_DOMAINS[@]}))
@@ -1708,7 +1818,7 @@ modify_configuration() {
         2)
             log_step "Selecting new destination domain..."
             echo ""
-            new_dest=$(get_best_dest)
+            new_dest=$(select_dest_interactive)
             ;;
         3)
             log_step "Regenerating keypair..."
