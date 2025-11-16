@@ -125,7 +125,7 @@ uninstall_adguardhome() {
 
     echo ""
     log_warning "This will remove AdGuardHome and all its configurations"
-    read -p "Are you sure you want to continue? [y/N]: " confirm
+    read -p "Are you sure you want to continue? [y/N] (press Enter to cancel): " confirm
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         log_info "Uninstallation cancelled"
