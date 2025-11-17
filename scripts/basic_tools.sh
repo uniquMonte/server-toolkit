@@ -45,7 +45,7 @@ install_basic_tools() {
     detect_os
 
     # Define tool lists
-    local tools_to_check=("sudo" "curl" "wget" "git" "vim" "nano" "htop" "ncdu" "unzip" "zip" "tar" "gzip" "bzip2")
+    local tools_to_check=("sudo" "curl" "wget" "git" "vim" "nano" "htop" "ncdu" "unzip" "zip" "tar" "gzip" "bzip2" "crontab")
     local packages_to_install=()
     local already_installed=()
     local newly_installed=()
@@ -62,6 +62,20 @@ install_basic_tools() {
         else
             packages_to_install+=("$tool")
             echo -e "  ${YELLOW}○${NC} $tool - will be installed"
+        fi
+    done
+
+    # Map command names to package names for different systems
+    for i in "${!packages_to_install[@]}"; do
+        if [ "${packages_to_install[$i]}" = "crontab" ]; then
+            case $OS in
+                ubuntu|debian)
+                    packages_to_install[$i]="cron"
+                    ;;
+                centos|rhel|rocky|almalinux|fedora)
+                    packages_to_install[$i]="cronie"
+                    ;;
+            esac
         fi
     done
 
