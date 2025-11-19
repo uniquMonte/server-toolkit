@@ -51,8 +51,8 @@ LIGHTPATH_CONFIG_DIR="/etc/lightpath"
 LIGHTPATH_INFO_FILE="${LIGHTPATH_CONFIG_DIR}/deployment.conf"
 CLIENT_CONFIG_DIR="${LIGHTPATH_CONFIG_DIR}/client_configs"
 
-# Destination domain pool (符合 Reality 协议要求的域名)
-# 要求: 国外网站, 支持 TLSv1.3 与 H2, 非跳转域名, 未被 GFW 封锁
+# Destination domain pool (domains that meet Reality protocol requirements)
+# Requirements: foreign websites, supports TLSv1.3 and H2, non-redirect domains, not blocked
 DEST_DOMAINS=(
     "www.apple.com"
     "www.icloud.com"
@@ -1082,7 +1082,7 @@ EOF
 setup_doh_permissions() {
     log_step "Setting up permissions for DoH deployment..."
 
-    # Add www-data to nogroup (只在首次部署时需要)
+    # Add www-data to nogroup (only needed during first deployment)
     if id "www-data" &>/dev/null; then
         usermod -a -G nogroup www-data
         log_success "Added www-data to nogroup"
