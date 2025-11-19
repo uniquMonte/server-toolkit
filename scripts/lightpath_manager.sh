@@ -74,7 +74,6 @@ DEST_DOMAINS=(
     "kubernetes.io"
     "helm.sh"
     "files.pythonhosted.org"
-    "dlcdn.apache.org"
     "getcomposer.org"
     "pecl.php.net"
     "pkg.go.dev"
