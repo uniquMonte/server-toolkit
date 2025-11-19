@@ -54,12 +54,10 @@ CLIENT_CONFIG_DIR="${LIGHTPATH_CONFIG_DIR}/client_configs"
 # Destination domain pool (符合 Reality 协议要求的域名)
 # 要求: 国外网站, 支持 TLSv1.3 与 H2, 非跳转域名, 未被 GFW 封锁
 DEST_DOMAINS=(
-    "www.office.com"
     "www.apple.com"
     "www.icloud.com"
     "www.cisco.com"
     "www.ebay.com"
-    "www.openssl.org"
     "www.nasa.gov"
     "www.kernel.org"
     "arxiv.org"
@@ -74,6 +72,7 @@ DEST_DOMAINS=(
     "kubernetes.io"
     "helm.sh"
     "files.pythonhosted.org"
+    "dlcdn.apache.org"
     "getcomposer.org"
     "pecl.php.net"
     "pkg.go.dev"
