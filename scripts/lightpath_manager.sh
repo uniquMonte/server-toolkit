@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #######################################
-# Lightpath Manager - Xray Reality Protocol Deployment
+# Lightpath Manager - Protocol Deployment
 #
-# This script helps deploy and manage Xray with Reality protocol
+# This script helps deploy and manage Lightpath service
 # Supports both DoH and non-DoH deployment scenarios
 #
 # Author: Server Toolkit
@@ -51,7 +51,7 @@ LIGHTPATH_CONFIG_DIR="/etc/lightpath"
 LIGHTPATH_INFO_FILE="${LIGHTPATH_CONFIG_DIR}/deployment.conf"
 CLIENT_CONFIG_DIR="${LIGHTPATH_CONFIG_DIR}/client_configs"
 
-# Destination domain pool (domains that meet Reality protocol requirements)
+# Destination domain pool (domains that meet protocol requirements)
 # Requirements: foreign websites, supports TLSv1.3 and H2, non-redirect domains, not blocked
 DEST_DOMAINS=(
     "www.apple.com"
@@ -133,7 +133,7 @@ check_root() {
     fi
 }
 
-# Check if Xray is installed
+# Check if core service is installed
 check_xray_installed() {
     if command -v xray &> /dev/null; then
         return 0
@@ -565,7 +565,7 @@ get_server_ip() {
     echo "$ip"
 }
 
-# Install Xray
+# Install core service
 install_xray() {
     log_step "Installing Xray..."
 
@@ -582,7 +582,7 @@ install_xray() {
         log_success "Xray installed successfully"
         xray version
 
-        # Enable and start Xray service
+        # Enable and start core service
         systemctl enable xray
         log_success "Xray service enabled"
     else
@@ -904,7 +904,7 @@ load_deployment_info() {
     fi
 }
 
-# Generate Xray config for non-DoH deployment
+# Generate config for non-DoH deployment
 generate_config_no_doh() {
     local uuid=$1
     local dest=$2
@@ -990,7 +990,7 @@ EOF
     log_success "Xray configuration (non-DoH) generated at $XRAY_CONFIG_PATH"
 }
 
-# Generate Xray config for DoH deployment
+# Generate config for DoH deployment
 generate_config_with_doh() {
     local uuid=$1
     local dest=$2
@@ -1241,7 +1241,7 @@ deploy_no_doh() {
         echo ""
     fi
 
-    # Install Xray
+    # Install core service
     install_xray || return 1
 
     # Generate configuration parameters
@@ -1260,7 +1260,7 @@ deploy_no_doh() {
     log_info "Private Key: $private_key"
     log_info "Public Key: $public_key"
 
-    # Generate Xray configuration
+    # Generate configuration
     generate_config_no_doh "$uuid" "$dest" "$private_key"
 
     # Save deployment info
@@ -1268,7 +1268,7 @@ deploy_no_doh() {
     local server_ip=$(get_server_ip)
     save_deployment_info "no-doh" "$uuid" "$dest" "$private_key" "$public_key" "$server_ip" "443"
 
-    # Restart Xray service
+    # Restart service
     log_step "Restarting Xray service..."
     systemctl restart xray
     systemctl status xray --no-pager
@@ -1839,7 +1839,7 @@ deploy_with_doh() {
         is_first_deploy=true
     fi
 
-    # Install Xray
+    # Install core service
     install_xray || return 1
 
     # Generate configuration parameters
@@ -1858,7 +1858,7 @@ deploy_with_doh() {
     log_info "Private Key: $private_key"
     log_info "Public Key: $public_key"
 
-    # Generate Xray configuration
+    # Generate configuration
     generate_config_with_doh "$uuid" "$dest" "$private_key"
 
     # Set up permissions if first deployment
@@ -1876,7 +1876,7 @@ deploy_with_doh() {
     update_nginx_reality_sni "$dest"
     local nginx_config_status=$?
 
-    # Restart Xray service
+    # Restart service
     echo ""
     log_step "Restarting Xray service..."
     systemctl restart xray
@@ -2138,7 +2138,7 @@ modify_configuration() {
         update_nginx_reality_sni "$new_dest"
     fi
 
-    # Restart Xray service
+    # Restart service
     log_step "Restarting Xray service..."
     systemctl restart xray
 
@@ -2307,12 +2307,12 @@ view_configuration() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    # Show Xray service status
+    # Show service status
     log_step "Xray Service Status:"
     systemctl status xray --no-pager
 }
 
-# Uninstall Xray and remove configurations
+# Uninstall core service and remove configurations
 uninstall() {
     log_warning "This will remove Xray and all Lightpath configurations"
     read -p "Are you sure? (yes/no, or press Enter to confirm): " confirm
@@ -2335,7 +2335,7 @@ uninstall() {
     log_success "Uninstallation completed"
 }
 
-# Test Xray configuration
+# Test configuration
 test_configuration() {
     log_step "Testing Xray configuration..."
 
@@ -2357,7 +2357,7 @@ test_configuration() {
     fi
 }
 
-# Update Xray kernel while preserving all configurations
+# Update kernel while preserving all configurations
 update_xray() {
     log_step "Updating Xray kernel..."
 
@@ -2391,7 +2391,7 @@ update_xray() {
 
     # Compare versions
     if [ "$latest_version" != "unknown" ] && [ -n "$latest_version" ]; then
-        # Extract version number from current version (e.g., "Xray 25.10.15 ..." -> "25.10.15")
+        # Extract version number from current version (e.g., "25.10.15 ..." -> "25.10.15")
         local current_ver=$(echo "$current_version" | grep -oP '\d+\.\d+\.\d+' | head -1)
         # Remove 'v' prefix from latest version (e.g., "v25.10.15" -> "25.10.15")
         local latest_ver=$(echo "$latest_version" | sed 's/^v//')
@@ -2415,7 +2415,7 @@ update_xray() {
         return 0
     fi
 
-    # Run official Xray install script
+    # Run official install script
     log_step "Downloading and installing latest Xray version..."
     if bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install; then
         log_success "Xray kernel updated successfully"
@@ -2425,7 +2425,7 @@ update_xray() {
         log_info "New version: $new_version"
         echo ""
 
-        # Restart Xray service
+        # Restart service
         log_step "Restarting Xray service..."
         if systemctl restart xray; then
             log_success "Xray service restarted successfully"

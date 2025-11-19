@@ -1187,7 +1187,7 @@ dd_system_menu() {
     esac
 }
 
-# Lightpath manager menu (Xray Reality Protocol)
+# Lightpath manager menu
 # AdGuardHome manager menu
 adguardhome_menu() {
     if ! download_script_if_needed "adguardhome_manager.sh"; then
