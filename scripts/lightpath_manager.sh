@@ -1359,7 +1359,6 @@ deploy_with_doh() {
     log_step "Checking prerequisites..."
 
     local nginx_status=0
-    local adguard_status=0
     local prerequisites_met=true
 
     # Check Nginx
@@ -1412,20 +1411,6 @@ deploy_with_doh() {
         fi
     fi
 
-    # Check AdGuardHome
-    check_adguardhome_installed
-    adguard_status=$?
-
-    if [ $adguard_status -eq 1 ]; then
-        log_error "AdGuardHome is not installed!"
-        prerequisites_met=false
-    elif [ $adguard_status -eq 2 ]; then
-        log_error "AdGuardHome is installed but not running!"
-        prerequisites_met=false
-    else
-        log_success "AdGuardHome is installed and running"
-    fi
-
     # If prerequisites are not met, offer to install them automatically
     if [ "$prerequisites_met" = false ]; then
         echo ""
@@ -1449,14 +1434,6 @@ deploy_with_doh() {
         elif [ "$nginx_needs_upgrade" = true ]; then
             echo -e "  ${RED}✗${NC} Nginx - missing stream modules (current: ${current_nginx_variant})"
             services_needed+=("Nginx (upgrade to nginx-extras)")
-        fi
-
-        if [ $adguard_status -eq 1 ]; then
-            echo -e "  ${RED}✗${NC} AdGuardHome - not installed"
-            services_needed+=("AdGuardHome")
-        elif [ $adguard_status -eq 2 ]; then
-            echo -e "  ${YELLOW}○${NC} AdGuardHome - installed but not running"
-            services_needed+=("AdGuardHome")
         fi
 
         echo ""
@@ -1766,27 +1743,6 @@ deploy_with_doh() {
                     fi
                 fi
 
-                # Install/start AdGuardHome if needed
-                if [ $adguard_status -ne 0 ]; then
-                    if [ $adguard_status -eq 1 ]; then
-                        log_step "Installing AdGuardHome..."
-                        # Use official installation script
-                        curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
-                        if [ $? -eq 0 ]; then
-                            systemctl enable AdGuardHome
-                            systemctl start AdGuardHome
-                            log_success "AdGuardHome installed successfully"
-                        else
-                            log_error "Failed to install AdGuardHome"
-                            read -p "Press Enter to return to menu..."
-                            return 1
-                        fi
-                    else
-                        log_step "Starting AdGuardHome service..."
-                        systemctl start AdGuardHome
-                    fi
-                fi
-
                 # Verify installation
                 echo ""
                 log_step "Verifying installation..."
@@ -1794,10 +1750,8 @@ deploy_with_doh() {
 
                 check_nginx_installed
                 nginx_status=$?
-                check_adguardhome_installed
-                adguard_status=$?
 
-                if [ $nginx_status -eq 0 ] && [ $adguard_status -eq 0 ]; then
+                if [ $nginx_status -eq 0 ]; then
                     echo ""
                     log_success "All prerequisites installed successfully!"
                     echo ""
@@ -1808,12 +1762,7 @@ deploy_with_doh() {
                 else
                     echo ""
                     log_error "Installation verification failed"
-                    if [ $nginx_status -ne 0 ]; then
-                        log_error "Nginx is not running properly"
-                    fi
-                    if [ $adguard_status -ne 0 ]; then
-                        log_error "AdGuardHome is not running properly"
-                    fi
+                    log_error "Nginx is not running properly"
                     read -p "Press Enter to return to menu..."
                     return 1
                 fi
